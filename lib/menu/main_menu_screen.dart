@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../games/tag/tag_lobby_screen.dart';
 import '../realtime/real_time_screen.dart';
 import '../social/social_screen.dart';
 import '../turnbased/turn_based_screen.dart';
@@ -17,6 +18,11 @@ class MainMenuScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              _MenuButton(
+                label: 'Tag (offline party)',
+                onTap: () => _push(context, const TagLobbyScreen()),
+              ),
+              const SizedBox(height: 16),
               _MenuButton(
                 label: 'Real-time',
                 onTap: () => _push(context, const RealTimeScreen()),
