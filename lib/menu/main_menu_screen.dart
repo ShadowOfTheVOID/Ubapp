@@ -1,0 +1,66 @@
+import 'package:flutter/material.dart';
+
+import '../realtime/real_time_screen.dart';
+import '../social/social_screen.dart';
+import '../turnbased/turn_based_screen.dart';
+
+class MainMenuScreen extends StatelessWidget {
+  const MainMenuScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Ubapp')),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _MenuButton(
+                label: 'Real-time',
+                onTap: () => _push(context, const RealTimeScreen()),
+              ),
+              const SizedBox(height: 16),
+              _MenuButton(
+                label: 'Turn-based',
+                onTap: () => _push(context, const TurnBasedScreen()),
+              ),
+              const SizedBox(height: 16),
+              _MenuButton(
+                label: 'Social',
+                onTap: () => _push(context, const SocialScreen()),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _push(BuildContext context, Widget screen) {
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
+  }
+}
+
+class _MenuButton extends StatelessWidget {
+  const _MenuButton({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton(
+        style: FilledButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 18),
+          textStyle: const TextStyle(fontSize: 18),
+        ),
+        onPressed: onTap,
+        child: Text(label),
+      ),
+    );
+  }
+}

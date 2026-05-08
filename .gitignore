@@ -1,16 +1,22 @@
-## Xcode
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
 build/
-DerivedData/
-*.xcuserstate
-xcuserdata/
-*.xcodeproj/project.xcworkspace/xcuserdata/
-*.xcodeproj/xcuserdata/
-*.xcworkspace/xcuserdata/
+.fvm/
 
-## Swift Package Manager
-.build/
-Packages/
-Package.resolved
+# IDE
+.idea/
+*.iml
+.vscode/
 
-## macOS
+# OS
 .DS_Store
+
+# Generated platform shells (run `flutter create .` to regenerate)
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+android/local.properties
