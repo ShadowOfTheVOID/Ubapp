@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../games/mafia/mafia_screen.dart';
 import '../games/tag/tag_lobby_screen.dart';
 import '../realtime/real_time_screen.dart';
 import '../social/social_screen.dart';
@@ -18,6 +19,11 @@ class MainMenuScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              _MenuButton(
+                label: 'Mafia (host + browser guests)',
+                onTap: () => _push(context, const MafiaScreen()),
+              ),
+              const SizedBox(height: 16),
               _MenuButton(
                 label: 'Tag (offline party)',
                 onTap: () => _push(context, const TagLobbyScreen()),
