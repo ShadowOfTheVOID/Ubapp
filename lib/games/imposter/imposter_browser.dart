@@ -1,0 +1,121 @@
+/// Vanilla HTML/JS bundle served at `/` when ImposterServer is hosting.
+const String imposterBrowserHtml = r'''
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Imposter</title>
+<style>
+  :root { color-scheme: dark; --bg:#0d1117; --card:#161b22; --card2:#21262d;
+    --line:#30363d; --text:#e6edf3; --muted:#9da7b3; --accent:#7c3aed;
+    --danger:#f85149; --good:#2ea043; --warn:#d29922; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:env(safe-area-inset-top) 16px env(safe-area-inset-bottom);
+    background:var(--bg); color:var(--text); font-family:-apple-system, system-ui, sans-serif; }
+  .wrap { max-width: 480px; margin: 0 auto; padding: 24px 0; }
+  h1 { font-size: 28px; margin: 0 0 16px; }
+  h2 { font-size: 14px; margin: 24px 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 1.2px; }
+  .card { background:var(--card); border-radius:16px; padding:20px; margin-bottom:16px; }
+  button, input[type=text] { width:100%; font-size:16px; padding:14px 16px; border-radius:12px;
+    border:1px solid var(--line); background:var(--card2); color:var(--text); font-family:inherit; }
+  button { background:var(--accent); color:#fff; border:none; font-weight:600; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .pill { display:inline-block; background:var(--card2); padding:4px 10px; border-radius:999px; font-size:12px; color:var(--muted); }
+  .pill.you { background:var(--accent); color:#fff; }
+  .player { display:flex; align-items:center; justify-content:space-between;
+    background:var(--card2); padding:12px 16px; border-radius:12px; margin-bottom:8px; }
+  .target { width:100%; background:var(--card2); border:1px solid var(--line);
+    color:var(--text); padding:16px; border-radius:12px; font-size:16px; text-align:left; cursor:pointer; }
+  .target.selected { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .secret-card { padding:32px; text-align:center; border-radius:20px;
+    background:linear-gradient(160deg, #1f3b2c, #0d2a1f); }
+  .secret-card.imposter { background:linear-gradient(160deg, #4c1d24, #2a1116); }
+  .secret-card .label { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:2px; }
+  .secret-card .word { font-size:42px; font-weight:800; margin-top:8px; }
+  .secret-card .category { font-size:14px; margin-top:6px; color:var(--muted); }
+  .center { text-align:center; }
+  .small { color:var(--muted); font-size:13px; }
+</style>
+</head>
+<body>
+<div class="wrap" id="root"></div>
+<script>
+(() => {
+  const root = document.getElementById('root');
+  const ws = new WebSocket(`ws://${location.host}/ws`);
+  const state = { me:null, phase:'lobby', players:[], category:'', word:null, isImposter:false, picked:null, voted:false, result:null };
+
+  function send(o){ if (ws.readyState===1) ws.send(JSON.stringify(o)); }
+
+  ws.addEventListener('message', e => {
+    let m; try { m = JSON.parse(e.data); } catch { return; }
+    switch (m.type) {
+      case 'welcome': state.me = { id:m.yourId, name:m.yourName }; break;
+      case 'lobby':   state.players = m.players; state.phase='lobby'; break;
+      case 'role':    state.category = m.category; state.word = m.word; state.isImposter = m.isImposter; state.phase='playing'; state.voted=false; state.picked=null; state.result=null; break;
+      case 'voting':  state.phase='voting'; state.picked=null; state.voted=false; break;
+      case 'result':  state.phase='result'; state.result = m; break;
+      case 'reset':   state.phase='lobby'; state.word=null; state.result=null; break;
+    }
+    render();
+  });
+
+  function render(){
+    if (!state.me) return root.innerHTML = `<h1>Imposter</h1><div class="card"><h2>Pick a name</h2><input id="n" type="text" placeholder="Your name" maxlength="20" autofocus><div style="height:12px"></div><button id="b">Join</button></div>`;
+    if (state.phase==='lobby')  return renderLobby();
+    if (state.phase==='playing')return renderPlaying();
+    if (state.phase==='voting') return renderVoting();
+    if (state.phase==='result') return renderResult();
+  }
+
+  function renderLobby(){
+    root.innerHTML = `<h1>Lobby</h1><div class="card"><p class="small">Waiting for the host to start.</p><h2>Players (${state.players.length})</h2>${state.players.map(p=>`<div class="player"><span>${esc(p.name)}${p.isHost?' <span class="pill">host</span>':''}</span>${state.me.id===p.id?'<span class="pill you">you</span>':''}</div>`).join('')}</div>`;
+  }
+
+  function renderPlaying(){
+    const card = state.isImposter
+      ? `<div class="secret-card imposter"><div class="label">your role</div><div class="word">IMPOSTER</div><div class="category">Category: <strong>${esc(state.category)}</strong></div><p class="small">Bluff your way through. Don't get voted out.</p></div>`
+      : `<div class="secret-card"><div class="label">secret word</div><div class="word">${esc(state.word||'')}</div><div class="category">Category: <strong>${esc(state.category)}</strong></div><p class="small">Discuss in person. Find the imposter.</p></div>`;
+    root.innerHTML = card + `<div class="card center small">Waiting for the host to call a vote…</div>`;
+  }
+
+  function renderVoting(){
+    const others = state.players.filter(p=>p.id !== state.me.id);
+    root.innerHTML = `<h1>Vote</h1><div class="card"><h2>Pick the imposter</h2>${others.map(p=>`<button class="target ${state.picked===p.id?'selected':''}" data-id="${p.id}" ${state.voted?'disabled':''}>${esc(p.name)}</button>`).join('')}<button class="target ${state.picked==='__skip'?'selected':''}" data-id="__skip" ${state.voted?'disabled':''}>Skip</button><div style="height:12px"></div><button id="confirm" ${(state.voted||!state.picked)?'disabled':''}>${state.voted?'Vote in ✓':'Lock in vote'}</button></div>`;
+    document.querySelectorAll('.target').forEach(b=>b.addEventListener('click',()=>{state.picked=b.dataset.id;render();}));
+    const c = document.getElementById('confirm');
+    if (c) c.addEventListener('click', ()=>{
+      const t = state.picked==='__skip' ? null : state.picked;
+      send({type:'vote', targetId:t}); state.voted=true; render();
+    });
+  }
+
+  function renderResult(){
+    const r = state.result;
+    const winner = r.winner==='town' ? 'Town wins' : 'Imposter wins';
+    const accused = r.mostVotedId ? r.players.find(p=>p.id===r.mostVotedId) : null;
+    const imposter = r.players.find(p=>p.id===r.imposterId);
+    root.innerHTML = `<h1>${winner}</h1><div class="card center"><p>The imposter was <strong>${esc(imposter ? imposter.name : '?')}</strong>.</p>${accused?`<p>You voted out <strong>${esc(accused.name)}</strong>${r.imposterCaught?' — correct!':' — wrong!'}</p>`:'<p>The vote tied — no one was eliminated.</p>'}<p>Secret word was <strong>${esc(r.word)}</strong> (${esc(r.category)}).</p></div><div class="card center small">Waiting for the host to start a new round…</div>`;
+  }
+
+  // join handler bind
+  function bindJoin(){
+    const i = document.getElementById('n'), b = document.getElementById('b');
+    if (!i || !b) return;
+    const submit = () => { const n=i.value.trim(); if (n) send({type:'join', name:n}); };
+    b.addEventListener('click', submit);
+    i.addEventListener('keydown', e => { if (e.key==='Enter') submit(); });
+  }
+
+  function esc(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  // patch: re-bind join after first render
+  const _r = render;
+  render = () => { _r(); bindJoin(); };
+  render();
+})();
+</script>
+</body>
+</html>
+''';

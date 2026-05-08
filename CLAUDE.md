@@ -45,12 +45,18 @@ Proximity-based party game with five variants. The seam between game and radio i
 
 The `broadcast` callback in `TagSession` is the seam for cross-device messaging; right now the lobby supplies `debugPrint` because BLE peripheral advertising on iOS isn't implemented (flutter_blue_plus is central-only — would need a `CBPeripheralManager` platform channel). Wiring real transport touches no game code.
 
-### Mafia (`lib/games/mafia/`)
-Browser-tier social game. The host phone runs the app; everyone else joins from any phone's browser by scanning a QR. Architecture:
+### Browser-tier social games
 
-- `MafiaEngine` — pure phase machine: lobby → night → dayReveal → dayVote → repeat → gameOver.
-- `MafiaServer` — wraps `HostServer`, owns the engine, applies per-guest `join`/`night_action`/`vote` messages, fans out public phase updates, and **sends each player's role privately** via `HostServer.send(GuestId, payload)`. The Flutter host is a special player with id `MafiaServer.hostId` ("host") that doesn't go through WebSocket.
-- `mafia_browser.dart` — the **entire browser client** as a const HTML/CSS/JS string served at `/`. Vanilla JS, no build step. When extending Mafia, the browser bundle and the Flutter `mafia_screen.dart` must stay in sync since they consume the same JSON from the server.
+Three follow the same pattern: host phone runs the app; everyone else joins via QR in any browser.
+
+- **Mafia** (`lib/games/mafia/`) — phases lobby → night → dayReveal → dayVote → repeat → gameOver. Roles: Mafia / Doctor / Villager.
+- **Imposter** (`lib/games/imposter/`) — Spyfall-style. All townies see a secret word; the imposter sees only the category. Single vote, then reveal.
+- **Crazy Eights** (`lib/games/crazy_eights/`) — classic card game. Standard 52-card deck, 8s wild, first to empty hand wins. Has a `card.dart` value type; screen file uses `import 'package:flutter/material.dart' hide Card; import 'package:flutter/material.dart' as m show Card;` to disambiguate from `material.Card`.
+
+For all three:
+- `<game>_engine.dart` — pure phase machine, no I/O. Trivially testable.
+- `<game>_server.dart` — wraps `HostServer`, owns the engine, applies per-guest commands, fans out public state, and **sends private payloads** (roles / hands) via `HostServer.send(GuestId, payload)`. The Flutter host is a special player with id `<Server>.hostId == "host"` that doesn't connect over WebSocket.
+- `<game>_browser.dart` — the **entire browser client** as a const HTML/CSS/JS string served at `/`. Vanilla JS, no build step. The browser bundle and the Flutter screen must stay in sync since they consume the same JSON from the server.
 
 ### Real-time (`lib/games/../realtime/`)
 Self-contained Flame demo. Player + four steering enemies, each driven by a small ECS (`Entity`/`Component`) and a `StateMachine` flipping between Wander and Chase. Single-player only; no network.

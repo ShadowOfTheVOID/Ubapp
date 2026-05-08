@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../games/crazy_eights/crazy_eights_screen.dart';
+import '../games/imposter/imposter_screen.dart';
 import '../games/mafia/mafia_screen.dart';
 import '../games/tag/tag_lobby_screen.dart';
 import '../realtime/real_time_screen.dart';
@@ -20,12 +22,22 @@ class MainMenuScreen extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               _MenuButton(
-                label: 'Mafia (host + browser guests)',
+                label: 'Mafia',
                 onTap: () => _push(context, const MafiaScreen()),
               ),
               const SizedBox(height: 16),
               _MenuButton(
-                label: 'Tag (offline party)',
+                label: 'Imposter',
+                onTap: () => _push(context, const ImposterScreen()),
+              ),
+              const SizedBox(height: 16),
+              _MenuButton(
+                label: 'Crazy Eights',
+                onTap: () => _push(context, const CrazyEightsScreen()),
+              ),
+              const SizedBox(height: 16),
+              _MenuButton(
+                label: 'Tag (BLE proximity)',
                 onTap: () => _push(context, const TagLobbyScreen()),
               ),
               const SizedBox(height: 16),
