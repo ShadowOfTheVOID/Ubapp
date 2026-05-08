@@ -19,6 +19,24 @@ flutter run
 
 Required tooling: Flutter ≥ 3.27, Dart ≥ 3.6.
 
+## Layout at a glance
+
+```
+lib/
+├── main.dart, menu/                    # MaterialApp entry + top-level menu
+├── games/
+│   ├── tag/                            # BLE proximity (5 variants) — app-installed peers only
+│   ├── mafia/                          # browser-tier social
+│   ├── imposter/                       # browser-tier social (Spyfall-style)
+│   └── crazy_eights/                   # browser-tier card game
+├── realtime/                           # single-device Flame demo (no network)
+├── turnbased/                          # tic-tac-toe + minimax in compute()
+└── social/
+    ├── host_server.dart                # shelf HTTP + WebSocket, swappable HTML
+    ├── transport.dart                  # interface stub for future BLE multiplex
+    └── social_screen.dart              # placeholder
+```
+
 ## Common commands
 
 ```bash
@@ -58,15 +76,28 @@ For all three:
 - `<game>_server.dart` — wraps `HostServer`, owns the engine, applies per-guest commands, fans out public state, and **sends private payloads** (roles / hands) via `HostServer.send(GuestId, payload)`. The Flutter host is a special player with id `<Server>.hostId == "host"` that doesn't connect over WebSocket.
 - `<game>_browser.dart` — the **entire browser client** as a const HTML/CSS/JS string served at `/`. Vanilla JS, no build step. The browser bundle and the Flutter screen must stay in sync since they consume the same JSON from the server.
 
-### Real-time (`lib/games/../realtime/`)
+### Real-time (`lib/realtime/`)
 Self-contained Flame demo. Player + four steering enemies, each driven by a small ECS (`Entity`/`Component`) and a `StateMachine` flipping between Wander and Chase. Single-player only; no network.
 
 ### Turn-based (`lib/turnbased/`)
 Tic-tac-toe with a minimax AI invoked through `compute()` so the search runs in an isolate.
 
+### Minimum players to start a round
+
+| Game | Min | Max |
+|---|---|---|
+| Tag | 2 | — |
+| Mafia | 4 | — |
+| Imposter | 3 | — |
+| Crazy Eights | 2 | 8 |
+
+These are enforced by `*Engine.canStart`. Useful when seeding a test lobby — fewer players means `canStart` returns false and the host's "Start" button stays disabled.
+
 ## HostServer (`lib/social/host_server.dart`)
 
-Spins up `shelf` HTTP + WebSocket on the device's Wi-Fi IP via `network_info_plus`. The served HTML is **swappable** per-game — pass `HostServer(html: ...)` and that string is returned at `/`. Each connected WebSocket gets a stable `GuestId` for the lifetime of the connection; games use `send(GuestId, payload)` for private messages (e.g. role reveals) and `broadcast(payload)` for everything public.
+Spins up `shelf` HTTP + WebSocket on the device's Wi-Fi IP via `network_info_plus`. Default port is `7654`. Binds to `InternetAddress.anyIPv4` so any device on the same Wi-Fi can reach `http://<wifi-ip>:7654/`. The served HTML is **swappable** per-game — pass `HostServer(html: ...)` and that string is returned at `/`. Each connected WebSocket gets a stable `GuestId` for the lifetime of the connection; games use `send(GuestId, payload)` for private messages (e.g. role reveals) and `broadcast(payload)` for everything public.
+
+The browser bundles all open `new WebSocket(\`ws://${location.host}/ws\`)`, which means **plain HTTP only** (no TLS). That's correct for LAN play but means the host phone can't tunnel through anything that requires HTTPS.
 
 When adding a new browser-tier game, follow the Mafia pattern:
 1. Game-specific HTML/JS as a `const String` — served at `/`.
@@ -79,6 +110,8 @@ When adding a new browser-tier game, follow the Mafia pattern:
 - **Engines never touch I/O.** No `Future`, no streams, no plugins inside `*_engine.dart`. This keeps games trivially testable and lets browsers (which can't use Flutter plugins) reuse the same JSON protocol the engine speaks.
 - **JSON over the wire is line-oriented, dispatched on `type`.** See `mafia_server.dart`'s `_onMessage` and the browser bundle's `handle()` for the pattern. New message types = add a case on both sides.
 
-## Push status
+## Pitfalls worth knowing
 
-Active branch is `claude/add-gameplaykit-iphone-6UtKI`. The local git proxy denies pushes with 403, and the GitHub MCP integration in this environment lacks write access to `shadowofthevoid/ubapp` (also 403). To publish: pull the branch locally and push from a machine with credentials, or grant the GitHub App write access.
+- **`Card` name collision in Crazy Eights.** `lib/games/crazy_eights/card.dart` defines a `Card` value type for a playing card. The screen file uses `import 'package:flutter/material.dart' hide Card; import 'package:flutter/material.dart' as m show Card;` so widget Cards are written `m.Card(...)` and game cards are written `Card(...)`. Don't drop the `hide`/`show` pair when editing.
+- **iOS BLE peripheral isn't implemented.** `flutter_blue_plus` is central-only. To make tag actually work cross-device on iOS you need a `CBPeripheralManager` platform channel (Android can use a peripheral plugin). The `ProximitySource` interface is the seam — the rest of the tag stack stays unchanged.
+- **Browser bundle ↔ Flutter screen are in an implicit contract.** Both consume the same JSON the server emits. When you add a message type, add a `case` on both sides or one side will silently drop events.
