@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../games/codenames/codenames_screen.dart';
 import '../games/crazy_eights/crazy_eights_screen.dart';
 import '../games/imposter/imposter_screen.dart';
 import '../games/mafia/mafia_screen.dart';
 import '../games/tag/tag_lobby_screen.dart';
 import '../realtime/real_time_screen.dart';
 import '../social/social_screen.dart';
+import '../turnbased/connect_four_screen.dart';
 import '../turnbased/turn_based_screen.dart';
 
 class MainMenuScreen extends StatelessWidget {
@@ -32,6 +34,11 @@ class MainMenuScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               _MenuButton(
+                label: 'Codenames',
+                onTap: () => _push(context, const CodenamesScreen()),
+              ),
+              const SizedBox(height: 16),
+              _MenuButton(
                 label: 'Crazy Eights',
                 onTap: () => _push(context, const CrazyEightsScreen()),
               ),
@@ -47,8 +54,13 @@ class MainMenuScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               _MenuButton(
-                label: 'Turn-based',
+                label: 'Turn-based (tic-tac-toe)',
                 onTap: () => _push(context, const TurnBasedScreen()),
+              ),
+              const SizedBox(height: 16),
+              _MenuButton(
+                label: 'Connect Four',
+                onTap: () => _push(context, const ConnectFourScreen()),
               ),
               const SizedBox(height: 16),
               _MenuButton(
