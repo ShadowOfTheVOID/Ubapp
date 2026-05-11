@@ -4,52 +4,62 @@ import 'dart:math';
 import 'proximity.dart';
 import 'tag_engine.dart';
 import 'tag_protocol.dart';
+import 'tag_transport.dart';
 import 'tag_variant.dart';
 
-/// Glue between proximity detection, the engine, and outbound network. The
-/// host owns the `start` decision; everyone runs the same engine.
+/// Glue between proximity detection, the engine, and the network. Owns a
+/// [TagTransport] so the host's authoritative engine and every peer's
+/// mirror engine apply the same ordered events.
 class TagSession {
   TagSession({
     required this.selfId,
     required this.selfDisplayName,
     required this.proximity,
-    required this.broadcast,
-  }) : engine = TagEngine(selfId: selfId);
+    required this.transport,
+  }) : engine = TagEngine(selfId: selfId) {
+    _transportSub = transport.inbound.listen(_handleIncoming);
+  }
 
   final String selfId;
   final String selfDisplayName;
   final ProximitySource proximity;
-
-  /// Send a message to every peer (your transport implementation).
-  final void Function(TagMessage) broadcast;
+  final TagTransport transport;
 
   final TagEngine engine;
+  Map<String, String> _peerNames = {};
+
   late final ProximityDetector _detector;
+  late final StreamSubscription<TagMessage> _transportSub;
   StreamSubscription<ProximityEvent>? _proxSub;
   Timer? _hotPotatoTimer;
 
   final _stateChanges = StreamController<TagState>.broadcast();
   Stream<TagState> get onStateChange => _stateChanges.stream;
 
+  /// Host: pick the starting "it", broadcast Start, kick off the round.
   Future<void> startHosting({
     required TagVariant variant,
     required Map<String, String> peerNames,
   }) async {
-    final ids = peerNames.keys.toList()..shuffle(Random());
+    _peerNames = Map.of(peerNames);
+    final ids = _peerNames.keys.toList()..shuffle(Random());
     final start = StartMessage(
       variant: variant,
       startingItId: ids.first,
       startTimeMs: DateTime.now().millisecondsSinceEpoch,
       peerIds: ids,
+      peerNames: _peerNames,
     );
-    broadcast(start);
-    await _beginRound(start, peerNames);
+    transport.send(start);
+    await _beginRound(start);
   }
 
-  Future<void> handleIncoming(TagMessage msg, Map<String, String> peerNames) async {
+  Future<void> _handleIncoming(TagMessage msg) async {
     switch (msg) {
       case StartMessage():
-        await _beginRound(msg, peerNames);
+        if (engine.state != null) return; // already running
+        _peerNames = Map.of(msg.peerNames);
+        await _beginRound(msg);
       case TagEvent():
         if (engine.applyTag(msg)) _emit();
       case UnfreezeEvent():
@@ -59,13 +69,13 @@ class TagSession {
         _emit();
         await _shutdownRound();
       case HelloMessage():
-        // Hellos are handled by the lobby, not the live session.
+        // Lobby-only — surfaced to the lobby UI via transport directly.
         break;
     }
   }
 
-  Future<void> _beginRound(StartMessage start, Map<String, String> peerNames) async {
-    engine.start(start, peerNames);
+  Future<void> _beginRound(StartMessage start) async {
+    engine.start(start, _peerNames);
     _detector = ProximityDetector(onTouch: _onProximityTouch);
     await proximity.start();
     _proxSub = proximity.events.listen(_detector.ingest);
@@ -90,7 +100,7 @@ class TagSession {
         timeMs: DateTime.now().millisecondsSinceEpoch,
       );
       if (engine.applyTag(msg)) {
-        broadcast(msg);
+        transport.send(msg);
         _detector.grantImmunity(peerId);
         _emit();
         if (state.variant == TagVariant.hotPotato) {
@@ -106,7 +116,7 @@ class TagSession {
         timeMs: DateTime.now().millisecondsSinceEpoch,
       );
       if (engine.applyUnfreeze(msg)) {
-        broadcast(msg);
+        transport.send(msg);
         _detector.grantImmunity(peerId);
         _emit();
       }
@@ -118,7 +128,7 @@ class TagSession {
     _hotPotatoTimer = Timer(d, () {
       final end = engine.hotPotatoTimeout();
       if (end != null) {
-        broadcast(end);
+        transport.send(end);
         _emit();
       }
     });
@@ -138,6 +148,8 @@ class TagSession {
 
   Future<void> dispose() async {
     await _shutdownRound();
+    await _transportSub.cancel();
+    await transport.dispose();
     await _stateChanges.close();
   }
 }

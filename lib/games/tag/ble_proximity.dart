@@ -1,23 +1,44 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 import 'proximity.dart';
 
+/// Default peer-id extractor. Reads from (in order):
+///   1. service data for [serviceUuid] (Android side packs the peer id here)
+///   2. advertised local name (iOS side puts it here)
+///   3. the platform device name
+String? defaultPeerIdFromScan(ScanResult r, Guid serviceUuid) {
+  final sd = r.advertisementData.serviceData;
+  if (sd.isNotEmpty) {
+    final bytes = sd[serviceUuid];
+    if (bytes != null && bytes.isNotEmpty) {
+      try {
+        final s = utf8.decode(bytes, allowMalformed: true).trim();
+        if (s.isNotEmpty) return s;
+      } catch (_) {}
+    }
+  }
+  final local = r.advertisementData.advName.trim();
+  if (local.isNotEmpty && local != 'Unknown') return local;
+  final platform = r.device.platformName.trim();
+  if (platform.isNotEmpty) return platform;
+  return null;
+}
+
 /// BLE-backed proximity. Scans for peers advertising [serviceUuid] and emits
 /// a [ProximityEvent] for each scan result with its RSSI.
 ///
-/// NOTE: peripheral *advertising* is not handled here — `flutter_blue_plus`
-/// is central-only. To make this phone discoverable, plug in an Android
-/// peripheral plugin or a small platform channel calling `CBPeripheralManager`
-/// on iOS. The game logic doesn't care which side advertises — as long as
-/// every phone advertises something with [serviceUuid] and a peer-id payload,
-/// scanning here will pick it up.
+/// Peripheral advertising (so this phone is discoverable) is handled by the
+/// `BleAdvertiser` plugin in `lib/native/ble_advertiser.dart` — see
+/// `BleProximityRuntime` for the combined scan + advertise pair.
 class BleProximity implements ProximitySource {
   BleProximity({
     required this.serviceUuid,
-    required this.parsePeerId,
-  });
+    String? Function(ScanResult)? parsePeerId,
+  }) : parsePeerId =
+            parsePeerId ?? ((r) => defaultPeerIdFromScan(r, serviceUuid));
 
   final Guid serviceUuid;
   final String? Function(ScanResult) parsePeerId;
@@ -50,7 +71,9 @@ class BleProximity implements ProximitySource {
   Future<void> stop() async {
     await _sub?.cancel();
     _sub = null;
-    await FlutterBluePlus.stopScan();
+    try {
+      await FlutterBluePlus.stopScan();
+    } catch (_) {}
     await _ctrl.close();
   }
 }
