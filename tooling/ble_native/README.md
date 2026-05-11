@@ -83,6 +83,13 @@ flutter: tag tx: {"type":"start", ...}
 
 If you have two devices running, each phone should appear in the other's scan as a peer with its peer id readable from the local-name field. The `BleProximity` scanner emits `ProximityEvent(peerId, rssi)` events as the phones move close; the `ProximityDetector` averages the last 4 readings and fires a tag at `rssi ≥ -55 dBm`.
 
-## What's still required for tag to be a real cross-device game
+## Cross-device wiring (now done)
 
-This unblocks **discovery and proximity**. The `broadcast` callback in `TagSession` is still a `debugPrint` — once two phones can see each other, the next step is to actually transmit `TagMessage.encode()` between them. The cleanest approach is: the host phone runs `HostServer` (already in `lib/social/host_server.dart`) and advertises its Wi-Fi IP in BLE service data; peer phones discover it via scan, then sync game state over the WebSocket. That's a small change to `TagSession.broadcast` plus a discovery handshake — left as a follow-up so this PR can land independently.
+`TagSession` now consumes a `TagTransport` (`lib/games/tag/tag_transport.dart`) — `HostTagTransport` wraps the existing `HostServer` and broadcasts to every connected app peer; `PeerTagTransport.connect(uri)` opens a single WebSocket back to the host. So once two phones are on the same Wi-Fi, real cross-device tag works:
+
+1. Host: tap **Host a game** → server starts, QR + URL shown.
+2. Peer: paste the URL into the **Host URL** field → tap **Join**.
+3. Host: confirms peers in the roster → tap **Start**.
+4. Both phones run the same `TagEngine` against the same ordered events.
+
+BLE-driven host discovery (auto-find the host's IP from a scan instead of pasting the URL) is intentionally not implemented — iOS only lets foreground apps put bytes in the local-name field of an advertisement, and with our 128-bit service UUID present there's only ~13 bytes left. Not enough to reliably encode an IPv4 + port. Manual URL entry stays.

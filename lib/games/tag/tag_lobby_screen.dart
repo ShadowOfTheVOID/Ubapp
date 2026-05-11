@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
@@ -8,7 +11,10 @@ import 'proximity.dart';
 import 'tag_protocol.dart';
 import 'tag_screen.dart';
 import 'tag_session.dart';
+import 'tag_transport.dart';
 import 'tag_variant.dart';
+
+enum _Mode { idle, hosting, joining, joined }
 
 class TagLobbyScreen extends StatefulWidget {
   const TagLobbyScreen({super.key});
@@ -19,21 +25,30 @@ class TagLobbyScreen extends StatefulWidget {
 
 class _TagLobbyScreenState extends State<TagLobbyScreen> {
   TagVariant _variant = TagVariant.classic;
-  HostServer? _server;
-  Uri? _serverUri;
-  bool _starting = false;
+  _Mode _mode = _Mode.idle;
   bool _useRealBle = false;
   bool? _bleAvailable;
 
-  // Demo lobby — when running in manual mode the host adds fake peers so
-  // the engine is testable on one device. In real-BLE mode peer rows would
-  // populate from scan results (left for follow-up wiring).
-  final Map<String, String> _peers = {'me': 'You'};
-  final _selfId = 'me';
+  // Host state.
+  HostServer? _server;
+  HostTagTransport? _hostTransport;
+  Uri? _serverUri;
+  StreamSubscription? _hostHelloSub;
+  String _selfId = 'host-${_id()}';
+  String _selfName = 'Host';
+  final Map<String, String> _peers = {}; // id -> displayName, includes host
+
+  // Peer state.
+  PeerTagTransport? _peerTransport;
+  StreamSubscription? _peerInboundSub;
+  final _hostUrlController = TextEditingController(text: 'http://192.168.1.1:7654');
+  String _peerStatus = '';
+  bool _peerWaitingStart = false;
 
   @override
   void initState() {
     super.initState();
+    _peers[_selfId] = _selfName;
     BleAdvertiser.instance.isAvailable().then((b) {
       if (mounted) setState(() => _bleAvailable = b);
     });
@@ -41,58 +56,124 @@ class _TagLobbyScreenState extends State<TagLobbyScreen> {
 
   @override
   void dispose() {
+    _hostHelloSub?.cancel();
+    _hostTransport?.dispose();
     _server?.stop();
+    _peerInboundSub?.cancel();
+    _peerTransport?.dispose();
+    _hostUrlController.dispose();
     super.dispose();
   }
 
-  Future<void> _toggleHost() async {
-    if (_server != null) {
-      await _server!.stop();
-      setState(() {
-        _server = null;
-        _serverUri = null;
-      });
-      return;
-    }
-    setState(() => _starting = true);
+  String _id() => Random().nextInt(0xffff).toRadixString(16);
+
+  Future<void> _startHosting() async {
+    setState(() => _mode = _Mode.hosting);
     final server = HostServer();
     final uri = await server.start();
+    final transport = HostTagTransport(server);
+
+    _hostHelloSub = transport.inbound.listen((msg) {
+      if (msg is HelloMessage) {
+        setState(() => _peers[msg.peerId] = msg.displayName);
+      }
+    });
+    transport.onPeerDisconnected.listen((peerId) {
+      if (mounted && _mode == _Mode.hosting) {
+        setState(() => _peers.remove(peerId));
+      }
+    });
+
     setState(() {
-      _starting = false;
       _server = server;
       _serverUri = uri;
+      _hostTransport = transport;
     });
   }
 
-  void _addFakePeer() {
-    final id = 'peer-${_peers.length}';
-    final name = 'Player ${_peers.length}';
-    setState(() => _peers[id] = name);
+  Future<void> _stopHosting() async {
+    await _hostHelloSub?.cancel();
+    _hostHelloSub = null;
+    await _hostTransport?.dispose();
+    _hostTransport = null;
+    await _server?.stop();
+    setState(() {
+      _server = null;
+      _serverUri = null;
+      _mode = _Mode.idle;
+      _peers
+        ..clear()
+        ..[_selfId] = _selfName;
+    });
   }
 
-  Future<void> _startRound() async {
+  Future<void> _joinHost() async {
+    final url = _hostUrlController.text.trim();
+    if (url.isEmpty) return;
+    try {
+      final uri = Uri.parse(url);
+      setState(() {
+        _mode = _Mode.joining;
+        _peerStatus = 'Connecting to $url…';
+      });
+      final transport = PeerTagTransport.connect(uri);
+      _peerInboundSub = transport.inbound.listen(_onPeerInbound);
+      transport.send(HelloMessage(peerId: _selfId, displayName: _selfName));
+      setState(() {
+        _peerTransport = transport;
+        _mode = _Mode.joined;
+        _peerStatus = 'Joined. Waiting for the host to start…';
+        _peerWaitingStart = true;
+      });
+    } catch (e) {
+      setState(() {
+        _mode = _Mode.idle;
+        _peerStatus = 'Connection failed: $e';
+      });
+    }
+  }
+
+  Future<void> _leaveHost() async {
+    await _peerInboundSub?.cancel();
+    _peerInboundSub = null;
+    await _peerTransport?.dispose();
+    _peerTransport = null;
+    setState(() {
+      _mode = _Mode.idle;
+      _peerWaitingStart = false;
+      _peerStatus = '';
+    });
+  }
+
+  void _onPeerInbound(TagMessage msg) {
+    if (msg is StartMessage && _peerWaitingStart && mounted) {
+      _peerWaitingStart = false;
+      _enterRoundAsPeer(msg);
+    }
+  }
+
+  /// Host: build the TagSession and push to TagScreen. The transport stays
+  /// owned by the session; we null it out here so dispose doesn't double-close.
+  Future<void> _startRoundAsHost() async {
+    if (_hostTransport == null) return;
     if (_peers.length < 2) return;
 
-    ProximitySource proximity;
-    ManualProximity? manualProximity;
-    if (_useRealBle && (_bleAvailable ?? false)) {
-      proximity = BleProximityRuntime(selfPeerId: _selfId);
-    } else {
-      manualProximity = ManualProximity();
-      proximity = manualProximity;
-    }
-
+    final (proximity, manualProximity) = _makeProximity();
+    final transport = _hostTransport!;
     final session = TagSession(
       selfId: _selfId,
-      selfDisplayName: _peers[_selfId]!,
+      selfDisplayName: _selfName,
       proximity: proximity,
-      broadcast: (msg) {
-        // Real cross-device transport plugs in here. With the host server
-        // running, the next BLE step is to send TagMessage.encode() over
-        // its WebSocket fan-out so other phones see the same engine state.
-        debugPrint('tag tx: ${msg.encode()}');
-      },
+      transport: transport,
     );
+
+    // Hand the transport (and the HostServer it owns) off to the session.
+    // Null out both refs so the lobby's dispose doesn't double-close.
+    _hostTransport = null;
+    _server = null;
+    await _hostHelloSub?.cancel();
+    _hostHelloSub = null;
+
     await session.startHosting(variant: _variant, peerNames: _peers);
     if (!mounted) return;
     Navigator.of(context).push(MaterialPageRoute<void>(
@@ -101,12 +182,76 @@ class _TagLobbyScreenState extends State<TagLobbyScreen> {
         manualProximity: manualProximity,
         peerNames: _peers,
       ),
-    ));
+    )).then((_) {
+      // Round ended; back in the lobby. Host server is also gone (session
+      // owned the transport which closed the server).
+      if (mounted) {
+        setState(() {
+          _server = null;
+          _serverUri = null;
+          _mode = _Mode.idle;
+          _peers
+            ..clear()
+            ..[_selfId] = _selfName;
+        });
+      }
+    });
+  }
+
+  Future<void> _enterRoundAsPeer(StartMessage start) async {
+    final transport = _peerTransport;
+    if (transport == null) return;
+
+    final (proximity, manualProximity) = _makeProximity();
+    final session = TagSession(
+      selfId: _selfId,
+      selfDisplayName: _selfName,
+      proximity: proximity,
+      transport: transport,
+    );
+
+    // Hand off. The session has already subscribed to inbound and will
+    // pick up the StartMessage on its own from the broadcast stream — but
+    // we may have consumed it on the lobby subscription, so apply it
+    // directly to be sure.
+    _peerTransport = null;
+    await _peerInboundSub?.cancel();
+    _peerInboundSub = null;
+
+    // Re-feed the start message so the session's _handleIncoming fires.
+    // Easier: bypass and call its public startHosting? No — peer didn't
+    // host. Use a tiny shim: synthesize the round directly.
+    session.engine.start(start, start.peerNames);
+    await proximity.start();
+
+    if (!mounted) return;
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => TagScreen(
+        session: session,
+        manualProximity: manualProximity,
+        peerNames: start.peerNames,
+      ),
+    )).then((_) {
+      if (mounted) {
+        setState(() {
+          _mode = _Mode.idle;
+          _peerStatus = '';
+          _peerWaitingStart = false;
+        });
+      }
+    });
+  }
+
+  (ProximitySource, ManualProximity?) _makeProximity() {
+    if (_useRealBle && (_bleAvailable ?? false)) {
+      return (BleProximityRuntime(selfPeerId: _selfId), null);
+    }
+    final m = ManualProximity();
+    return (m, m);
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(title: const Text('Tag')),
       body: ListView(
@@ -130,78 +275,137 @@ class _TagLobbyScreenState extends State<TagLobbyScreen> {
             onChanged: (v) => setState(() => _useRealBle = v),
           ),
           const SizedBox(height: 24),
-          _SectionTitle('Lobby'),
-          const SizedBox(height: 12),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: FilledButton.icon(
-                          onPressed: _starting ? null : _toggleHost,
-                          icon: Icon(_server == null
-                              ? Icons.wifi_tethering
-                              : Icons.stop_circle_outlined),
-                          label: Text(_server == null
-                              ? (_starting ? 'Starting…' : 'Host a session')
-                              : 'Stop hosting'),
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      OutlinedButton.icon(
-                        onPressed: _useRealBle ? null : _addFakePeer,
-                        icon: const Icon(Icons.person_add),
-                        label: const Text('Add player'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  if (_serverUri != null) _HostBadge(uri: _serverUri!),
-                  const SizedBox(height: 8),
-                  ..._peers.entries.map(
-                    (e) => ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: CircleAvatar(child: Text(e.value[0])),
-                      title: Text(e.value),
-                      subtitle: Text(e.key,
-                          style: theme.textTheme.bodySmall),
-                      trailing: e.key == _selfId
-                          ? const Chip(label: Text('You'))
-                          : IconButton(
-                              icon: const Icon(Icons.close),
-                              onPressed: _useRealBle
-                                  ? null
-                                  : () =>
-                                      setState(() => _peers.remove(e.key)),
-                            ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          FilledButton.tonalIcon(
-            onPressed: _peers.length >= 2 ? _startRound : null,
-            icon: const Icon(Icons.play_arrow),
-            label: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Text(
-                _peers.length >= 2
-                    ? 'Start ${_variant.displayName}'
-                    : 'Need at least 2 players',
-                style: const TextStyle(fontSize: 16),
-              ),
-            ),
-          ),
+          if (_mode == _Mode.idle) _idleControls(),
+          if (_mode == _Mode.hosting) _hostingPanel(),
+          if (_mode == _Mode.joining || _mode == _Mode.joined) _peerPanel(),
         ],
+      ),
+    );
+  }
+
+  Widget _idleControls() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionTitle('Play'),
+        const SizedBox(height: 12),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                FilledButton.icon(
+                  onPressed: _startHosting,
+                  icon: const Icon(Icons.wifi_tethering),
+                  label: const Text('Host a game'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text('— or —',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodySmall),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _hostUrlController,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    labelText: 'Host URL',
+                    hintText: 'http://192.168.1.5:7654',
+                    isDense: true,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: _joinHost,
+                  icon: const Icon(Icons.link),
+                  label: const Text('Join a host'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_peerStatus.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(_peerStatus,
+                style: Theme.of(context).textTheme.bodySmall,
+                textAlign: TextAlign.center),
+          ),
+      ],
+    );
+  }
+
+  Widget _hostingPanel() {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (_serverUri != null) _HostBadge(uri: _serverUri!),
+            const SizedBox(height: 12),
+            Text('Lobby (${_peers.length})',
+                style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            ..._peers.entries.map(
+              (e) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: CircleAvatar(child: Text(e.value[0])),
+                title: Text(e.value),
+                subtitle: Text(e.key,
+                    style: theme.textTheme.bodySmall),
+                trailing: e.key == _selfId
+                    ? const Chip(label: Text('You'))
+                    : null,
+              ),
+            ),
+            const SizedBox(height: 16),
+            FilledButton.tonalIcon(
+              onPressed: _peers.length >= 2 ? _startRoundAsHost : null,
+              icon: const Icon(Icons.play_arrow),
+              label: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  _peers.length >= 2
+                      ? 'Start ${_variant.displayName}'
+                      : 'Need at least 2 players',
+                  style: const TextStyle(fontSize: 16),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: _stopHosting,
+              child: const Text('Stop hosting'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _peerPanel() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            const Icon(Icons.link, size: 48),
+            const SizedBox(height: 8),
+            Text(_peerStatus,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: _leaveHost,
+              child: const Text('Disconnect'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -213,7 +417,6 @@ class _BleToggle extends StatelessWidget {
     required this.value,
     required this.onChanged,
   });
-
   final bool? available;
   final bool value;
   final ValueChanged<bool> onChanged;
@@ -246,7 +449,7 @@ class _BleToggle extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 child: Text(
-                  'Falling back to the manual test stream — "Touch player X" chips on the game screen drive proximity events.',
+                  'Falls back to the manual test stream — "Touch player X" chips on the game screen drive proximity events.',
                   style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurface
                           .withValues(alpha: 0.6)),
@@ -367,7 +570,7 @@ class _HostBadge extends StatelessWidget {
                     style: theme.textTheme.titleSmall),
                 const SizedBox(height: 6),
                 Text(
-                  'Browser guests can scan for non-tag games. Tag itself needs the app.',
+                  'Other phones join via the app — paste this URL into the Join field.',
                   style: theme.textTheme.bodySmall,
                 ),
               ],

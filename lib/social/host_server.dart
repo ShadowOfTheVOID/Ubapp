@@ -118,16 +118,20 @@ class HostServer {
     }
   }
 
+  bool _stopped = false;
+
   Future<void> stop() async {
+    if (_stopped) return;
+    _stopped = true;
     for (final ws in _byId.values) {
       await ws.sink.close();
     }
     _byId.clear();
     await _server?.close(force: true);
     _server = null;
-    await _onMessage.close();
-    await _onJoin.close();
-    await _onLeave.close();
+    if (!_onMessage.isClosed) await _onMessage.close();
+    if (!_onJoin.isClosed) await _onJoin.close();
+    if (!_onLeave.isClosed) await _onLeave.close();
   }
 }
 

@@ -57,14 +57,21 @@ Each game lives in `lib/games/<name>/` with three layers: a **pure engine** (no 
 ## Per-game wiring
 
 ### Tag (`lib/games/tag/`)
-Proximity-based party game with five variants. The seam between game and radio is `ProximitySource`:
+Proximity-based party game with five variants. Cross-device wiring has two seams:
+
+**Proximity** — `ProximitySource`:
 - `BleProximityRuntime` — combines `BleProximity` (central scan via `flutter_blue_plus`) with `BleAdvertiser` (native peripheral plugin in `lib/native/ble_advertiser.dart`). The lobby's "Use real BLE" toggle constructs this.
 - `BleProximity` alone — central scan only, exposed for tests/debug.
 - `ManualProximity` (test-only) so the game runs end-to-end on a single device — `tag_screen.dart` exposes "Touch player X" chips that push fake events.
 
-The native side of the advertiser lives in `tooling/ble_native/` (Kotlin for Android, Swift for iOS). It's not auto-installed because the repo doesn't commit platform shells — see `tooling/ble_native/README.md` for the post-`flutter create` copy/paste.
+The native side of the BLE advertiser lives in `tooling/ble_native/` (Kotlin for Android, Swift for iOS). It's not auto-installed because the repo doesn't commit platform shells — see `tooling/ble_native/README.md` for the post-`flutter create` copy/paste.
 
-The `broadcast` callback in `TagSession` is the **remaining** seam: it's still `debugPrint` so tag events don't cross devices yet. The intended next step is to discover the host's `HostServer` via BLE service data, then sync tag events over its WebSocket.
+**Game-event transport** — `TagTransport` (`tag_transport.dart`):
+- `HostTagTransport(HostServer)` — owns the existing `HostServer` and broadcasts `TagMessage`s to all connected app peers. Inbound `HelloMessage`s populate the host's lobby roster.
+- `PeerTagTransport.connect(uri)` — opens one WebSocket to the host. Outbound messages go to the host; inbound stream is the host's broadcasts (so this peer sees its own events echoed back after the host applies them).
+- `LoopbackTagTransport` — single-device dev fallback. Sends echo into the inbound stream.
+
+`TagLobbyScreen` has Host and Join modes — host starts `HostServer` + sees peers join via `HelloMessage`; peers paste the host URL and connect. `TagSession.startHosting()` sends a `StartMessage` carrying both peerIds and peerNames, so peers' engines build the same roster from one round trip.
 
 ### Browser-tier social games
 

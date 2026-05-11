@@ -39,12 +39,14 @@ class StartMessage extends TagMessage {
     required this.startingItId,
     required this.startTimeMs,
     required this.peerIds,
+    required this.peerNames,
   });
 
   final TagVariant variant;
   final String startingItId;
   final int startTimeMs;
   final List<String> peerIds;
+  final Map<String, String> peerNames;
 
   @override
   Map<String, Object?> toJson() => {
@@ -53,6 +55,7 @@ class StartMessage extends TagMessage {
         'startingItId': startingItId,
         'startTimeMs': startTimeMs,
         'peerIds': peerIds,
+        'peerNames': peerNames,
       };
 
   factory StartMessage.fromJson(Map<String, Object?> j) => StartMessage(
@@ -60,6 +63,8 @@ class StartMessage extends TagMessage {
         startingItId: j['startingItId']! as String,
         startTimeMs: j['startTimeMs']! as int,
         peerIds: (j['peerIds']! as List).cast<String>(),
+        peerNames: ((j['peerNames'] ?? <String, String>{}) as Map)
+            .cast<String, String>(),
       );
 }
 
