@@ -58,10 +58,13 @@ Each game lives in `lib/games/<name>/` with three layers: a **pure engine** (no 
 
 ### Tag (`lib/games/tag/`)
 Proximity-based party game with five variants. The seam between game and radio is `ProximitySource`:
-- `BleProximity` (`flutter_blue_plus` central scan) for production.
-- `ManualProximity` (test-only) so the game runs end-to-end on a single device — the lobby and `tag_screen.dart` expose "Touch player X" chips that push fake events.
+- `BleProximityRuntime` — combines `BleProximity` (central scan via `flutter_blue_plus`) with `BleAdvertiser` (native peripheral plugin in `lib/native/ble_advertiser.dart`). The lobby's "Use real BLE" toggle constructs this.
+- `BleProximity` alone — central scan only, exposed for tests/debug.
+- `ManualProximity` (test-only) so the game runs end-to-end on a single device — `tag_screen.dart` exposes "Touch player X" chips that push fake events.
 
-The `broadcast` callback in `TagSession` is the seam for cross-device messaging; right now the lobby supplies `debugPrint` because BLE peripheral advertising on iOS isn't implemented (flutter_blue_plus is central-only — would need a `CBPeripheralManager` platform channel). Wiring real transport touches no game code.
+The native side of the advertiser lives in `tooling/ble_native/` (Kotlin for Android, Swift for iOS). It's not auto-installed because the repo doesn't commit platform shells — see `tooling/ble_native/README.md` for the post-`flutter create` copy/paste.
+
+The `broadcast` callback in `TagSession` is the **remaining** seam: it's still `debugPrint` so tag events don't cross devices yet. The intended next step is to discover the host's `HostServer` via BLE service data, then sync tag events over its WebSocket.
 
 ### Browser-tier social games
 

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../native/ble_advertiser.dart';
 import '../../social/host_server.dart';
+import 'ble_runtime.dart';
 import 'proximity.dart';
 import 'tag_protocol.dart';
 import 'tag_screen.dart';
@@ -20,12 +22,22 @@ class _TagLobbyScreenState extends State<TagLobbyScreen> {
   HostServer? _server;
   Uri? _serverUri;
   bool _starting = false;
+  bool _useRealBle = false;
+  bool? _bleAvailable;
 
-  // Demo lobby — in a real BLE deployment you'd populate this from BLE
-  // discovery. Here we let the host add fake peers so the game logic is
-  // testable end-to-end on a single device.
+  // Demo lobby — when running in manual mode the host adds fake peers so
+  // the engine is testable on one device. In real-BLE mode peer rows would
+  // populate from scan results (left for follow-up wiring).
   final Map<String, String> _peers = {'me': 'You'};
   final _selfId = 'me';
+
+  @override
+  void initState() {
+    super.initState();
+    BleAdvertiser.instance.isAvailable().then((b) {
+      if (mounted) setState(() => _bleAvailable = b);
+    });
+  }
 
   @override
   void dispose() {
@@ -60,14 +72,24 @@ class _TagLobbyScreenState extends State<TagLobbyScreen> {
 
   Future<void> _startRound() async {
     if (_peers.length < 2) return;
-    final proximity = ManualProximity();
+
+    ProximitySource proximity;
+    ManualProximity? manualProximity;
+    if (_useRealBle && (_bleAvailable ?? false)) {
+      proximity = BleProximityRuntime(selfPeerId: _selfId);
+    } else {
+      manualProximity = ManualProximity();
+      proximity = manualProximity;
+    }
+
     final session = TagSession(
       selfId: _selfId,
       selfDisplayName: _peers[_selfId]!,
       proximity: proximity,
       broadcast: (msg) {
-        // Hook up to BLE / WebSocket transport here. For now this is
-        // local-only so the dev build runs without a paired device.
+        // Real cross-device transport plugs in here. With the host server
+        // running, the next BLE step is to send TagMessage.encode() over
+        // its WebSocket fan-out so other phones see the same engine state.
         debugPrint('tag tx: ${msg.encode()}');
       },
     );
@@ -76,7 +98,7 @@ class _TagLobbyScreenState extends State<TagLobbyScreen> {
     Navigator.of(context).push(MaterialPageRoute<void>(
       builder: (_) => TagScreen(
         session: session,
-        manualProximity: proximity,
+        manualProximity: manualProximity,
         peerNames: _peers,
       ),
     ));
@@ -98,6 +120,14 @@ class _TagLobbyScreenState extends State<TagLobbyScreen> {
               selected: v == _variant,
               onTap: () => setState(() => _variant = v),
             ),
+          ),
+          const SizedBox(height: 24),
+          _SectionTitle('Proximity source'),
+          const SizedBox(height: 8),
+          _BleToggle(
+            available: _bleAvailable,
+            value: _useRealBle,
+            onChanged: (v) => setState(() => _useRealBle = v),
           ),
           const SizedBox(height: 24),
           _SectionTitle('Lobby'),
@@ -126,7 +156,7 @@ class _TagLobbyScreenState extends State<TagLobbyScreen> {
                       ),
                       const SizedBox(width: 12),
                       OutlinedButton.icon(
-                        onPressed: _addFakePeer,
+                        onPressed: _useRealBle ? null : _addFakePeer,
                         icon: const Icon(Icons.person_add),
                         label: const Text('Add player'),
                       ),
@@ -146,8 +176,10 @@ class _TagLobbyScreenState extends State<TagLobbyScreen> {
                           ? const Chip(label: Text('You'))
                           : IconButton(
                               icon: const Icon(Icons.close),
-                              onPressed: () =>
-                                  setState(() => _peers.remove(e.key)),
+                              onPressed: _useRealBle
+                                  ? null
+                                  : () =>
+                                      setState(() => _peers.remove(e.key)),
                             ),
                     ),
                   ),
@@ -169,15 +201,59 @@ class _TagLobbyScreenState extends State<TagLobbyScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 12),
-          Text(
-            'BLE peripheral advertising on iOS still needs a platform-channel '
-            'implementation. The game logic here is wired up so once that lands, '
-            'tag works end-to-end without UI changes.',
-            style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
-          ),
         ],
+      ),
+    );
+  }
+}
+
+class _BleToggle extends StatelessWidget {
+  const _BleToggle({
+    required this.available,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final bool? available;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final bleReady = available == true;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Use real BLE'),
+              subtitle: Text(
+                bleReady
+                    ? 'Scan + advertise via flutter_blue_plus and the native BleAdvertiser plugin'
+                    : (available == null
+                        ? 'Checking BLE availability…'
+                        : 'BLE advertiser plugin not installed — see tooling/ble_native/README.md'),
+                style: theme.textTheme.bodySmall,
+              ),
+              value: value && bleReady,
+              onChanged: bleReady ? onChanged : null,
+            ),
+            if (!bleReady)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Text(
+                  'Falling back to the manual test stream — "Touch player X" chips on the game screen drive proximity events.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurface
+                          .withValues(alpha: 0.6)),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -291,7 +367,7 @@ class _HostBadge extends StatelessWidget {
                     style: theme.textTheme.titleSmall),
                 const SizedBox(height: 6),
                 Text(
-                  'Scan for non-tag games. Tag itself needs the app.',
+                  'Browser guests can scan for non-tag games. Tag itself needs the app.',
                   style: theme.textTheme.bodySmall,
                 ),
               ],
