@@ -39,6 +39,8 @@ flutter pub get
 flutter run
 ```
 
+For running on a physical Android or iOS phone — toolchain prerequisites, signing setup, permissions, and how to host a multi-device session — see [`docs/mobile-setup.md`](docs/mobile-setup.md).
+
 ## Tag — what works, what's TODO
 
 **Working (tested in single-device dev mode):**
