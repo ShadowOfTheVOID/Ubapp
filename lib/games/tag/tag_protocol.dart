@@ -15,9 +15,76 @@ sealed class TagMessage {
       'tag' => TagEvent.fromJson(json),
       'unfreeze' => UnfreezeEvent.fromJson(json),
       'end' => EndMessage.fromJson(json),
+      'tutorial_vote' => TutorialVoteCast.fromJson(json),
+      'tutorial_state' => TutorialVoteStateMessage.fromJson(json),
+      'tutorial_call' => TutorialVoteCallMessage.fromJson(json),
       _ => throw FormatException('Unknown TagMessage: ${json['type']}'),
     };
   }
+}
+
+/// Peer -> host: ask the host to open a tutorial vote.
+class TutorialVoteCallMessage extends TagMessage {
+  TutorialVoteCallMessage();
+
+  @override
+  Map<String, Object?> toJson() => {'type': 'tutorial_call'};
+
+  factory TutorialVoteCallMessage.fromJson(Map<String, Object?> _) =>
+      TutorialVoteCallMessage();
+}
+
+/// Peer -> host: a yes/no vote in the pre-round tutorial vote.
+class TutorialVoteCast extends TagMessage {
+  TutorialVoteCast({required this.voterId, required this.yes});
+  final String voterId;
+  final bool yes;
+
+  @override
+  Map<String, Object?> toJson() =>
+      {'type': 'tutorial_vote', 'voterId': voterId, 'yes': yes};
+
+  factory TutorialVoteCast.fromJson(Map<String, Object?> j) =>
+      TutorialVoteCast(voterId: j['voterId']! as String, yes: j['yes']! as bool);
+}
+
+/// Host -> peers: current tutorial vote tally + result.
+class TutorialVoteStateMessage extends TagMessage {
+  TutorialVoteStateMessage({
+    required this.isOpen,
+    required this.yesCount,
+    required this.noCount,
+    required this.eligibleCount,
+    required this.result,
+    required this.tutorialShown,
+  });
+  final bool isOpen;
+  final int yesCount;
+  final int noCount;
+  final int eligibleCount;
+  final bool? result;
+  final bool tutorialShown;
+
+  @override
+  Map<String, Object?> toJson() => {
+        'type': 'tutorial_state',
+        'isOpen': isOpen,
+        'yesCount': yesCount,
+        'noCount': noCount,
+        'eligibleCount': eligibleCount,
+        'result': result,
+        'tutorialShown': tutorialShown,
+      };
+
+  factory TutorialVoteStateMessage.fromJson(Map<String, Object?> j) =>
+      TutorialVoteStateMessage(
+        isOpen: j['isOpen']! as bool,
+        yesCount: (j['yesCount']! as num).toInt(),
+        noCount: (j['noCount']! as num).toInt(),
+        eligibleCount: (j['eligibleCount']! as num).toInt(),
+        result: j['result'] as bool?,
+        tutorialShown: j['tutorialShown']! as bool,
+      );
 }
 
 class HelloMessage extends TagMessage {

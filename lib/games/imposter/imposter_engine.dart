@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import '../../tutorials/tutorial_vote.dart';
 import 'imposter_words.dart';
 
 enum ImposterPhase { lobby, playing, voting, result, gameOver }
@@ -30,6 +31,8 @@ class ImposterEngine {
   String? mostVotedId;
   bool? imposterCaught;
   ImposterWinner? winner;
+
+  final TutorialVote tutorialVote = TutorialVote();
 
   // ---- Lobby ----
   ImposterPlayer addPlayer({required String id, required String name, bool isHost = false}) {

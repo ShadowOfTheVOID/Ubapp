@@ -1,6 +1,8 @@
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 
+import '../tutorials/tutorial_content.dart';
+import '../tutorials/tutorial_view.dart';
 import 'real_time_game.dart';
 
 class RealTimeScreen extends StatefulWidget {
@@ -16,7 +18,10 @@ class _RealTimeScreenState extends State<RealTimeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Real-time')),
+      appBar: AppBar(
+        title: const Text('Real-time'),
+        actions: const [TutorialAppBarButton(tutorial: GameTutorials.realTime)],
+      ),
       body: GameWidget(game: _game),
     );
   }

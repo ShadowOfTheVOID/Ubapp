@@ -53,6 +53,19 @@ const String crazyEightsBrowserHtml = r'''
   .suit-picker button { font-size:32px; padding:18px; }
   .modal { position:fixed; inset:0; background:rgba(0,0,0,.7); display:flex; align-items:center; justify-content:center; z-index:99; }
   .modal .panel { max-width:360px; width:90%; }
+  .vote-row { display:flex; gap:8px; }
+  .vote-row button { flex:1; }
+  .vote-yes { background:#2ea043; }
+  .vote-no { background:#f85149; }
+  .vote-yes.selected, .vote-no.selected { outline:3px solid #fff; }
+  .tutorial-banner { background:linear-gradient(160deg, #1d4a36, #0d2a1f); color:#6ee7a8; padding:18px; border-radius:14px; margin-bottom:12px; text-align:center; font-weight:600; }
+  .tutorial-card { background:linear-gradient(160deg, #1d4a36, #0d2a1f); color:#e6edf3; padding:20px; border-radius:14px; margin-bottom:12px; }
+  .tutorial-card h2 { color:#6ee7a8; font-size:18px; margin:0 0 8px; letter-spacing:0; text-transform:none; }
+  .tutorial-card h3 { font-size:14px; margin:12px 0 4px; color:#e6edf3; text-transform:none; letter-spacing:0; }
+  .tutorial-card p { margin:4px 0; color:#cfd8de; font-size:14px; line-height:1.45; }
+  .tutorial-card .t-sec { margin-top:6px; }
+  .tutorial-card .menu-label { color:#6ee7a8; font-size:16px; margin:18px 0 6px; font-weight:700; }
+  .tutorial-card .wait { color:#9da7b3; font-size:13px; margin-top:14px; }
 </style>
 </head>
 <body>
@@ -62,7 +75,8 @@ const String crazyEightsBrowserHtml = r'''
   const root = document.getElementById('root');
   const ws = new WebSocket(`ws://${location.host}/ws`);
   const state = { me:null, phase:'lobby', players:[], hand:[], topCard:null, activeSuit:null,
-    drawCount:0, currentId:null, winnerId:null, lastEvent:'', justDrew:false, picked:null, pickingSuitFor:null };
+    drawCount:0, currentId:null, winnerId:null, lastEvent:'', justDrew:false, picked:null, pickingSuitFor:null,
+    tutorial:{isOpen:false,yesCount:0,noCount:0,eligibleCount:0,result:null,tutorialShown:false}, tutorialContent:null, myTutorialVote:null };
 
   function send(o){ if (ws.readyState===1) ws.send(JSON.stringify(o)); }
 
@@ -75,6 +89,13 @@ const String crazyEightsBrowserHtml = r'''
       case 'hand': state.hand = m.cards; break;
       case 'over': state.phase='gameOver'; state.winnerId=m.winnerId; state.players=m.players; break;
       case 'reset': state.phase='lobby'; state.hand=[]; state.winnerId=null; break;
+      case 'tutorial_vote_state': {
+        const wasOpen = state.tutorial.isOpen;
+        state.tutorial = { isOpen:m.isOpen, yesCount:m.yesCount, noCount:m.noCount, eligibleCount:m.eligibleCount, result:m.result, tutorialShown:m.tutorialShown };
+        if (m.title) state.tutorialContent = { title:m.title, sections:m.sections || [], menuSections:m.menuSections || [] };
+        if (!wasOpen && m.isOpen) state.myTutorialVote = null;
+        break;
+      }
     }
     render();
   });
@@ -98,7 +119,38 @@ const String crazyEightsBrowserHtml = r'''
   }
 
   function renderLobby(){
-    root.innerHTML = `<h1>Lobby</h1><div class="panel"><p>Waiting for the host to deal.</p><h2>Players (${state.players.length})</h2>${state.players.map(p=>`<div class="pchip" style="margin-bottom:6px"><div class="name">${esc(p.name)}${p.isHost?' • host':''}${state.me.id===p.id?' • you':''}</div></div>`).join('')}</div>`;
+    root.innerHTML = `<h1>Lobby</h1>${viewTutorialBanner()}${viewTutorialVote()}<div class="panel"><p>Waiting for the host to deal.</p><h2>Players (${state.players.length})</h2>${state.players.map(p=>`<div class="pchip" style="margin-bottom:6px"><div class="name">${esc(p.name)}${p.isHost?' • host':''}${state.me.id===p.id?' • you':''}</div></div>`).join('')}</div>`;
+    bindTutorialVote();
+  }
+
+  function viewTutorialBanner(){
+    const t = state.tutorial;
+    const c = state.tutorialContent;
+    if (t.result !== true || t.tutorialShown) return '';
+    if (!c) return `<div class="tutorial-banner">Loading tutorial…</div>`;
+    const ruleSecs = c.sections.map(s => `<div class="t-sec"><h3>${esc(s.heading)}</h3><p>${esc(s.body)}</p></div>`).join('');
+    const menuSecs = (c.menuSections || []).map(s => `<div class="t-sec"><h3>${esc(s.heading)}</h3><p>${esc(s.body)}</p></div>`).join('');
+    return `<div class="tutorial-card"><h2>${esc(c.title)}</h2>${ruleSecs}${menuSecs ? `<div class="menu-label">Using this screen</div>${menuSecs}` : ''}<p class="wait">Waiting for the host to finish reading. They'll dismiss this when everyone is ready.</p></div>`;
+  }
+
+  function viewTutorialVote(){
+    const t = state.tutorial;
+    if (t.isOpen) {
+      return `<div class="panel"><h2>Show tutorial first?</h2><p class="small">${t.yesCount + t.noCount} / ${t.eligibleCount} voted — majority wins.</p><div class="vote-row"><button class="vote-yes ${state.myTutorialVote===true?'selected':''}" id="tut-yes">Yes (${t.yesCount})</button><button class="vote-no ${state.myTutorialVote===false?'selected':''}" id="tut-no">No (${t.noCount})</button></div></div>`;
+    }
+    if (t.result === null && !t.tutorialShown) {
+      return `<div class="panel"><p class="small">Want a refresher on the rules?</p><button id="call-tut">Call tutorial vote</button></div>`;
+    }
+    if (t.result === false) return `<div class="panel" style="text-align:center"><p class="small">Majority voted to skip the tutorial.</p></div>`;
+    return '';
+  }
+
+  function bindTutorialVote(){
+    const cb = document.getElementById('call-tut');
+    if (cb) cb.addEventListener('click', () => send({type:'call_tutorial_vote'}));
+    const y = document.getElementById('tut-yes'), n = document.getElementById('tut-no');
+    if (y) y.addEventListener('click', () => { state.myTutorialVote=true; send({type:'tutorial_vote', yes:true}); render(); });
+    if (n) n.addEventListener('click', () => { state.myTutorialVote=false; send({type:'tutorial_vote', yes:false}); render(); });
   }
 
   function renderTable(){

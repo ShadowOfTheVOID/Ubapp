@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../tutorials/tutorial_content.dart';
+import '../../tutorials/tutorial_view.dart';
 import 'imposter_engine.dart';
 import 'imposter_server.dart';
 
@@ -100,32 +102,62 @@ class _ImposterScreenState extends State<ImposterScreen> {
 
   Widget _buildLobby(ImposterServer server) {
     final engine = server.engine;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('Lobby', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 4),
-            Text('${engine.players.length} player${engine.players.length == 1 ? '' : 's'} — need at least 3',
-                style: Theme.of(context).textTheme.bodySmall),
-            const SizedBox(height: 12),
-            ...engine.players.values.map((p) => ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: CircleAvatar(child: Text(p.name[0].toUpperCase())),
-                  title: Text(p.name),
-                  trailing: p.isHost ? const Chip(label: Text('Host')) : null,
-                )),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: engine.canStart ? () => server.hostStart() : null,
-              icon: const Icon(Icons.play_arrow),
-              label: const Text('Start round'),
-            ),
-          ],
+    final vote = engine.tutorialVote;
+    final showTutorial = vote.result == true && !vote.tutorialShown;
+    final myVote = vote.votes[ImposterServer.hostId];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TutorialVoteCard(
+          isOpen: vote.isOpen,
+          tutorialShown: vote.tutorialShown,
+          yesCount: vote.yesCount,
+          noCount: vote.noCount,
+          eligibleCount: vote.eligibleCount,
+          myVote: myVote,
+          result: vote.result,
+          onCallVote: server.hostCallTutorialVote,
+          onVote: server.hostTutorialVote,
         ),
-      ),
+        if (showTutorial) ...[
+          const SizedBox(height: 12),
+          TutorialView(
+            tutorial: GameTutorials.imposter,
+            onDone: server.hostDismissTutorial,
+          ),
+        ],
+        const SizedBox(height: 12),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Lobby', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 4),
+                Text(
+                    '${engine.players.length} player${engine.players.length == 1 ? '' : 's'} — need at least 3',
+                    style: Theme.of(context).textTheme.bodySmall),
+                const SizedBox(height: 12),
+                ...engine.players.values.map((p) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading:
+                          CircleAvatar(child: Text(p.name[0].toUpperCase())),
+                      title: Text(p.name),
+                      trailing:
+                          p.isHost ? const Chip(label: Text('Host')) : null,
+                    )),
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: engine.canStart ? () => server.hostStart() : null,
+                  icon: const Icon(Icons.play_arrow),
+                  label: const Text('Start round'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 

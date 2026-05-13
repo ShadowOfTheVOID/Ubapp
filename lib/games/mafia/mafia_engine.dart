@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import '../../tutorials/tutorial_vote.dart';
 import 'mafia_role.dart';
 
 enum MafiaPhase { lobby, night, dayReveal, dayVote, gameOver }
@@ -49,6 +50,8 @@ class MafiaEngine {
 
   NightOutcome? lastNight;
   DayOutcome? lastDay;
+
+  final TutorialVote tutorialVote = TutorialVote();
 
   // ---- Lobby -----------------------------------------------------------
 

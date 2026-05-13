@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import '../../social/host_server.dart';
+import '../../tutorials/tutorial_content.dart';
 import 'card.dart';
 import 'crazy_eights_browser.dart';
 import 'crazy_eights_engine.dart';
@@ -80,6 +81,14 @@ class CrazyEightsServer {
     _emit();
   }
 
+  void hostCallTutorialVote() => _openTutorialVote();
+  void hostTutorialVote(bool yes) => _submitTutorialVote(hostId, yes);
+  void hostDismissTutorial() {
+    engine.tutorialVote.markShown();
+    _broadcastTutorialState();
+    _emit();
+  }
+
   // Inbound
   void _onMessage(GuestMessage msg) {
     final json = msg.asJson;
@@ -95,6 +104,11 @@ class CrazyEightsServer {
       case 'pass':
         final pid = _guestToPlayer[msg.from];
         if (pid != null) _applyPass(pid);
+      case 'call_tutorial_vote':
+        _openTutorialVote();
+      case 'tutorial_vote':
+        final pid = _guestToPlayer[msg.from];
+        if (pid != null) _submitTutorialVote(pid, json['yes']! as bool);
     }
   }
 
@@ -104,7 +118,11 @@ class CrazyEightsServer {
     _playerToGuest.remove(pid);
     if (engine.phase == CrazyEightsPhase.lobby) {
       engine.removePlayer(pid);
+      engine.tutorialVote.removeVoter(pid);
       _broadcastLobby();
+      if (engine.tutorialVote.isOpen || engine.tutorialVote.hasResult) {
+        _broadcastTutorialState();
+      }
     }
     _emit();
   }
@@ -124,6 +142,7 @@ class CrazyEightsServer {
     _server.send(guest,
         jsonEncode({'type': 'welcome', 'yourId': pid, 'yourName': name}));
     _broadcastLobby();
+    _broadcastTutorialState();
     _emit();
   }
 
@@ -210,6 +229,43 @@ class CrazyEightsServer {
           .map((p) => {'id': p.id, 'name': p.name, 'handCount': p.hand.length})
           .toList(),
     }));
+  }
+
+  // ---- Tutorial vote ---------------------------------------------------
+
+  void _openTutorialVote() {
+    if (engine.phase != CrazyEightsPhase.lobby) return;
+    if (engine.tutorialVote.isOpen) return;
+    if (engine.tutorialVote.tutorialShown) return;
+    engine.tutorialVote.open(engine.players.keys);
+    _broadcastTutorialState();
+    _emit();
+  }
+
+  void _submitTutorialVote(String voterId, bool yes) {
+    if (!engine.tutorialVote.isOpen) return;
+    engine.tutorialVote.submit(voterId, yes);
+    _broadcastTutorialState();
+    _emit();
+  }
+
+  void _broadcastTutorialState() {
+    final v = engine.tutorialVote;
+    final payload = <String, Object?>{
+      'type': 'tutorial_vote_state',
+      'isOpen': v.isOpen,
+      'yesCount': v.yesCount,
+      'noCount': v.noCount,
+      'eligibleCount': v.eligibleCount,
+      'result': v.result,
+      'tutorialShown': v.tutorialShown,
+    };
+    if (v.result == true && !v.tutorialShown) {
+      payload['title'] = GameTutorials.crazyEights.title;
+      payload['sections'] = GameTutorials.crazyEights.sectionsJson();
+      payload['menuSections'] = GameTutorials.crazyEights.browserMenuSectionsJson();
+    }
+    _server.broadcast(jsonEncode(payload));
   }
 
   void _emit() => _stateChanges.add(null);

@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import '../../tutorials/tutorial_vote.dart';
 import 'codenames_words.dart';
 
 enum Team { red, blue }
@@ -45,6 +46,8 @@ class CodenamesEngine {
   Team? winner;
   String? endReason;
   String? lastEvent;
+
+  final TutorialVote tutorialVote = TutorialVote();
 
   // ---- Lobby ----
   CodenamesPlayer addPlayer({required String id, required String name, bool isHost = false}) {

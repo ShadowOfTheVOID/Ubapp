@@ -3,24 +3,23 @@ import 'dart:convert';
 
 import '../../social/host_server.dart';
 import '../../tutorials/tutorial_content.dart';
-import 'mafia_browser.dart';
-import 'mafia_engine.dart';
-import 'mafia_role.dart';
+import 'werewolf_browser.dart';
+import 'werewolf_engine.dart';
+import 'werewolf_role.dart';
 
-/// Wraps [HostServer] with Mafia-specific routing. Owns the engine, fans
-/// out the right private/public messages, and converts incoming
+/// Wraps [HostServer] with Werewolf-specific routing. Owns the engine,
+/// fans out the right private/public messages, and converts incoming
 /// guest commands into engine calls.
-class MafiaServer {
-  MafiaServer({HostServer? server, this.hostName = 'Host'})
-      : _server = server ?? HostServer(html: mafiaBrowserHtml);
+class WerewolfServer {
+  WerewolfServer({HostServer? server, this.hostName = 'Host'})
+      : _server = server ?? HostServer(html: werewolfBrowserHtml);
 
   final HostServer _server;
   final String hostName;
-  final MafiaEngine engine = MafiaEngine();
+  final WerewolfEngine engine = WerewolfEngine();
 
   /// Flutter host plays as this player; not connected over WebSocket.
   static const String hostId = 'host';
-  GuestId? _hostingFromGuest;
   final Map<GuestId, String> _guestToPlayer = {};
   final Map<String, GuestId> _playerToGuest = {};
 
@@ -46,7 +45,6 @@ class MafiaServer {
     await _stateChanges.close();
   }
 
-  /// Number of currently connected browser/app guests.
   int get guestCount => _server.guestCount;
 
   // ---- Host-side actions (called from the Flutter host UI) -------------
@@ -59,9 +57,9 @@ class MafiaServer {
     _emit();
   }
 
-  void hostNightAction(String targetId) =>
-      _applyNightAction(hostId, targetId);
+  void hostNightAction(String targetId) => _applyNightAction(hostId, targetId);
   void hostDayVote(String? targetId) => _applyDayVote(hostId, targetId);
+  void hostHunterShot(String targetId) => _applyHunterShot(hostId, targetId);
 
   void hostCallTutorialVote() => _openTutorialVote();
   void hostTutorialVote(bool yes) => _submitTutorialVote(hostId, yes);
@@ -73,7 +71,7 @@ class MafiaServer {
 
   void advanceFromReveal() {
     engine.advanceToDayVote();
-    if (engine.phase == MafiaPhase.gameOver) {
+    if (engine.phase == WerewolfPhase.gameOver) {
       _broadcastGameOver();
     } else {
       _broadcastPhase();
@@ -95,6 +93,9 @@ class MafiaServer {
       case 'vote':
         final pid = _guestToPlayer[msg.from];
         if (pid != null) _applyDayVote(pid, json['targetId'] as String?);
+      case 'hunter_shot':
+        final pid = _guestToPlayer[msg.from];
+        if (pid != null) _applyHunterShot(pid, json['targetId'] as String);
       case 'call_tutorial_vote':
         _openTutorialVote();
       case 'tutorial_vote':
@@ -117,8 +118,9 @@ class MafiaServer {
   }
 
   void _handleJoin(GuestId guest, Map<String, Object?> json) {
-    if (engine.phase != MafiaPhase.lobby) {
-      _server.send(guest, jsonEncode({'type': 'error', 'message': 'Game already started'}));
+    if (engine.phase != WerewolfPhase.lobby) {
+      _server.send(guest,
+          jsonEncode({'type': 'error', 'message': 'Game already started'}));
       return;
     }
     final name = (json['name'] as String?)?.trim();
@@ -143,15 +145,21 @@ class MafiaServer {
     final p = engine.players[playerId];
     if (p == null || !p.alive) return;
     bool ready = false;
-    if (p.role == MafiaRole.mafia) {
-      ready = engine.submitMafiaVote(playerId, targetId);
-    } else if (p.role == MafiaRole.doctor) {
-      ready = engine.submitDoctorTarget(playerId, targetId);
+    if (p.role == WerewolfRole.werewolf) {
+      ready = engine.submitWolfVote(playerId, targetId);
+    } else if (p.role == WerewolfRole.seer) {
+      ready = engine.submitSeerTarget(playerId, targetId);
     }
     _emit();
     if (ready) {
       engine.resolveNight();
+      _sendSeerResultPrivately();
       _broadcastNightResult();
+      if (engine.phase == WerewolfPhase.gameOver) {
+        _broadcastGameOver();
+      } else if (engine.phase == WerewolfPhase.hunterShot) {
+        _broadcastHunterPrompt();
+      }
       _emit();
     }
   }
@@ -163,13 +171,29 @@ class MafiaServer {
     if (ready) {
       engine.resolveDay();
       _broadcastDayResult();
-      if (engine.phase == MafiaPhase.gameOver) {
+      if (engine.phase == WerewolfPhase.gameOver) {
         _broadcastGameOver();
+      } else if (engine.phase == WerewolfPhase.hunterShot) {
+        _broadcastHunterPrompt();
       } else {
         _broadcastPhase();
       }
       _emit();
     }
+  }
+
+  void _applyHunterShot(String playerId, String targetId) {
+    final ok = engine.submitHunterShot(playerId, targetId);
+    if (!ok) return;
+    _broadcastHunterShotResult();
+    if (engine.phase == WerewolfPhase.gameOver) {
+      _broadcastGameOver();
+    } else if (engine.phase == WerewolfPhase.hunterShot) {
+      _broadcastHunterPrompt();
+    } else {
+      _broadcastPhase();
+    }
+    _emit();
   }
 
   // ---- Outbound -------------------------------------------------------
@@ -187,7 +211,7 @@ class MafiaServer {
   // ---- Tutorial vote ---------------------------------------------------
 
   void _openTutorialVote() {
-    if (engine.phase != MafiaPhase.lobby) return;
+    if (engine.phase != WerewolfPhase.lobby) return;
     if (engine.tutorialVote.isOpen) return;
     if (engine.tutorialVote.tutorialShown) return;
     engine.tutorialVote.open(engine.players.keys);
@@ -214,27 +238,39 @@ class MafiaServer {
       'tutorialShown': v.tutorialShown,
     };
     if (v.result == true && !v.tutorialShown) {
-      payload['title'] = GameTutorials.mafia.title;
-      payload['sections'] = GameTutorials.mafia.sectionsJson();
-      payload['menuSections'] = GameTutorials.mafia.browserMenuSectionsJson();
+      payload['title'] = GameTutorials.werewolf.title;
+      payload['sections'] = GameTutorials.werewolf.sectionsJson();
+      payload['menuSections'] = GameTutorials.werewolf.browserMenuSectionsJson();
     }
     _server.broadcast(jsonEncode(payload));
   }
 
   void _sendRolesPrivately() {
-    final mafiaIds = engine.players.values
-        .where((p) => p.role == MafiaRole.mafia)
+    final wolfIds = engine.players.values
+        .where((p) => p.role == WerewolfRole.werewolf)
         .map((p) => p.id)
         .toList();
     for (final p in engine.players.values) {
       final payload = jsonEncode({
         'type': 'role',
         'role': p.role!.name,
-        if (p.role == MafiaRole.mafia) 'mafiaIds': mafiaIds,
+        if (p.role == WerewolfRole.werewolf) 'wolfIds': wolfIds,
       });
       final guest = _playerToGuest[p.id];
       if (guest != null) _server.send(guest, payload);
     }
+  }
+
+  void _sendSeerResultPrivately() {
+    final r = engine.lastSeerResult;
+    if (r == null) return;
+    final guest = _playerToGuest[r.seerId];
+    final payload = jsonEncode({
+      'type': 'seer_result',
+      'targetId': r.targetId,
+      'isWerewolf': r.isWerewolf,
+    });
+    if (guest != null) _server.send(guest, payload);
   }
 
   void _broadcastPhase() {
@@ -263,7 +299,6 @@ class MafiaServer {
       'alive': engine.alive.map(_publicPlayer).toList(),
       'dead': engine.dead.map(_publicPlayer).toList(),
       'killedId': n.killedId,
-      'savedId': n.savedId,
     }));
   }
 
@@ -278,6 +313,29 @@ class MafiaServer {
       'eliminatedRole': d.eliminatedId == null
           ? null
           : engine.players[d.eliminatedId]!.role!.name,
+    }));
+  }
+
+  void _broadcastHunterPrompt() {
+    _server.broadcast(jsonEncode({
+      'type': 'hunter_prompt',
+      'hunterId': engine.pendingHunterShooter,
+      'alive': engine.alive.map(_publicPlayer).toList(),
+      'dead': engine.dead.map(_publicPlayer).toList(),
+    }));
+  }
+
+  void _broadcastHunterShotResult() {
+    final shots = engine.hunterShotsThisRound;
+    if (shots.isEmpty) return;
+    final last = shots.last;
+    _server.broadcast(jsonEncode({
+      'type': 'hunter_shot_result',
+      'hunterId': last.hunterId,
+      'targetId': last.targetId,
+      'targetRole': engine.players[last.targetId]!.role!.name,
+      'alive': engine.alive.map(_publicPlayer).toList(),
+      'dead': engine.dead.map(_publicPlayer).toList(),
     }));
   }
 

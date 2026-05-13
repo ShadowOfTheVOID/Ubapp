@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../tutorials/tutorial_content.dart';
+import '../tutorials/tutorial_view.dart';
 import 'minimax.dart';
 import 'tic_tac_toe_model.dart';
 
@@ -49,7 +51,10 @@ class _TurnBasedScreenState extends State<TurnBasedScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Turn-based')),
+      appBar: AppBar(
+        title: const Text('Turn-based'),
+        actions: const [TutorialAppBarButton(tutorial: GameTutorials.ticTacToe)],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
