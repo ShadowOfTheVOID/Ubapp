@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import '../../social/host_server.dart';
+import '../../tutorials/tutorial_content.dart';
 import 'imposter_browser.dart';
 import 'imposter_engine.dart';
 
@@ -173,7 +174,7 @@ class ImposterServer {
 
   void _broadcastTutorialState() {
     final v = engine.tutorialVote;
-    _server.broadcast(jsonEncode({
+    final payload = <String, Object?>{
       'type': 'tutorial_vote_state',
       'isOpen': v.isOpen,
       'yesCount': v.yesCount,
@@ -181,7 +182,13 @@ class ImposterServer {
       'eligibleCount': v.eligibleCount,
       'result': v.result,
       'tutorialShown': v.tutorialShown,
-    }));
+    };
+    if (v.result == true && !v.tutorialShown) {
+      payload['title'] = GameTutorials.imposter.title;
+      payload['sections'] = GameTutorials.imposter.sectionsJson();
+      payload['menuSections'] = GameTutorials.imposter.browserMenuSectionsJson();
+    }
+    _server.broadcast(jsonEncode(payload));
   }
 
   void _broadcastResult() {

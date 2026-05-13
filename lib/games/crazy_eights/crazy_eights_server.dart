@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import '../../social/host_server.dart';
+import '../../tutorials/tutorial_content.dart';
 import 'card.dart';
 import 'crazy_eights_browser.dart';
 import 'crazy_eights_engine.dart';
@@ -250,7 +251,7 @@ class CrazyEightsServer {
 
   void _broadcastTutorialState() {
     final v = engine.tutorialVote;
-    _server.broadcast(jsonEncode({
+    final payload = <String, Object?>{
       'type': 'tutorial_vote_state',
       'isOpen': v.isOpen,
       'yesCount': v.yesCount,
@@ -258,7 +259,13 @@ class CrazyEightsServer {
       'eligibleCount': v.eligibleCount,
       'result': v.result,
       'tutorialShown': v.tutorialShown,
-    }));
+    };
+    if (v.result == true && !v.tutorialShown) {
+      payload['title'] = GameTutorials.crazyEights.title;
+      payload['sections'] = GameTutorials.crazyEights.sectionsJson();
+      payload['menuSections'] = GameTutorials.crazyEights.browserMenuSectionsJson();
+    }
+    _server.broadcast(jsonEncode(payload));
   }
 
   void _emit() => _stateChanges.add(null);

@@ -59,6 +59,13 @@ const String crazyEightsBrowserHtml = r'''
   .vote-no { background:#f85149; }
   .vote-yes.selected, .vote-no.selected { outline:3px solid #fff; }
   .tutorial-banner { background:linear-gradient(160deg, #1d4a36, #0d2a1f); color:#6ee7a8; padding:18px; border-radius:14px; margin-bottom:12px; text-align:center; font-weight:600; }
+  .tutorial-card { background:linear-gradient(160deg, #1d4a36, #0d2a1f); color:#e6edf3; padding:20px; border-radius:14px; margin-bottom:12px; }
+  .tutorial-card h2 { color:#6ee7a8; font-size:18px; margin:0 0 8px; letter-spacing:0; text-transform:none; }
+  .tutorial-card h3 { font-size:14px; margin:12px 0 4px; color:#e6edf3; text-transform:none; letter-spacing:0; }
+  .tutorial-card p { margin:4px 0; color:#cfd8de; font-size:14px; line-height:1.45; }
+  .tutorial-card .t-sec { margin-top:6px; }
+  .tutorial-card .menu-label { color:#6ee7a8; font-size:16px; margin:18px 0 6px; font-weight:700; }
+  .tutorial-card .wait { color:#9da7b3; font-size:13px; margin-top:14px; }
 </style>
 </head>
 <body>
@@ -69,7 +76,7 @@ const String crazyEightsBrowserHtml = r'''
   const ws = new WebSocket(`ws://${location.host}/ws`);
   const state = { me:null, phase:'lobby', players:[], hand:[], topCard:null, activeSuit:null,
     drawCount:0, currentId:null, winnerId:null, lastEvent:'', justDrew:false, picked:null, pickingSuitFor:null,
-    tutorial:{isOpen:false,yesCount:0,noCount:0,eligibleCount:0,result:null,tutorialShown:false}, myTutorialVote:null };
+    tutorial:{isOpen:false,yesCount:0,noCount:0,eligibleCount:0,result:null,tutorialShown:false}, tutorialContent:null, myTutorialVote:null };
 
   function send(o){ if (ws.readyState===1) ws.send(JSON.stringify(o)); }
 
@@ -85,6 +92,7 @@ const String crazyEightsBrowserHtml = r'''
       case 'tutorial_vote_state': {
         const wasOpen = state.tutorial.isOpen;
         state.tutorial = { isOpen:m.isOpen, yesCount:m.yesCount, noCount:m.noCount, eligibleCount:m.eligibleCount, result:m.result, tutorialShown:m.tutorialShown };
+        if (m.title) state.tutorialContent = { title:m.title, sections:m.sections || [], menuSections:m.menuSections || [] };
         if (!wasOpen && m.isOpen) state.myTutorialVote = null;
         break;
       }
@@ -117,8 +125,12 @@ const String crazyEightsBrowserHtml = r'''
 
   function viewTutorialBanner(){
     const t = state.tutorial;
-    if (t.result === true && !t.tutorialShown) return `<div class="tutorial-banner">The host is reading the tutorial aloud. Sit tight.</div>`;
-    return '';
+    const c = state.tutorialContent;
+    if (t.result !== true || t.tutorialShown) return '';
+    if (!c) return `<div class="tutorial-banner">Loading tutorial…</div>`;
+    const ruleSecs = c.sections.map(s => `<div class="t-sec"><h3>${esc(s.heading)}</h3><p>${esc(s.body)}</p></div>`).join('');
+    const menuSecs = (c.menuSections || []).map(s => `<div class="t-sec"><h3>${esc(s.heading)}</h3><p>${esc(s.body)}</p></div>`).join('');
+    return `<div class="tutorial-card"><h2>${esc(c.title)}</h2>${ruleSecs}${menuSecs ? `<div class="menu-label">Using this screen</div>${menuSecs}` : ''}<p class="wait">Waiting for the host to finish reading. They'll dismiss this when everyone is ready.</p></div>`;
   }
 
   function viewTutorialVote(){

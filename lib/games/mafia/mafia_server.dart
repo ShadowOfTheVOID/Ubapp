@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import '../../social/host_server.dart';
+import '../../tutorials/tutorial_content.dart';
 import 'mafia_browser.dart';
 import 'mafia_engine.dart';
 import 'mafia_role.dart';
@@ -203,7 +204,7 @@ class MafiaServer {
 
   void _broadcastTutorialState() {
     final v = engine.tutorialVote;
-    _server.broadcast(jsonEncode({
+    final payload = <String, Object?>{
       'type': 'tutorial_vote_state',
       'isOpen': v.isOpen,
       'yesCount': v.yesCount,
@@ -211,7 +212,13 @@ class MafiaServer {
       'eligibleCount': v.eligibleCount,
       'result': v.result,
       'tutorialShown': v.tutorialShown,
-    }));
+    };
+    if (v.result == true && !v.tutorialShown) {
+      payload['title'] = GameTutorials.mafia.title;
+      payload['sections'] = GameTutorials.mafia.sectionsJson();
+      payload['menuSections'] = GameTutorials.mafia.browserMenuSectionsJson();
+    }
+    _server.broadcast(jsonEncode(payload));
   }
 
   void _sendRolesPrivately() {

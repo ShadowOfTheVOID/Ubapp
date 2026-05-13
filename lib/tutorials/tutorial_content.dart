@@ -10,12 +10,24 @@ class TutorialSection {
 }
 
 class GameTutorial {
-  const GameTutorial({required this.title, required this.sections});
+  const GameTutorial({
+    required this.title,
+    required this.sections,
+    this.browserMenuSections = const [],
+  });
   final String title;
   final List<TutorialSection> sections;
 
+  /// Extra sections that explain the *browser-side* UI for browser-tier
+  /// games. Shown only to guests; the Flutter host doesn't need them
+  /// because it has its own screen.
+  final List<TutorialSection> browserMenuSections;
+
   List<Map<String, String>> sectionsJson() =>
       sections.map((s) => s.toJson()).toList();
+
+  List<Map<String, String>> browserMenuSectionsJson() =>
+      browserMenuSections.map((s) => s.toJson()).toList();
 }
 
 class GameTutorials {
@@ -45,6 +57,27 @@ class GameTutorials {
         body:
             'Town wins if all Mafia are eliminated. Mafia win when they '
             'equal or outnumber the remaining town.',
+      ),
+    ],
+    browserMenuSections: [
+      TutorialSection(
+        heading: 'Your role',
+        body:
+            'When the game starts a colored card shows your role at the '
+            'top of the screen. Keep your phone face-down between turns.',
+      ),
+      TutorialSection(
+        heading: 'Acting at night',
+        body:
+            'If you have a night ability you will see a target list. Tap '
+            'a player to highlight them, then tap Confirm. You can only '
+            'submit once per night.',
+      ),
+      TutorialSection(
+        heading: 'Day vote',
+        body:
+            'Tap the player you want to lynch (or Skip vote), then tap '
+            'Lock in vote. The day resolves once everyone has voted.',
       ),
     ],
   );
@@ -86,6 +119,33 @@ class GameTutorials {
             'win when they equal or outnumber the rest.',
       ),
     ],
+    browserMenuSections: [
+      TutorialSection(
+        heading: 'Your role',
+        body:
+            'A colored card at the top reveals your role. Werewolves '
+            'also see a list of their fellow wolves.',
+      ),
+      TutorialSection(
+        heading: 'Night actions',
+        body:
+            'Werewolves and the Seer see a target list at night. Tap a '
+            'player, then Confirm. The Seer\'s findings are listed in a '
+            "Seer findings card visible only to the Seer.",
+      ),
+      TutorialSection(
+        heading: 'Hunter shot',
+        body:
+            'If you are the Hunter and you die, you will see a "Take one '
+            'with you" prompt. Tap a player, then Fire.',
+      ),
+      TutorialSection(
+        heading: 'Day vote',
+        body:
+            'Tap a suspect (or Skip vote), then Lock in vote. Resolves '
+            'when everyone alive has voted.',
+      ),
+    ],
   );
 
   static const imposter = GameTutorial(
@@ -116,6 +176,28 @@ class GameTutorials {
         body:
             'Townies win if they correctly vote out the Imposter. The '
             'Imposter wins if a townie is voted out instead.',
+      ),
+    ],
+    browserMenuSections: [
+      TutorialSection(
+        heading: 'Your card',
+        body:
+            'A big card shows your secret word and category — or '
+            '"IMPOSTER" and just the category if you are the bluffer. '
+            'Memorise it, then hide your phone.',
+      ),
+      TutorialSection(
+        heading: 'Discussion',
+        body:
+            'There are no on-screen actions while you talk. Ask each '
+            'other questions in person. The host will call a vote when '
+            'the table is ready.',
+      ),
+      TutorialSection(
+        heading: 'Voting',
+        body:
+            'A list of every other player appears. Tap one (or Skip), '
+            'then Lock in vote. You cannot change your vote after.',
       ),
     ],
   );
@@ -150,6 +232,36 @@ class GameTutorials {
             'First team to reveal all of their words wins.',
       ),
     ],
+    browserMenuSections: [
+      TutorialSection(
+        heading: 'Joining a team',
+        body:
+            'In the lobby tap Join Red or Join Blue. Then tap Be '
+            'Spymaster if you want to give clues — each team needs '
+            'exactly one. The host starts when both teams are ready.',
+      ),
+      TutorialSection(
+        heading: 'Spymaster view',
+        body:
+            'Spymasters see a coloured outline on every card showing '
+            "its allegiance (your colour, the enemy's, neutral, or the "
+            'assassin). Do NOT show your phone to your team.',
+      ),
+      TutorialSection(
+        heading: 'Giving a clue',
+        body:
+            'When it is your turn as Spymaster type a one-word clue and '
+            'a number, then send. Operatives discuss out loud and tap '
+            'cards to guess; the Spymaster cannot tap.',
+      ),
+      TutorialSection(
+        heading: 'Guessing',
+        body:
+            'Operatives tap a word card to reveal it. Correct cards '
+            "stay your colour. A wrong card ends your turn. Tap End "
+            'turn early if you want to stop guessing.',
+      ),
+    ],
   );
 
   static const crazyEights = GameTutorial(
@@ -177,6 +289,28 @@ class GameTutorials {
         heading: 'Winning',
         body:
             'First player to empty their hand wins the round.',
+      ),
+    ],
+    browserMenuSections: [
+      TutorialSection(
+        heading: 'Your hand',
+        body:
+            'Your cards are along the bottom of the screen. Playable '
+            'cards are highlighted; unplayable ones look faded.',
+      ),
+      TutorialSection(
+        heading: 'Playing a card',
+        body:
+            'Tap a card to select it (it turns purple), then tap the '
+            'Play button that appears. If you played an 8, a popup asks '
+            'you to declare the new active suit.',
+      ),
+      TutorialSection(
+        heading: 'Drawing & passing',
+        body:
+            'If you cannot play, tap the draw pile on the left of the '
+            'table. If the new card is playable you can still play it; '
+            'otherwise tap Pass to end your turn.',
       ),
     ],
   );
