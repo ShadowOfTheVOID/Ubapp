@@ -5,6 +5,7 @@ import '../games/crazy_eights/crazy_eights_screen.dart';
 import '../games/imposter/imposter_screen.dart';
 import '../games/mafia/mafia_screen.dart';
 import '../games/tag/tag_lobby_screen.dart';
+import '../games/werewolf/werewolf_screen.dart';
 import '../realtime/real_time_screen.dart';
 import '../social/social_screen.dart';
 import '../turnbased/connect_four_screen.dart';
@@ -26,6 +27,11 @@ class MainMenuScreen extends StatelessWidget {
               _MenuButton(
                 label: 'Mafia',
                 onTap: () => _push(context, const MafiaScreen()),
+              ),
+              const SizedBox(height: 16),
+              _MenuButton(
+                label: 'Werewolf',
+                onTap: () => _push(context, const WerewolfScreen()),
               ),
               const SizedBox(height: 16),
               _MenuButton(
