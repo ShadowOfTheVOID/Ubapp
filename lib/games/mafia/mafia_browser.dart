@@ -104,6 +104,12 @@ const String mafiaBrowserHtml = r'''
   }
   @keyframes spin { to { transform: rotate(360deg); } }
   .error { background: var(--danger); color: #fff; padding: 12px 16px; border-radius: 12px; margin-bottom: 12px; }
+  .vote-row { display: flex; gap: 8px; }
+  .vote-row button { flex: 1; }
+  .vote-yes { background: var(--good); }
+  .vote-no { background: var(--danger); }
+  .vote-yes.selected, .vote-no.selected { outline: 3px solid #fff; }
+  .tutorial-banner { background: linear-gradient(160deg, #1d4a36, #0d2a1f); color: #6ee7a8; padding: 20px; border-radius: 16px; margin-bottom: 16px; text-align: center; font-weight: 600; }
 </style>
 </head>
 <body>
@@ -132,6 +138,8 @@ const String mafiaBrowserHtml = r'''
     pickedTarget: null,       // for current night/day choice
     submittedPhaseDay: null,  // remember which day/phase we already submitted
     submittedPhase: null,
+    tutorial: { isOpen: false, yesCount: 0, noCount: 0, eligibleCount: 0, result: null, tutorialShown: false },
+    myTutorialVote: null,
   };
 
   function send(obj) {
@@ -185,6 +193,18 @@ const String mafiaBrowserHtml = r'''
         state.winner = m.winner;
         state.rolesReveal = m.roles;
         break;
+      case 'tutorial_vote_state':
+        const wasOpen = state.tutorial.isOpen;
+        state.tutorial = {
+          isOpen: m.isOpen,
+          yesCount: m.yesCount,
+          noCount: m.noCount,
+          eligibleCount: m.eligibleCount,
+          result: m.result,
+          tutorialShown: m.tutorialShown,
+        };
+        if (!wasOpen && m.isOpen) state.myTutorialVote = null;
+        break;
       case 'error':
         state.error = m.message;
         setTimeout(() => { state.error = null; render(); }, 3000);
@@ -224,6 +244,8 @@ const String mafiaBrowserHtml = r'''
   function viewLobby() {
     return `
       <h1>Lobby</h1>
+      ${viewTutorialBanner()}
+      ${viewTutorialVote()}
       <div class="card">
         <p class="small">Waiting for the host to start the game.</p>
         <h2>Players (${state.lobby.length})</h2>
@@ -237,6 +259,59 @@ const String mafiaBrowserHtml = r'''
         </div>
       </div>
     `;
+  }
+
+  function viewTutorialBanner() {
+    const t = state.tutorial;
+    if (t.result === true && !t.tutorialShown) {
+      return `<div class="tutorial-banner">The host is reading the tutorial aloud. Sit tight.</div>`;
+    }
+    return '';
+  }
+
+  function viewTutorialVote() {
+    const t = state.tutorial;
+    if (t.isOpen) {
+      return `
+        <div class="card">
+          <h2>Show tutorial first?</h2>
+          <p class="small">${t.yesCount + t.noCount} / ${t.eligibleCount} voted — majority wins.</p>
+          <div class="vote-row">
+            <button class="vote-yes ${state.myTutorialVote === true ? 'selected' : ''}" id="tut-yes">Yes (${t.yesCount})</button>
+            <button class="vote-no ${state.myTutorialVote === false ? 'selected' : ''}" id="tut-no">No (${t.noCount})</button>
+          </div>
+        </div>
+      `;
+    }
+    if (t.result === null && !t.tutorialShown) {
+      return `
+        <div class="card">
+          <p class="small">Want a refresher on the rules?</p>
+          <button id="call-tut">Call tutorial vote</button>
+        </div>
+      `;
+    }
+    if (t.result === false) {
+      return `<div class="card center"><p class="small">Majority voted to skip the tutorial.</p></div>`;
+    }
+    return '';
+  }
+
+  function bindTutorialVote() {
+    const callBtn = document.getElementById('call-tut');
+    if (callBtn) callBtn.addEventListener('click', () => send({ type: 'call_tutorial_vote' }));
+    const yesBtn = document.getElementById('tut-yes');
+    const noBtn = document.getElementById('tut-no');
+    if (yesBtn) yesBtn.addEventListener('click', () => {
+      state.myTutorialVote = true;
+      send({ type: 'tutorial_vote', yes: true });
+      render();
+    });
+    if (noBtn) noBtn.addEventListener('click', () => {
+      state.myTutorialVote = false;
+      send({ type: 'tutorial_vote', yes: false });
+      render();
+    });
   }
 
   function viewRoleReveal() {
@@ -453,6 +528,7 @@ const String mafiaBrowserHtml = r'''
     root.innerHTML = body;
 
     bindConnect();
+    bindTutorialVote();
     if (state.phase === 'night' || state.phase === 'dayVote') {
       bindNightAction();
       bindDayVote();

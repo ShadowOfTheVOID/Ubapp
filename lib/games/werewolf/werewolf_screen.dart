@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../tutorials/tutorial_content.dart';
+import '../../tutorials/tutorial_view.dart';
 import 'werewolf_engine.dart';
 import 'werewolf_role.dart';
 import 'werewolf_server.dart';
@@ -149,34 +151,63 @@ class _WerewolfScreenState extends State<WerewolfScreen> {
 
   Widget _buildLobby(WerewolfEngine engine) {
     final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('Lobby', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Text(
-              '${engine.players.length} player${engine.players.length == 1 ? '' : 's'} — need at least 5',
-              style: theme.textTheme.bodySmall,
-            ),
-            const SizedBox(height: 12),
-            ...engine.players.values.map((p) => ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: CircleAvatar(child: Text(p.name[0].toUpperCase())),
-                  title: Text(p.name),
-                  trailing: p.isHost ? const Chip(label: Text('Host')) : null,
-                )),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: engine.canStart ? _hostStart : null,
-              icon: const Icon(Icons.play_arrow),
-              label: const Text('Start game'),
-            ),
-          ],
+    final vote = engine.tutorialVote;
+    final showTutorial = vote.result == true && !vote.tutorialShown;
+    final myVote = vote.votes[WerewolfServer.hostId];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TutorialVoteCard(
+          isOpen: vote.isOpen,
+          tutorialShown: vote.tutorialShown,
+          yesCount: vote.yesCount,
+          noCount: vote.noCount,
+          eligibleCount: vote.eligibleCount,
+          myVote: myVote,
+          result: vote.result,
+          onCallVote: () => _server?.hostCallTutorialVote(),
+          onVote: (yes) => _server?.hostTutorialVote(yes),
         ),
-      ),
+        if (showTutorial) ...[
+          const SizedBox(height: 12),
+          TutorialView(
+            tutorial: GameTutorials.werewolf,
+            onDone: () => _server?.hostDismissTutorial(),
+          ),
+        ],
+        const SizedBox(height: 12),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Lobby', style: theme.textTheme.titleMedium),
+                const SizedBox(height: 8),
+                Text(
+                  '${engine.players.length} player${engine.players.length == 1 ? '' : 's'} — need at least 5',
+                  style: theme.textTheme.bodySmall,
+                ),
+                const SizedBox(height: 12),
+                ...engine.players.values.map((p) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading:
+                          CircleAvatar(child: Text(p.name[0].toUpperCase())),
+                      title: Text(p.name),
+                      trailing:
+                          p.isHost ? const Chip(label: Text('Host')) : null,
+                    )),
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: engine.canStart ? _hostStart : null,
+                  icon: const Icon(Icons.play_arrow),
+                  label: const Text('Start game'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 

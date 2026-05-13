@@ -6,6 +6,9 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../native/ble_advertiser.dart';
 import '../../social/host_server.dart';
+import '../../tutorials/tutorial_content.dart';
+import '../../tutorials/tutorial_view.dart';
+import '../../tutorials/tutorial_vote.dart';
 import 'ble_runtime.dart';
 import 'proximity.dart';
 import 'tag_protocol.dart';
@@ -45,6 +48,14 @@ class _TagLobbyScreenState extends State<TagLobbyScreen> {
   String _peerStatus = '';
   bool _peerWaitingStart = false;
 
+  // Tutorial vote.
+  // Host: source of truth, tallies + broadcasts.
+  // Peer: keeps a mirror of the host's latest broadcast.
+  final TutorialVote _hostTutorialVote = TutorialVote();
+  bool? _hostMyTutorialVote;
+  TutorialVoteStateMessage? _peerTutorialState;
+  bool? _peerMyTutorialVote;
+
   @override
   void initState() {
     super.initState();
@@ -76,11 +87,24 @@ class _TagLobbyScreenState extends State<TagLobbyScreen> {
     _hostHelloSub = transport.inbound.listen((msg) {
       if (msg is HelloMessage) {
         setState(() => _peers[msg.peerId] = msg.displayName);
+        // Re-send tutorial state so the new joiner can render the right thing.
+        _broadcastHostTutorialState();
+      } else if (msg is TutorialVoteCast) {
+        if (!_hostTutorialVote.isOpen) return;
+        _hostTutorialVote.submit(msg.voterId, msg.yes);
+        _broadcastHostTutorialState();
+        setState(() {});
+      } else if (msg is TutorialVoteCallMessage) {
+        _hostCallTutorialVote();
       }
     });
     transport.onPeerDisconnected.listen((peerId) {
       if (mounted && _mode == _Mode.hosting) {
         setState(() => _peers.remove(peerId));
+        _hostTutorialVote.removeVoter(peerId);
+        if (_hostTutorialVote.isOpen || _hostTutorialVote.hasResult) {
+          _broadcastHostTutorialState();
+        }
       }
     });
 
@@ -149,7 +173,56 @@ class _TagLobbyScreenState extends State<TagLobbyScreen> {
     if (msg is StartMessage && _peerWaitingStart && mounted) {
       _peerWaitingStart = false;
       _enterRoundAsPeer(msg);
+    } else if (msg is TutorialVoteStateMessage && mounted) {
+      setState(() {
+        final wasOpen = _peerTutorialState?.isOpen ?? false;
+        _peerTutorialState = msg;
+        if (!wasOpen && msg.isOpen) _peerMyTutorialVote = null;
+      });
     }
+  }
+
+  // ---- Host tutorial vote actions ----
+  void _hostCallTutorialVote() {
+    if (_hostTutorialVote.isOpen) return;
+    if (_hostTutorialVote.tutorialShown) return;
+    _hostTutorialVote.open(_peers.keys);
+    _broadcastHostTutorialState();
+    setState(() {});
+  }
+
+  void _hostTutorialVote2(bool yes) {
+    if (!_hostTutorialVote.isOpen) return;
+    _hostTutorialVote.submit(_selfId, yes);
+    _hostMyTutorialVote = yes;
+    _broadcastHostTutorialState();
+    setState(() {});
+  }
+
+  void _hostDismissTutorial() {
+    _hostTutorialVote.markShown();
+    _broadcastHostTutorialState();
+    setState(() {});
+  }
+
+  void _broadcastHostTutorialState() {
+    final t = _hostTutorialVote;
+    _hostTransport?.send(TutorialVoteStateMessage(
+      isOpen: t.isOpen,
+      yesCount: t.yesCount,
+      noCount: t.noCount,
+      eligibleCount: t.eligibleCount,
+      result: t.result,
+      tutorialShown: t.tutorialShown,
+    ));
+  }
+
+  // ---- Peer tutorial vote actions ----
+  void _peerVote(bool yes) {
+    final t = _peerTransport;
+    if (t == null) return;
+    setState(() => _peerMyTutorialVote = yes);
+    t.send(TutorialVoteCast(voterId: _selfId, yes: yes));
   }
 
   /// Host: build the TagSession and push to TagScreen. The transport stays
@@ -340,16 +413,40 @@ class _TagLobbyScreenState extends State<TagLobbyScreen> {
 
   Widget _hostingPanel() {
     final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (_serverUri != null) _HostBadge(uri: _serverUri!),
-            const SizedBox(height: 12),
-            Text('Lobby (${_peers.length})',
-                style: theme.textTheme.titleMedium),
+    final t = _hostTutorialVote;
+    final showTutorial = t.result == true && !t.tutorialShown;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TutorialVoteCard(
+          isOpen: t.isOpen,
+          tutorialShown: t.tutorialShown,
+          yesCount: t.yesCount,
+          noCount: t.noCount,
+          eligibleCount: t.eligibleCount,
+          myVote: _hostMyTutorialVote,
+          result: t.result,
+          onCallVote: _hostCallTutorialVote,
+          onVote: _hostTutorialVote2,
+        ),
+        if (showTutorial) ...[
+          const SizedBox(height: 12),
+          TutorialView(
+            tutorial: GameTutorials.tag,
+            onDone: _hostDismissTutorial,
+          ),
+        ],
+        const SizedBox(height: 12),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (_serverUri != null) _HostBadge(uri: _serverUri!),
+                const SizedBox(height: 12),
+                Text('Lobby (${_peers.length})',
+                    style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
             ..._peers.entries.map(
               (e) => ListTile(
@@ -382,14 +479,44 @@ class _TagLobbyScreenState extends State<TagLobbyScreen> {
               onPressed: _stopHosting,
               child: const Text('Stop hosting'),
             ),
-          ],
+              ],
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 
   Widget _peerPanel() {
-    return Card(
+    final t = _peerTutorialState;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TutorialVoteCard(
+          isOpen: t?.isOpen ?? false,
+          tutorialShown: t?.tutorialShown ?? false,
+          yesCount: t?.yesCount ?? 0,
+          noCount: t?.noCount ?? 0,
+          eligibleCount: t?.eligibleCount ?? 0,
+          myVote: _peerMyTutorialVote,
+          result: t?.result,
+          onCallVote: () =>
+              _peerTransport?.send(TutorialVoteCallMessage()),
+          onVote: _peerVote,
+        ),
+        if (t != null && t.result == true && !t.tutorialShown)
+          const Card(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                'The host is reading the tutorial aloud. Sit tight.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+        const SizedBox(height: 12),
+        Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -407,6 +534,8 @@ class _TagLobbyScreenState extends State<TagLobbyScreen> {
           ],
         ),
       ),
+        ),
+      ],
     );
   }
 }

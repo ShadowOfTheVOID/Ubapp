@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../tutorials/tutorial_content.dart';
+import '../../tutorials/tutorial_view.dart';
 import 'codenames_engine.dart';
 import 'codenames_server.dart';
 
@@ -101,13 +103,38 @@ class _CodenamesScreenState extends State<CodenamesScreen> {
   Widget _lobby(CodenamesServer server) {
     final engine = server.engine;
     final me = engine.players[CodenamesServer.hostId]!;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('Lobby', style: Theme.of(context).textTheme.titleMedium),
+    final vote = engine.tutorialVote;
+    final showTutorial = vote.result == true && !vote.tutorialShown;
+    final myVote = vote.votes[CodenamesServer.hostId];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TutorialVoteCard(
+          isOpen: vote.isOpen,
+          tutorialShown: vote.tutorialShown,
+          yesCount: vote.yesCount,
+          noCount: vote.noCount,
+          eligibleCount: vote.eligibleCount,
+          myVote: myVote,
+          result: vote.result,
+          onCallVote: server.hostCallTutorialVote,
+          onVote: server.hostTutorialVote,
+        ),
+        if (showTutorial) ...[
+          const SizedBox(height: 12),
+          TutorialView(
+            tutorial: GameTutorials.codenames,
+            onDone: server.hostDismissTutorial,
+          ),
+        ],
+        const SizedBox(height: 12),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Lobby', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             Row(
               children: [
@@ -159,14 +186,16 @@ class _CodenamesScreenState extends State<CodenamesScreen> {
               label: const Text('Start game'),
             ),
             const SizedBox(height: 4),
-            if (!engine.canStart)
-              Text(
-                'Need 2+ players per team and a spymaster on each side.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-          ],
+                if (!engine.canStart)
+                  Text(
+                    'Need 2+ players per team and a spymaster on each side.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+              ],
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 

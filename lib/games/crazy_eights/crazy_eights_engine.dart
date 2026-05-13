@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import '../../tutorials/tutorial_vote.dart';
 import 'card.dart';
 
 enum CrazyEightsPhase { lobby, playing, gameOver }
@@ -32,6 +33,8 @@ class CrazyEightsEngine {
   bool justDrew = false;
   String? winnerId;
   String? lastEvent;
+
+  final TutorialVote tutorialVote = TutorialVote();
 
   CrazyEightsPlayer? get current =>
       _order.isEmpty ? null : players[_order[currentIndex]];

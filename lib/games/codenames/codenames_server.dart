@@ -87,6 +87,14 @@ class CodenamesServer {
     _emit();
   }
 
+  void hostCallTutorialVote() => _openTutorialVote();
+  void hostTutorialVote(bool yes) => _submitTutorialVote(hostId, yes);
+  void hostDismissTutorial() {
+    engine.tutorialVote.markShown();
+    _broadcastTutorialState();
+    _emit();
+  }
+
   // ---- Inbound ----
   void _onMessage(GuestMessage msg) {
     final j = msg.asJson;
@@ -126,6 +134,10 @@ class CodenamesServer {
           _broadcastState();
           _emit();
         }
+      case 'call_tutorial_vote':
+        _openTutorialVote();
+      case 'tutorial_vote':
+        if (pid != null) _submitTutorialVote(pid, j['yes']! as bool);
     }
   }
 
@@ -135,7 +147,11 @@ class CodenamesServer {
     _playerToGuest.remove(pid);
     if (engine.phase == CodenamesPhase.lobby) {
       engine.removePlayer(pid);
+      engine.tutorialVote.removeVoter(pid);
       _broadcastLobby();
+      if (engine.tutorialVote.isOpen || engine.tutorialVote.hasResult) {
+        _broadcastTutorialState();
+      }
     }
     _emit();
   }
@@ -155,6 +171,7 @@ class CodenamesServer {
     _server.send(guest,
         jsonEncode({'type': 'welcome', 'yourId': pid, 'yourName': name}));
     _broadcastLobby();
+    _broadcastTutorialState();
     _emit();
   }
 
@@ -214,6 +231,37 @@ class CodenamesServer {
       }
       _server.send(guest, jsonEncode(payload));
     }
+  }
+
+  // ---- Tutorial vote ---------------------------------------------------
+
+  void _openTutorialVote() {
+    if (engine.phase != CodenamesPhase.lobby) return;
+    if (engine.tutorialVote.isOpen) return;
+    if (engine.tutorialVote.tutorialShown) return;
+    engine.tutorialVote.open(engine.players.keys);
+    _broadcastTutorialState();
+    _emit();
+  }
+
+  void _submitTutorialVote(String voterId, bool yes) {
+    if (!engine.tutorialVote.isOpen) return;
+    engine.tutorialVote.submit(voterId, yes);
+    _broadcastTutorialState();
+    _emit();
+  }
+
+  void _broadcastTutorialState() {
+    final v = engine.tutorialVote;
+    _server.broadcast(jsonEncode({
+      'type': 'tutorial_vote_state',
+      'isOpen': v.isOpen,
+      'yesCount': v.yesCount,
+      'noCount': v.noCount,
+      'eligibleCount': v.eligibleCount,
+      'result': v.result,
+      'tutorialShown': v.tutorialShown,
+    }));
   }
 
   void _emit() => _stateChanges.add(null);

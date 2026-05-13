@@ -69,6 +69,9 @@ class TagSession {
         _emit();
         await _shutdownRound();
       case HelloMessage():
+      case TutorialVoteCast():
+      case TutorialVoteStateMessage():
+      case TutorialVoteCallMessage():
         // Lobby-only — surfaced to the lobby UI via transport directly.
         break;
     }

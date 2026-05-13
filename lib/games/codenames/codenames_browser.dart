@@ -60,6 +60,12 @@ const String codenamesBrowserHtml = r'''
   .pill.r { background:var(--red); color:#fff; }
   .pill.b { background:var(--blue); color:#fff; }
   .pill.you { background:var(--accent); color:#fff; }
+  .vote-row { display:flex; gap:8px; }
+  .vote-row button { flex:1; }
+  .vote-yes { background:#2ea043; }
+  .vote-no { background:#dc3545; }
+  .vote-yes.selected, .vote-no.selected { outline:3px solid #fff; }
+  .tutorial-banner { background:linear-gradient(160deg, #1d4a36, #0d2a1f); color:#6ee7a8; padding:18px; border-radius:14px; margin-bottom:12px; text-align:center; font-weight:600; }
 </style>
 </head>
 <body>
@@ -72,7 +78,8 @@ const String codenamesBrowserHtml = r'''
     board:[], currentTeam:null, currentClue:null, currentNumber:0, guessesLeft:0,
     redLeft:0, blueLeft:0, winner:null, endReason:null, lastEvent:'',
     smView:null, // [{kind}] for spymaster only
-    clueText:'', clueNumber:1 };
+    clueText:'', clueNumber:1,
+    tutorial:{isOpen:false,yesCount:0,noCount:0,eligibleCount:0,result:null,tutorialShown:false}, myTutorialVote:null };
 
   function send(o){ if (ws.readyState===1) ws.send(JSON.stringify(o)); }
 
@@ -89,6 +96,12 @@ const String codenamesBrowserHtml = r'''
         state.phase = m.phase; state.winner = m.winner; state.endReason = m.endReason;
         state.lastEvent = m.lastEvent || ''; break;
       case 'reset': state.phase='lobby'; state.board=[]; state.winner=null; state.smView=null; break;
+      case 'tutorial_vote_state': {
+        const wasOpen = state.tutorial.isOpen;
+        state.tutorial = { isOpen:m.isOpen, yesCount:m.yesCount, noCount:m.noCount, eligibleCount:m.eligibleCount, result:m.result, tutorialShown:m.tutorialShown };
+        if (!wasOpen && m.isOpen) state.myTutorialVote = null;
+        break;
+      }
     }
     render();
   });
@@ -127,11 +140,40 @@ const String codenamesBrowserHtml = r'''
     }).join('');
 
     root.innerHTML = `<h1>Codenames</h1>
+      ${viewTutorialBanner()}
+      ${viewTutorialVote()}
       <div class="panel">${myTeamButtons}</div>
       <div class="panel"><p class="small">Need ≥2 per team, one spymaster each. Host starts when ready.</p>${list}</div>`;
     document.getElementById('join-red').addEventListener('click', ()=>send({type:'team', team:'red'}));
     document.getElementById('join-blue').addEventListener('click', ()=>send({type:'team', team:'blue'}));
     document.getElementById('be-sm').addEventListener('click', ()=>send({type:'spymaster', on:!state.isSpymaster}));
+    bindTutorialVote();
+  }
+
+  function viewTutorialBanner(){
+    const t = state.tutorial;
+    if (t.result === true && !t.tutorialShown) return `<div class="tutorial-banner">The host is reading the tutorial aloud. Sit tight.</div>`;
+    return '';
+  }
+
+  function viewTutorialVote(){
+    const t = state.tutorial;
+    if (t.isOpen) {
+      return `<div class="panel"><h2>Show tutorial first?</h2><p class="small">${t.yesCount + t.noCount} / ${t.eligibleCount} voted — majority wins.</p><div class="vote-row"><button class="vote-yes ${state.myTutorialVote===true?'selected':''}" id="tut-yes">Yes (${t.yesCount})</button><button class="vote-no ${state.myTutorialVote===false?'selected':''}" id="tut-no">No (${t.noCount})</button></div></div>`;
+    }
+    if (t.result === null && !t.tutorialShown) {
+      return `<div class="panel"><p class="small">Want a refresher on the rules?</p><button id="call-tut">Call tutorial vote</button></div>`;
+    }
+    if (t.result === false) return `<div class="panel" style="text-align:center"><p class="small">Majority voted to skip the tutorial.</p></div>`;
+    return '';
+  }
+
+  function bindTutorialVote(){
+    const cb = document.getElementById('call-tut');
+    if (cb) cb.addEventListener('click', () => send({type:'call_tutorial_vote'}));
+    const y = document.getElementById('tut-yes'), n = document.getElementById('tut-no');
+    if (y) y.addEventListener('click', () => { state.myTutorialVote=true; send({type:'tutorial_vote', yes:true}); render(); });
+    if (n) n.addEventListener('click', () => { state.myTutorialVote=false; send({type:'tutorial_vote', yes:false}); render(); });
   }
 
   function renderGame(){

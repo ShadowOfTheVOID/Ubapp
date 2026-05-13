@@ -36,6 +36,12 @@ const String imposterBrowserHtml = r'''
   .secret-card .category { font-size:14px; margin-top:6px; color:var(--muted); }
   .center { text-align:center; }
   .small { color:var(--muted); font-size:13px; }
+  .vote-row { display:flex; gap:8px; }
+  .vote-row button { flex:1; }
+  .vote-yes { background:var(--good); }
+  .vote-no { background:var(--danger); }
+  .vote-yes.selected, .vote-no.selected { outline:3px solid #fff; }
+  .tutorial-banner { background:linear-gradient(160deg, #1d4a36, #0d2a1f); color:#6ee7a8; padding:20px; border-radius:16px; margin-bottom:16px; text-align:center; font-weight:600; }
 </style>
 </head>
 <body>
@@ -44,7 +50,8 @@ const String imposterBrowserHtml = r'''
 (() => {
   const root = document.getElementById('root');
   const ws = new WebSocket(`ws://${location.host}/ws`);
-  const state = { me:null, phase:'lobby', players:[], category:'', word:null, isImposter:false, picked:null, voted:false, result:null };
+  const state = { me:null, phase:'lobby', players:[], category:'', word:null, isImposter:false, picked:null, voted:false, result:null,
+    tutorial:{isOpen:false,yesCount:0,noCount:0,eligibleCount:0,result:null,tutorialShown:false}, myTutorialVote:null };
 
   function send(o){ if (ws.readyState===1) ws.send(JSON.stringify(o)); }
 
@@ -57,6 +64,12 @@ const String imposterBrowserHtml = r'''
       case 'voting':  state.phase='voting'; state.picked=null; state.voted=false; break;
       case 'result':  state.phase='result'; state.result = m; break;
       case 'reset':   state.phase='lobby'; state.word=null; state.result=null; break;
+      case 'tutorial_vote_state': {
+        const wasOpen = state.tutorial.isOpen;
+        state.tutorial = { isOpen:m.isOpen, yesCount:m.yesCount, noCount:m.noCount, eligibleCount:m.eligibleCount, result:m.result, tutorialShown:m.tutorialShown };
+        if (!wasOpen && m.isOpen) state.myTutorialVote = null;
+        break;
+      }
     }
     render();
   });
@@ -70,7 +83,33 @@ const String imposterBrowserHtml = r'''
   }
 
   function renderLobby(){
-    root.innerHTML = `<h1>Lobby</h1><div class="card"><p class="small">Waiting for the host to start.</p><h2>Players (${state.players.length})</h2>${state.players.map(p=>`<div class="player"><span>${esc(p.name)}${p.isHost?' <span class="pill">host</span>':''}</span>${state.me.id===p.id?'<span class="pill you">you</span>':''}</div>`).join('')}</div>`;
+    root.innerHTML = `<h1>Lobby</h1>${viewTutorialBanner()}${viewTutorialVote()}<div class="card"><p class="small">Waiting for the host to start.</p><h2>Players (${state.players.length})</h2>${state.players.map(p=>`<div class="player"><span>${esc(p.name)}${p.isHost?' <span class="pill">host</span>':''}</span>${state.me.id===p.id?'<span class="pill you">you</span>':''}</div>`).join('')}</div>`;
+  }
+
+  function viewTutorialBanner(){
+    const t = state.tutorial;
+    if (t.result === true && !t.tutorialShown) return `<div class="tutorial-banner">The host is reading the tutorial aloud. Sit tight.</div>`;
+    return '';
+  }
+
+  function viewTutorialVote(){
+    const t = state.tutorial;
+    if (t.isOpen) {
+      return `<div class="card"><h2>Show tutorial first?</h2><p class="small">${t.yesCount + t.noCount} / ${t.eligibleCount} voted — majority wins.</p><div class="vote-row"><button class="vote-yes ${state.myTutorialVote===true?'selected':''}" id="tut-yes">Yes (${t.yesCount})</button><button class="vote-no ${state.myTutorialVote===false?'selected':''}" id="tut-no">No (${t.noCount})</button></div></div>`;
+    }
+    if (t.result === null && !t.tutorialShown) {
+      return `<div class="card"><p class="small">Want a refresher on the rules?</p><button id="call-tut">Call tutorial vote</button></div>`;
+    }
+    if (t.result === false) return `<div class="card center"><p class="small">Majority voted to skip the tutorial.</p></div>`;
+    return '';
+  }
+
+  function bindTutorialVote(){
+    const cb = document.getElementById('call-tut');
+    if (cb) cb.addEventListener('click', () => send({type:'call_tutorial_vote'}));
+    const y = document.getElementById('tut-yes'), n = document.getElementById('tut-no');
+    if (y) y.addEventListener('click', () => { state.myTutorialVote=true; send({type:'tutorial_vote', yes:true}); render(); });
+    if (n) n.addEventListener('click', () => { state.myTutorialVote=false; send({type:'tutorial_vote', yes:false}); render(); });
   }
 
   function renderPlaying(){
@@ -110,9 +149,9 @@ const String imposterBrowserHtml = r'''
 
   function esc(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-  // patch: re-bind join after first render
+  // patch: re-bind join + tutorial vote after first render
   const _r = render;
-  render = () => { _r(); bindJoin(); };
+  render = () => { _r(); bindJoin(); bindTutorialVote(); };
   render();
 })();
 </script>

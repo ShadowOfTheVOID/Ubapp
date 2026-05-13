@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../tutorials/tutorial_content.dart';
+import '../tutorials/tutorial_view.dart';
 import 'connect_four_ai.dart';
 import 'connect_four_model.dart';
 
@@ -50,7 +52,10 @@ class _ConnectFourScreenState extends State<ConnectFourScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Connect Four')),
+      appBar: AppBar(
+        title: const Text('Connect Four'),
+        actions: const [TutorialAppBarButton(tutorial: GameTutorials.connectFour)],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

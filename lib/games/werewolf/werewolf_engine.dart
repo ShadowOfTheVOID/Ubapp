@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import '../../tutorials/tutorial_vote.dart';
 import 'werewolf_role.dart';
 
 enum WerewolfPhase { lobby, night, dayReveal, dayVote, hunterShot, gameOver }
@@ -67,6 +68,8 @@ class WerewolfEngine {
   DayOutcome? lastDay;
   SeerResult? lastSeerResult;
   final List<HunterShot> hunterShotsThisRound = [];
+
+  final TutorialVote tutorialVote = TutorialVote();
 
   // ---- Lobby -----------------------------------------------------------
 

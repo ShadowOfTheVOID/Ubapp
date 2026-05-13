@@ -62,6 +62,14 @@ class MafiaServer {
       _applyNightAction(hostId, targetId);
   void hostDayVote(String? targetId) => _applyDayVote(hostId, targetId);
 
+  void hostCallTutorialVote() => _openTutorialVote();
+  void hostTutorialVote(bool yes) => _submitTutorialVote(hostId, yes);
+  void hostDismissTutorial() {
+    engine.tutorialVote.markShown();
+    _broadcastTutorialState();
+    _emit();
+  }
+
   void advanceFromReveal() {
     engine.advanceToDayVote();
     if (engine.phase == MafiaPhase.gameOver) {
@@ -86,6 +94,11 @@ class MafiaServer {
       case 'vote':
         final pid = _guestToPlayer[msg.from];
         if (pid != null) _applyDayVote(pid, json['targetId'] as String?);
+      case 'call_tutorial_vote':
+        _openTutorialVote();
+      case 'tutorial_vote':
+        final pid = _guestToPlayer[msg.from];
+        if (pid != null) _submitTutorialVote(pid, json['yes'] as bool);
     }
   }
 
@@ -94,7 +107,11 @@ class MafiaServer {
     if (pid == null) return;
     _playerToGuest.remove(pid);
     engine.removePlayer(pid);
+    engine.tutorialVote.removeVoter(pid);
     _broadcastLobby();
+    if (engine.tutorialVote.isOpen || engine.tutorialVote.hasResult) {
+      _broadcastTutorialState();
+    }
     _emit();
   }
 
@@ -117,6 +134,7 @@ class MafiaServer {
           'yourName': name,
         }));
     _broadcastLobby();
+    _broadcastTutorialState();
     _emit();
   }
 
@@ -162,6 +180,37 @@ class MafiaServer {
           .map((p) => {'id': p.id, 'name': p.name, 'isHost': p.isHost})
           .toList(),
       'canStart': engine.canStart,
+    }));
+  }
+
+  // ---- Tutorial vote ---------------------------------------------------
+
+  void _openTutorialVote() {
+    if (engine.phase != MafiaPhase.lobby) return;
+    if (engine.tutorialVote.isOpen) return;
+    if (engine.tutorialVote.tutorialShown) return;
+    engine.tutorialVote.open(engine.players.keys);
+    _broadcastTutorialState();
+    _emit();
+  }
+
+  void _submitTutorialVote(String voterId, bool yes) {
+    if (!engine.tutorialVote.isOpen) return;
+    engine.tutorialVote.submit(voterId, yes);
+    _broadcastTutorialState();
+    _emit();
+  }
+
+  void _broadcastTutorialState() {
+    final v = engine.tutorialVote;
+    _server.broadcast(jsonEncode({
+      'type': 'tutorial_vote_state',
+      'isOpen': v.isOpen,
+      'yesCount': v.yesCount,
+      'noCount': v.noCount,
+      'eligibleCount': v.eligibleCount,
+      'result': v.result,
+      'tutorialShown': v.tutorialShown,
     }));
   }
 
