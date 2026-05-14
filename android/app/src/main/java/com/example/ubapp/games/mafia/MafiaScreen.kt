@@ -11,7 +11,7 @@ import androidx.compose.ui.unit.dp
 import com.example.ubapp.shared.HostingChrome
 import com.example.ubapp.tutorials.GameTutorials
 import com.example.ubapp.tutorials.TutorialVoteCard
-import com.example.ubapp.tutorials.TutorialVoteCardState
+import com.example.ubapp.tutorials.snapshot
 
 @Composable
 fun MafiaScreen() {

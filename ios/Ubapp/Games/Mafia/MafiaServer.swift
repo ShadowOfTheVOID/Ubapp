@@ -2,8 +2,8 @@ import Foundation
 
 /// Wraps [HostServer] with Mafia-specific routing. Owns the engine, fans out
 /// the right private/public messages, and converts incoming guest commands
-/// into engine calls. Mirrors lib/games/mafia/mafia_server.dart, minus the
-/// in-app tutorial-vote handshake (TODO: port from TutorialVote).
+/// into engine calls. Mirrors lib/games/mafia/mafia_server.dart, including
+/// the tutorial-vote handshake.
 final class MafiaServer {
     let engine = MafiaEngine()
     /// Flutter host plays as this player; not connected over WebSocket.

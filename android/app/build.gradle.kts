@@ -52,4 +52,7 @@ dependencies {
 
     // Compose permission helpers for the Tag BLE prompts.
     implementation("com.google.accompanist:accompanist-permissions:0.36.0")
+
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.jetbrains.kotlin:kotlin-test")
 }

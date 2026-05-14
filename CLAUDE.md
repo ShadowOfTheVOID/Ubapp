@@ -54,6 +54,7 @@ cd android
 gradle wrapper --gradle-version=8.10   # one-time, if wrapper missing
 ./gradlew :app:assembleDebug
 ./gradlew :app:installDebug
+./gradlew :app:testDebugUnitTest        # runs the engine tests under src/test/
 ```
 
 ## Architecture in one paragraph

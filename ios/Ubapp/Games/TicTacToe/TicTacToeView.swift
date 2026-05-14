@@ -1,13 +1,11 @@
 import SwiftUI
 
-/// Placeholder views wired to their pure engines but without the full UI.
-/// TODO: port each game's screen.dart to a dedicated SwiftUI file under its
-/// Games/<Name>/ folder. These exist to keep MainMenuView compiling while
-/// the engines (which carry the real game logic) are already production-ready.
-
+/// Single-device demo: you're X, the AI is O (perfect-play minimax — best
+/// result against it is a draw).
 struct TicTacToeView: View {
     @State private var model = TicTacToeModel()
     @State private var aiThinking = false
+
     var body: some View {
         VStack(spacing: 16) {
             Text(statusText).font(.headline)
@@ -48,7 +46,6 @@ struct TicTacToeView: View {
     }
     private func runAI() {
         aiThinking = true
-        // Pure function — fast enough to run inline on tic-tac-toe.
         DispatchQueue.global(qos: .userInitiated).async {
             let snapshot = model
             let move = Minimax.bestMove(snapshot, ai: .o)
@@ -57,25 +54,5 @@ struct TicTacToeView: View {
                 aiThinking = false
             }
         }
-    }
-}
-
-struct SocialView: View {
-    var body: some View { TODOView(title: "Social",
-        note: "Empty placeholder in the Flutter app too. Reserved for future cross-game lobby.") }
-}
-
-private struct TODOView: View {
-    let title: String
-    let note: String
-    var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "wrench.and.screwdriver")
-                .font(.largeTitle).foregroundStyle(.secondary)
-            Text(title).font(.title2.bold())
-            Text(note).multilineTextAlignment(.center).foregroundStyle(.secondary)
-        }
-        .padding(32)
-        .navigationTitle(title)
     }
 }
