@@ -5,26 +5,6 @@ import SwiftUI
 /// Games/<Name>/ folder. These exist to keep MainMenuView compiling while
 /// the engines (which carry the real game logic) are already production-ready.
 
-struct WerewolfView: View {
-    var body: some View { TODOView(title: "Werewolf",
-        note: "Engine ported (WerewolfEngine.swift). UI port from lib/games/werewolf/werewolf_screen.dart pending.") }
-}
-
-struct ImposterView: View {
-    var body: some View { TODOView(title: "Imposter",
-        note: "Engine ported (ImposterEngine.swift). UI + full word bank pending.") }
-}
-
-struct CodenamesView: View {
-    var body: some View { TODOView(title: "Codenames",
-        note: "Engine ported (CodenamesEngine.swift). UI + full 400-word bank pending.") }
-}
-
-struct CrazyEightsView: View {
-    var body: some View { TODOView(title: "Crazy Eights",
-        note: "Engine ported (CrazyEightsEngine.swift). UI port pending.") }
-}
-
 struct TagLobbyView: View {
     var body: some View { TODOView(title: "Tag (BLE proximity)",
         note: "Engine + protocol ported. BLE central/peripheral via CoreBluetooth (CBPeripheralManager) — pending.") }

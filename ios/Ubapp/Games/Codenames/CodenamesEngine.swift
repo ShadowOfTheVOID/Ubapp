@@ -167,6 +167,13 @@ final class CodenamesEngine {
         let kind: CardKind = team == .red ? .red : .blue
         return board.filter { !$0.revealed && $0.kind == kind }.count
     }
+
+    func reset() {
+        phase = .lobby
+        board.removeAll()
+        currentClue = nil; currentNumber = 0; guessesLeftThisTurn = 0
+        winner = nil; endReason = nil; lastEvent = nil
+    }
 }
 
 enum CodenamesWords {

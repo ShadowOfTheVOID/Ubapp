@@ -27,7 +27,16 @@ struct MafiaView: View {
 
                 phaseHeader
 
-                if model.phase == .lobby { lobbyView }
+                if model.phase == .lobby {
+                    TutorialVoteCard(
+                        state: model.tutorialState,
+                        tutorial: GameTutorials.mafia,
+                        onCall: model.callTutorialVote,
+                        onVote: model.tutorialVote,
+                        onDismiss: model.dismissTutorial,
+                    )
+                    lobbyView
+                }
                 else if model.phase == .night { nightView }
                 else if model.phase == .dayReveal { dayRevealView }
                 else if model.phase == .dayVote { dayVoteView }
@@ -149,8 +158,15 @@ final class MafiaViewModel: ObservableObject {
     @Published var lastKilledId: String?
     @Published var lastSavedId: String?
     @Published var winnerLabel = ""
+    @Published var tutorialState = TutorialVoteCard.State(
+        isOpen: false, yesCount: 0, noCount: 0, eligibleCount: 0,
+        result: nil, tutorialShown: false)
 
     init() { server.onStateChange = { [weak self] in self?.refresh() } }
+
+    func callTutorialVote() { server.hostCallTutorialVote() }
+    func tutorialVote(_ yes: Bool) { server.hostTutorialVote(yes) }
+    func dismissTutorial() { server.hostDismissTutorial() }
 
     var hostRole: MafiaRole? { server.engine.players[MafiaServer.hostId]?.role }
 
@@ -178,6 +194,10 @@ final class MafiaViewModel: ObservableObject {
         if e.phase == .gameOver, let w = e.winner {
             winnerLabel = w == .town ? "Town wins" : "Mafia wins"
         }
+        let v = e.tutorialVote
+        tutorialState = .init(
+            isOpen: v.isOpen, yesCount: v.yesCount, noCount: v.noCount,
+            eligibleCount: v.eligibleCount, result: v.result, tutorialShown: v.tutorialShown)
     }
 }
 

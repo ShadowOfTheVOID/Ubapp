@@ -56,9 +56,7 @@ final class CodenamesServer {
         broadcastState(); emit()
     }
     func hostNewGame() {
-        // TODO: engine.reset() for Codenames — Dart had one but the Swift
-        // engine doesn't expose it yet; rebuild a fresh CodenamesEngine
-        // and replay lobby players if you need this.
+        engine.reset()
         broadcast(["type": "reset"])
         broadcastLobby(); emit()
     }
