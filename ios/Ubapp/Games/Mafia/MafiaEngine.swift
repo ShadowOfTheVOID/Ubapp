@@ -51,6 +51,8 @@ final class MafiaEngine {
     var lastNight: NightOutcome?
     var lastDay: DayOutcome?
 
+    let tutorialVote = TutorialVote()
+
     init(rng: any RandomNumberGenerator = SystemRandomNumberGenerator()) {
         self.rng = rng
     }

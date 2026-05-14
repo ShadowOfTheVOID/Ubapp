@@ -26,6 +26,7 @@ data class SeerResult(val seerId: String, val targetId: String, val isWerewolf: 
 data class HunterShot(val hunterId: String, val targetId: String)
 
 class WerewolfEngine(private val rng: Random = Random.Default) {
+    val tutorialVote = com.example.ubapp.tutorials.TutorialVote()
     val players: MutableMap<String, WerewolfPlayer> = linkedMapOf()
     var phase: WerewolfPhase = WerewolfPhase.LOBBY
     var day: Int = 0

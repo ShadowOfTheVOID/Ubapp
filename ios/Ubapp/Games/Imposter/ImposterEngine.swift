@@ -23,6 +23,8 @@ final class ImposterEngine {
     var imposterCaught: Bool?
     var winner: ImposterWinner?
 
+    let tutorialVote = TutorialVote()
+
     init(rng: any RandomNumberGenerator = SystemRandomNumberGenerator()) { self.rng = rng }
 
     @discardableResult
@@ -85,10 +87,35 @@ final class ImposterEngine {
 }
 
 enum ImposterWords {
-    // TODO: full word list ported from lib/games/imposter/imposter_words.dart
+    /// Built-in word categories. Each category gets a list of secret words
+    /// that all townspeople see; the imposter sees only the category name.
     static let categories: [String: [String]] = [
-        "Locations": ["Beach", "Library", "Casino", "Spaceship", "Hospital"],
-        "Animals": ["Lion", "Penguin", "Octopus", "Kangaroo", "Hawk"],
-        "Foods": ["Sushi", "Tacos", "Lasagna", "Falafel", "Dumplings"],
+        "Food": [
+            "pizza", "sushi", "taco", "burger", "ramen", "cake", "ice cream",
+            "pasta", "pancake", "sandwich", "curry", "salad", "soup", "bagel",
+            "doughnut", "fries", "omelette", "lasagna", "kebab", "risotto",
+        ],
+        "Animal": [
+            "dog", "cat", "elephant", "dolphin", "eagle", "snake", "panda",
+            "lion", "tiger", "rabbit", "shark", "octopus", "penguin", "horse",
+            "kangaroo", "sloth", "owl", "wolf", "fox", "bear",
+        ],
+        "Place": [
+            "beach", "forest", "desert", "mountain", "city", "farm", "school",
+            "hospital", "airport", "library", "museum", "theater", "park",
+            "subway", "castle", "casino", "restaurant", "gym", "church", "bridge",
+        ],
+        "Movie": [
+            "Star Wars", "Titanic", "Inception", "Avatar", "The Matrix", "Frozen",
+            "Avengers", "Toy Story", "Jaws", "Up", "Coco", "Shrek", "Rocky",
+            "Gladiator", "Interstellar", "Pulp Fiction", "The Godfather", "Joker",
+            "La La Land", "Parasite",
+        ],
+        "Sport": [
+            "soccer", "basketball", "tennis", "baseball", "hockey", "cricket",
+            "golf", "rugby", "volleyball", "swimming", "cycling", "boxing",
+            "fencing", "archery", "skiing", "surfing", "climbing", "judo",
+            "rowing", "badminton",
+        ],
     ]
 }

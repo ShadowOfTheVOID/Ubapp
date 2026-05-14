@@ -54,6 +54,8 @@ final class WerewolfEngine {
     var lastSeerResult: SeerResult?
     var hunterShotsThisRound: [HunterShot] = []
 
+    let tutorialVote = TutorialVote()
+
     init(rng: any RandomNumberGenerator = SystemRandomNumberGenerator()) { self.rng = rng }
 
     @discardableResult

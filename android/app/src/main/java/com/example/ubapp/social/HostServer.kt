@@ -1,5 +1,6 @@
 package com.example.ubapp.social
 
+import android.content.Context
 import fi.iki.elonen.NanoHTTPD
 import fi.iki.elonen.NanoWSD
 import java.net.NetworkInterface
@@ -106,6 +107,11 @@ class HostServer(
         </body>
         </html>
         """
+
+        /** Loads a bundled HTML file from `assets/` (e.g. "mafia_browser.html"). */
+        fun htmlAsset(ctx: Context, name: String): String =
+            runCatching { ctx.assets.open(name).bufferedReader().use { it.readText() } }
+                .getOrDefault(defaultHtml)
 
         /** Returns the device's Wi-Fi IPv4 address, or null. */
         fun wifiIPv4(): String? {

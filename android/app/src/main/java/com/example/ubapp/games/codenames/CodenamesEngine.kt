@@ -13,6 +13,7 @@ class CodenamesPlayer(val id: String, val name: String, val isHost: Boolean) {
 }
 
 class CodenamesEngine(private val rng: Random = Random.Default) {
+    val tutorialVote = com.example.ubapp.tutorials.TutorialVote()
     val players: MutableMap<String, CodenamesPlayer> = linkedMapOf()
     var phase: CodenamesPhase = CodenamesPhase.LOBBY
 
@@ -151,17 +152,37 @@ class CodenamesEngine(private val rng: Random = Random.Default) {
 }
 
 object CodenamesWords {
-    // TODO: full ~400-word bank ported from lib/games/codenames/codenames_words.dart
+    /** Family-friendly subset of the standard 400-word Codenames bank — pick 25
+     *  per game. */
     val bank: List<String> = listOf(
-        "AGENT", "AIR", "ALIEN", "AMAZON", "ANGEL", "ANTARCTICA", "APPLE", "ARM", "BACK", "BAND",
-        "BANK", "BAR", "BARK", "BAT", "BATTERY", "BEACH", "BED", "BEIJING", "BELL", "BERLIN",
-        "BERMUDA", "BERRY", "BILL", "BLOCK", "BOARD", "BOLT", "BOMB", "BOND", "BOOM", "BOOT",
-        "BOTTLE", "BOW", "BOX", "BRIDGE", "BRUSH", "BUCK", "BUFFALO", "BUG", "BUGLE", "BUTTON",
-        "CALF", "CANADA", "CAP", "CAPITAL", "CAR", "CARD", "CARROT", "CASINO", "CAST", "CAT",
-        "CELL", "CENTAUR", "CENTER", "CHAIR", "CHANGE", "CHARGE", "CHECK", "CHEST", "CHICK", "CHINA",
-        "CHOCOLATE", "CHURCH", "CIRCLE", "CLIFF", "CLOAK", "CLUB", "CODE", "COLD", "COMIC", "COMPOUND",
-        "CONCERT", "CONDUCTOR", "CONTRACT", "COOK", "COPPER", "COTTON", "COURT", "COVER", "CRANE", "CRASH",
-        "CRICKET", "CROSS", "CROWN", "CYCLE", "CZECH", "DANCE", "DATE", "DAY", "DEATH", "DECK",
-        "DEGREE", "DIAMOND", "DICE", "DINOSAUR", "DISEASE", "DOCTOR", "DOG", "DRAFT", "DRAGON", "DRESS"
+        "AFRICA", "AGENT", "AIR", "ALIEN", "ALPS", "AMAZON", "AMBULANCE", "ANGEL",
+        "ANTARCTICA", "APPLE", "ARM", "ATLANTIS", "AUSTRALIA", "AZTEC", "BACK", "BALL",
+        "BAND", "BANK", "BAR", "BARK", "BAT", "BATTERY", "BEACH", "BEAR",
+        "BEAT", "BED", "BEIJING", "BELL", "BELT", "BERLIN", "BERMUDA", "BERRY",
+        "BILL", "BLOCK", "BOARD", "BOLT", "BOMB", "BOND", "BOOM", "BOOT",
+        "BOTTLE", "BOW", "BOX", "BRIDGE", "BRUSH", "BUCK", "BUFFALO", "BUG",
+        "BUGLE", "BUTTON", "CALF", "CANADA", "CAP", "CAPITAL", "CAR", "CARD",
+        "CARROT", "CASINO", "CAST", "CAT", "CELL", "CENTAUR", "CENTER", "CHAIR",
+        "CHANGE", "CHARGE", "CHECK", "CHEST", "CHICK", "CHINA", "CHOCOLATE", "CHURCH",
+        "CIRCLE", "CLIFF", "CLOAK", "CLUB", "CODE", "COLD", "COMIC", "COMPOUND",
+        "CONCERT", "CONDUCTOR", "CONTRACT", "COOK", "COPPER", "COTTON", "COURT", "COVER",
+        "CRANE", "CRASH", "CROSS", "CROWN", "CYCLE", "CZECH", "DANCE", "DATE",
+        "DAY", "DEATH", "DECK", "DEGREE", "DIAMOND", "DICE", "DINOSAUR", "DISEASE",
+        "DOCTOR", "DOG", "DRAFT", "DRAGON", "DRESS", "DRILL", "DROP", "DUCK",
+        "DWARF", "EAGLE", "EGYPT", "EMBASSY", "ENGINE", "ENGLAND", "EUROPE", "EYE",
+        "FACE", "FAIR", "FALL", "FAN", "FENCE", "FIELD", "FIGHTER", "FIGURE",
+        "FILE", "FILM", "FIRE", "FISH", "FLUTE", "FLY", "FOOT", "FORCE",
+        "FOREST", "FORK", "FRANCE", "GAME", "GAS", "GENIUS", "GERMANY", "GHOST",
+        "GIANT", "GLASS", "GLOVE", "GOLD", "GRACE", "GRASS", "GREECE", "GREEN",
+        "GROUND", "HAM", "HAND", "HAWK", "HEAD", "HEART", "HELICOPTER", "HIMALAYAS",
+        "HOLE", "HOLLYWOOD", "HONEY", "HOOD", "HOOK", "HORN", "HORSE", "HORSESHOE",
+        "HOSPITAL", "HOTEL", "ICE", "INDIA", "IRON", "IVORY", "JACK", "JAM",
+        "JET", "JUPITER", "KANGAROO", "KETCHUP", "KEY", "KID", "KING", "KIWI",
+        "KNIFE", "KNIGHT", "LAB", "LADY", "LAP", "LASER", "LAWYER", "LEAD",
+        "LEMON", "LEPRECHAUN", "LIFE", "LIGHT", "LIMOUSINE", "LINE", "LINK", "LION",
+        "LITTER", "LOCH NESS", "LOCK", "LOG", "LONDON", "LUCK", "MAIL", "MAMMOTH",
+        "MAPLE", "MARBLE", "MARCH", "MASS", "MATCH", "MERCURY", "MEXICO", "MICROSCOPE",
+        "MILLIONAIRE", "MINE", "MINT", "MISSILE", "MODEL", "MOON", "MOSCOW", "MOUNT",
+        "MOUSE", "MOUTH", "MUG", "NAIL",
     )
 }

@@ -10,6 +10,7 @@ class ImposterPlayer(val id: String, val name: String, val isHost: Boolean) {
 }
 
 class ImposterEngine(private val rng: Random = Random.Default) {
+    val tutorialVote = com.example.ubapp.tutorials.TutorialVote()
     val players: MutableMap<String, ImposterPlayer> = linkedMapOf()
     var phase: ImposterPhase = ImposterPhase.LOBBY
 
@@ -79,10 +80,35 @@ class ImposterEngine(private val rng: Random = Random.Default) {
 }
 
 object ImposterWords {
-    // TODO: full word list ported from lib/games/imposter/imposter_words.dart
+    /** Built-in word categories. Each category gets a list of secret words
+     *  that all townspeople see; the imposter sees only the category name. */
     val categories: Map<String, List<String>> = mapOf(
-        "Locations" to listOf("Beach", "Library", "Casino", "Spaceship", "Hospital"),
-        "Animals" to listOf("Lion", "Penguin", "Octopus", "Kangaroo", "Hawk"),
-        "Foods" to listOf("Sushi", "Tacos", "Lasagna", "Falafel", "Dumplings"),
+        "Food" to listOf(
+            "pizza", "sushi", "taco", "burger", "ramen", "cake", "ice cream",
+            "pasta", "pancake", "sandwich", "curry", "salad", "soup", "bagel",
+            "doughnut", "fries", "omelette", "lasagna", "kebab", "risotto",
+        ),
+        "Animal" to listOf(
+            "dog", "cat", "elephant", "dolphin", "eagle", "snake", "panda",
+            "lion", "tiger", "rabbit", "shark", "octopus", "penguin", "horse",
+            "kangaroo", "sloth", "owl", "wolf", "fox", "bear",
+        ),
+        "Place" to listOf(
+            "beach", "forest", "desert", "mountain", "city", "farm", "school",
+            "hospital", "airport", "library", "museum", "theater", "park",
+            "subway", "castle", "casino", "restaurant", "gym", "church", "bridge",
+        ),
+        "Movie" to listOf(
+            "Star Wars", "Titanic", "Inception", "Avatar", "The Matrix", "Frozen",
+            "Avengers", "Toy Story", "Jaws", "Up", "Coco", "Shrek", "Rocky",
+            "Gladiator", "Interstellar", "Pulp Fiction", "The Godfather", "Joker",
+            "La La Land", "Parasite",
+        ),
+        "Sport" to listOf(
+            "soccer", "basketball", "tennis", "baseball", "hockey", "cricket",
+            "golf", "rugby", "volleyball", "swimming", "cycling", "boxing",
+            "fencing", "archery", "skiing", "surfing", "climbing", "judo",
+            "rowing", "badminton",
+        ),
     )
 }

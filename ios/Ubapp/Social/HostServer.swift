@@ -37,6 +37,15 @@ final class HostServer {
         self.html = html ?? Self.defaultHtml
     }
 
+    /// Loads a bundled HTML file (e.g. "mafia_browser") from the app
+    /// resources. Falls back to a small inline placeholder if missing.
+    static func htmlResource(named name: String) -> String {
+        guard let url = Bundle.main.url(forResource: name, withExtension: "html"),
+              let s = try? String(contentsOf: url, encoding: .utf8)
+        else { return defaultHtml }
+        return s
+    }
+
     /// Returns the LAN URL guests should open. nil if Wi-Fi IP unavailable.
     func start() throws -> URL? {
         let opts = NWProtocolWebSocket.Options()

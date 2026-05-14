@@ -50,6 +50,8 @@ final class CrazyEightsEngine {
     var winnerId: String?
     var lastEvent: String?
 
+    let tutorialVote = TutorialVote()
+
     init(rng: any RandomNumberGenerator = SystemRandomNumberGenerator()) { self.rng = rng }
 
     var current: CrazyEightsPlayer? { order.isEmpty ? nil : players[order[currentIndex]] }

@@ -27,6 +27,7 @@ data class MafiaDayOutcome(val eliminatedId: String?, val tally: Map<String, Int
  * and feeding them in; the engine never touches network code.
  */
 class MafiaEngine(private val rng: Random = Random.Default) {
+    val tutorialVote = com.example.ubapp.tutorials.TutorialVote()
     val players: MutableMap<String, MafiaPlayer> = linkedMapOf()
     var phase: MafiaPhase = MafiaPhase.LOBBY
     var day: Int = 0

@@ -1,12 +1,9 @@
 import Foundation
 
-/// Wraps [HostServer] with Mafia-specific routing. Owns the engine, fans out
-/// the right private/public messages, and converts incoming guest commands
-/// into engine calls. Mirrors lib/games/mafia/mafia_server.dart, minus the
-/// in-app tutorial-vote handshake (TODO: port from TutorialVote).
-final class MafiaServer {
-    let engine = MafiaEngine()
-    /// Flutter host plays as this player; not connected over WebSocket.
+/// Wraps [HostServer] with Werewolf-specific routing. Mirrors
+/// lib/games/werewolf/werewolf_server.dart.
+final class WerewolfServer {
+    let engine = WerewolfEngine()
     static let hostId = "host"
     let hostName: String
 
@@ -17,7 +14,7 @@ final class MafiaServer {
     var onStateChange: (() -> Void)?
 
     init(server: HostServer? = nil, hostName: String = "Host") {
-        self.server = server ?? HostServer(html: HostServer.htmlResource(named: "mafia_browser"))
+        self.server = server ?? HostServer(html: HostServer.htmlResource(named: "werewolf_browser"))
         self.hostName = hostName
         self.server.onMessage = { [weak self] id, raw in self?.onMessage(from: id, raw: raw) }
         self.server.onLeave = { [weak self] id in self?.onLeave(id) }
@@ -30,7 +27,6 @@ final class MafiaServer {
         emit()
         return url
     }
-
     func stop() { server.stop() }
     var guestCount: Int { server.guestCount }
 
@@ -44,28 +40,27 @@ final class MafiaServer {
     }
     func hostNightAction(targetId: String) { applyNightAction(playerId: Self.hostId, targetId: targetId) }
     func hostDayVote(targetId: String?) { applyDayVote(playerId: Self.hostId, targetId: targetId) }
-
+    func hostHunterShot(targetId: String) { applyHunterShot(playerId: Self.hostId, targetId: targetId) }
     func hostCallTutorialVote() { openTutorialVote() }
     func hostTutorialVote(_ yes: Bool) { submitTutorialVote(voterId: Self.hostId, yes: yes) }
     func hostDismissTutorial() {
         engine.tutorialVote.markShown()
-        broadcastTutorialState(); emit()
+        broadcastTutorialState()
+        emit()
     }
-
     func advanceFromReveal() {
         engine.advanceToDayVote()
         if engine.phase == .gameOver { broadcastGameOver() } else { broadcastPhase() }
         emit()
     }
 
-    // MARK: Guest messages
+    // MARK: Inbound
     private func onMessage(from guest: GuestId, raw: String) {
         guard let data = raw.data(using: .utf8),
               let j = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let type = j["type"] as? String else { return }
         switch type {
-        case "join":
-            handleJoin(guest, json: j)
+        case "join": handleJoin(guest, json: j)
         case "night_action":
             if let pid = guestToPlayer[guest], let t = j["targetId"] as? String {
                 applyNightAction(playerId: pid, targetId: t)
@@ -73,6 +68,10 @@ final class MafiaServer {
         case "vote":
             if let pid = guestToPlayer[guest] {
                 applyDayVote(playerId: pid, targetId: j["targetId"] as? String)
+            }
+        case "hunter_shot":
+            if let pid = guestToPlayer[guest], let t = j["targetId"] as? String {
+                applyHunterShot(playerId: pid, targetId: t)
             }
         case "call_tutorial_vote": openTutorialVote()
         case "tutorial_vote":
@@ -112,6 +111,58 @@ final class MafiaServer {
         emit()
     }
 
+    private func applyNightAction(playerId: String, targetId: String) {
+        guard let p = engine.players[playerId], p.alive else { return }
+        var ready = false
+        if p.role == .werewolf {
+            ready = engine.submitWolfVote(voterId: playerId, targetId: targetId)
+        } else if p.role == .seer {
+            ready = engine.submitSeerTarget(seerId: playerId, targetId: targetId)
+        }
+        emit()
+        if ready {
+            engine.resolveNight()
+            sendSeerResultPrivately()
+            broadcastNightResult()
+            if engine.phase == .gameOver { broadcastGameOver() }
+            else if engine.phase == .hunterShot { broadcastHunterPrompt() }
+            emit()
+        }
+    }
+
+    private func applyDayVote(playerId: String, targetId: String?) {
+        let ready = engine.submitDayVote(voterId: playerId, targetId: targetId)
+        broadcastVoteUpdate()
+        emit()
+        if ready {
+            engine.resolveDay()
+            broadcastDayResult()
+            if engine.phase == .gameOver { broadcastGameOver() }
+            else if engine.phase == .hunterShot { broadcastHunterPrompt() }
+            else { broadcastPhase() }
+            emit()
+        }
+    }
+
+    private func applyHunterShot(playerId: String, targetId: String) {
+        let ok = engine.submitHunterShot(hunterId: playerId, targetId: targetId)
+        if !ok { return }
+        broadcastHunterShotResult()
+        if engine.phase == .gameOver { broadcastGameOver() }
+        else if engine.phase == .hunterShot { broadcastHunterPrompt() }
+        else { broadcastPhase() }
+        emit()
+    }
+
+    // MARK: Outbound
+    private func broadcastLobby() {
+        broadcast([
+            "type": "lobby",
+            "players": engine.players.values.map { ["id": $0.id, "name": $0.name, "isHost": $0.isHost] },
+            "canStart": engine.canStart,
+        ])
+    }
+
     private func openTutorialVote() {
         guard engine.phase == .lobby, !engine.tutorialVote.isOpen, !engine.tutorialVote.tutorialShown else { return }
         engine.tutorialVote.open(eligibleIds: engine.players.keys)
@@ -130,84 +181,52 @@ final class MafiaServer {
             "eligibleCount": v.eligibleCount, "result": v.result as Any, "tutorialShown": v.tutorialShown,
         ]
         if v.result == true && !v.tutorialShown {
-            payload["title"] = GameTutorials.mafia.title
-            payload["sections"] = GameTutorials.mafia.sectionsJSON()
-            payload["menuSections"] = GameTutorials.mafia.browserMenuSectionsJSON()
+            payload["title"] = GameTutorials.werewolf.title
+            payload["sections"] = GameTutorials.werewolf.sectionsJSON()
+            payload["menuSections"] = GameTutorials.werewolf.browserMenuSectionsJSON()
         }
         broadcast(payload)
     }
 
-    private func applyNightAction(playerId: String, targetId: String) {
-        guard let p = engine.players[playerId], p.alive else { return }
-        var ready = false
-        if p.role == .mafia {
-            ready = engine.submitMafiaVote(voterId: playerId, targetId: targetId)
-        } else if p.role == .doctor {
-            ready = engine.submitDoctorTarget(doctorId: playerId, targetId: targetId)
-        }
-        emit()
-        if ready { engine.resolveNight(); broadcastNightResult(); emit() }
-    }
-
-    private func applyDayVote(playerId: String, targetId: String?) {
-        let ready = engine.submitDayVote(voterId: playerId, targetId: targetId)
-        broadcastVoteUpdate()
-        emit()
-        if ready {
-            engine.resolveDay()
-            broadcastDayResult()
-            if engine.phase == .gameOver { broadcastGameOver() } else { broadcastPhase() }
-            emit()
-        }
-    }
-
-    // MARK: Outbound
-    private func broadcastLobby() {
-        broadcast([
-            "type": "lobby",
-            "players": engine.players.values.map { ["id": $0.id, "name": $0.name, "isHost": $0.isHost] },
-            "canStart": engine.canStart,
-        ])
-    }
-
     private func sendRolesPrivately() {
-        let mafiaIds = engine.players.values.filter { $0.role == .mafia }.map(\.id)
+        let wolfIds = engine.players.values.filter { $0.role == .werewolf }.map(\.id)
         for p in engine.players.values {
             var payload: [String: Any] = ["type": "role", "role": p.role!.rawValue]
-            if p.role == .mafia { payload["mafiaIds"] = mafiaIds }
+            if p.role == .werewolf { payload["wolfIds"] = wolfIds }
             if let guest = playerToGuest[p.id] { send(guest, payload) }
         }
+    }
+
+    private func sendSeerResultPrivately() {
+        guard let r = engine.lastSeerResult, let guest = playerToGuest[r.seerId] else { return }
+        send(guest, ["type": "seer_result", "targetId": r.targetId, "isWerewolf": r.isWerewolf])
     }
 
     private func broadcastPhase() {
         broadcast([
             "type": "phase",
-            "phase": String(describing: engine.phase),
+            "phase": phaseName(engine.phase),
             "day": engine.day,
             "alive": engine.alive.map(publicPlayer),
             "dead": engine.dead.map(publicPlayer),
         ])
     }
-
     private func broadcastVoteUpdate() {
         var votes: [String: String] = [:]
         for (k, v) in engine.dayVotes { votes[k] = v ?? "" }
         broadcast(["type": "vote_update", "votes": votes])
     }
-
     private func broadcastNightResult() {
         let n = engine.lastNight!
         broadcast([
             "type": "phase",
-            "phase": String(describing: engine.phase),
+            "phase": phaseName(engine.phase),
             "day": engine.day,
             "alive": engine.alive.map(publicPlayer),
             "dead": engine.dead.map(publicPlayer),
             "killedId": n.killedId as Any,
-            "savedId": n.savedId as Any,
         ])
     }
-
     private func broadcastDayResult() {
         let d = engine.lastDay!
         let role: Any = d.eliminatedId.flatMap { engine.players[$0]?.role?.rawValue } ?? NSNull()
@@ -220,23 +239,48 @@ final class MafiaServer {
             "eliminatedRole": role,
         ])
     }
-
+    private func broadcastHunterPrompt() {
+        broadcast([
+            "type": "hunter_prompt",
+            "hunterId": engine.pendingHunterShooter as Any,
+            "alive": engine.alive.map(publicPlayer),
+            "dead": engine.dead.map(publicPlayer),
+        ])
+    }
+    private func broadcastHunterShotResult() {
+        guard let last = engine.hunterShotsThisRound.last else { return }
+        broadcast([
+            "type": "hunter_shot_result",
+            "hunterId": last.hunterId,
+            "targetId": last.targetId,
+            "targetRole": engine.players[last.targetId]!.role!.rawValue,
+            "alive": engine.alive.map(publicPlayer),
+            "dead": engine.dead.map(publicPlayer),
+        ])
+    }
     private func broadcastGameOver() {
         var roles: [String: String] = [:]
         for p in engine.players.values { roles[p.id] = p.role!.rawValue }
         broadcast([
             "type": "game_over",
-            "winner": engine.winner == .town ? "town" : "mafia",
+            "winner": engine.winner == .town ? "town" : "werewolves",
             "roles": roles,
         ])
     }
 
-    private func publicPlayer(_ p: MafiaPlayer) -> [String: Any] {
+    private func publicPlayer(_ p: WerewolfPlayer) -> [String: Any] {
         ["id": p.id, "name": p.name, "alive": p.alive]
     }
 
-    private func emit() { onStateChange?() }
+    private func phaseName(_ p: WerewolfPhase) -> String {
+        switch p {
+        case .lobby: "lobby"; case .night: "night"
+        case .dayReveal: "dayReveal"; case .dayVote: "dayVote"
+        case .hunterShot: "hunterShot"; case .gameOver: "gameOver"
+        }
+    }
 
+    private func emit() { onStateChange?() }
     private func broadcast(_ payload: [String: Any]) {
         guard let data = try? JSONSerialization.data(withJSONObject: payload),
               let s = String(data: data, encoding: .utf8) else { return }

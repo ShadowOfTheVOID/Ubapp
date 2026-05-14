@@ -31,6 +31,7 @@ class CrazyEightsPlayer(val id: String, val name: String, val isHost: Boolean) {
  *  - First empty hand wins
  */
 class CrazyEightsEngine(private val rng: Random = Random.Default) {
+    val tutorialVote = com.example.ubapp.tutorials.TutorialVote()
     val players: MutableMap<String, CrazyEightsPlayer> = linkedMapOf()
     private val order: MutableList<String> = mutableListOf()
     var phase: CrazyEightsPhase = CrazyEightsPhase.LOBBY
