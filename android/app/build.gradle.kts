@@ -49,4 +49,7 @@ dependencies {
 
     // WebSocket client for Tag peers connecting to a host.
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // Compose permission helpers for the Tag BLE prompts.
+    implementation("com.google.accompanist:accompanist-permissions:0.36.0")
 }

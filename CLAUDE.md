@@ -132,7 +132,15 @@ through anything that requires HTTPS.
 - **Tutorial vote** lives under `Tutorials/` (`TutorialVote` + `GameTutorials`)
   on both platforms. Each browser-tier server emits a `tutorial_vote_state`
   message with the title + sections payload once the vote passes; the
-  browser bundle renders the tutorial card. The native host views currently
-  drive the vote/dismiss flow only for Mafia — wire it into Werewolf /
-  Imposter / Codenames / Crazy Eights view models when you build out
-  those host UIs.
+  browser bundle renders the tutorial card. Every native host view drops
+  in `TutorialVoteCard` (SwiftUI) or `TutorialVoteCard` (Compose) and
+  calls `host*TutorialVote` / `hostDismissTutorial` on its server.
+- **Tag rounds keep the screen on.** iOS `TagLobbyView` sets
+  `UIApplication.isIdleTimerDisabled = true` while hosting; Android adds
+  `FLAG_KEEP_SCREEN_ON` to the activity window. `CBPeripheralManager` only
+  honors the local-name field of an advert while foreground, and the same
+  is true on Android — backgrounding drops to a service-UUID-only payload.
+- **Android Tag permission prompt** is handled by `PermissionGate` in
+  `TagLobbyScreen.kt` using Accompanist's `rememberMultiplePermissionsState`.
+  The user must accept BLUETOOTH_SCAN + BLUETOOTH_ADVERTISE + BLUETOOTH_CONNECT
+  before "Start hosting" is enabled.

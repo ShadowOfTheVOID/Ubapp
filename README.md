@@ -83,28 +83,20 @@ progress; the table below tracks what's done per game.
 | Game           | Engine | Server | Browser bundle | Host view (iOS) | Host view (Android) |
 |----------------|:------:|:------:|:--------------:|:---------------:|:-------------------:|
 | Mafia          | done   | done   | done           | done            | done                |
-| Werewolf       | done   | done   | done           | placeholder     | placeholder         |
-| Imposter       | done   | done   | done           | placeholder     | placeholder         |
-| Codenames      | done   | done   | done           | placeholder     | placeholder         |
-| Crazy Eights   | done   | done   | done           | placeholder     | placeholder         |
-| Tag (BLE)      | done   | n/a    | n/a            | placeholder     | placeholder         |
+| Werewolf       | done   | done   | done           | done            | done                |
+| Imposter       | done   | done   | done           | done            | done                |
+| Codenames      | done   | done   | done           | done            | done                |
+| Crazy Eights   | done   | done   | done           | done            | done                |
+| Tag (BLE)      | done   | n/a    | n/a            | done            | done                |
 | Tic-Tac-Toe    | done   | n/a    | n/a            | done            | done                |
 | Connect Four   | done   | n/a    | n/a            | done            | done                |
 | Real-time      | done   | n/a    | n/a            | done            | done                |
 
 The browser bundles are loaded from `Resources/<name>_browser.html` (iOS)
 and `assets/<name>_browser.html` (Android) and are byte-identical to the
-original Flutter files — no string-escaping needed.
-
-### Still to port
-
-- **Phase-specific host views** for Werewolf / Imposter / Codenames /
-  Crazy Eights — the Compose and SwiftUI sides each fall through to the
-  generic placeholder right now, even though their engines and browser
-  bundles are fully wired. The browser guests can play full games already.
-- **Tag lobby UI**: the proximity engine, BLE central+peripheral, and
-  websocket transports are all ported, but the lobby screen still shows
-  the placeholder.
+original Flutter files — no string-escaping needed. Every social-game host
+view shares a `HostingChrome` (QR card) + `TutorialVoteCard` (lobby
+tutorial opt-in) helper so adding a new game is mostly engine + adapter.
 ## Conventions worth keeping
 
 - **Engines never touch I/O.** No async, no streams, no system APIs inside

@@ -5,11 +5,6 @@ import SwiftUI
 /// Games/<Name>/ folder. These exist to keep MainMenuView compiling while
 /// the engines (which carry the real game logic) are already production-ready.
 
-struct TagLobbyView: View {
-    var body: some View { TODOView(title: "Tag (BLE proximity)",
-        note: "Engine + protocol ported. BLE central/peripheral via CoreBluetooth (CBPeripheralManager) — pending.") }
-}
-
 struct TicTacToeView: View {
     @State private var model = TicTacToeModel()
     @State private var aiThinking = false
