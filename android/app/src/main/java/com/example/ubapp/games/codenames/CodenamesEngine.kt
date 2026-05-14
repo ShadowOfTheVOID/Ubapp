@@ -149,6 +149,13 @@ class CodenamesEngine(private val rng: Random = Random.Default) {
         val kind = if (team == Team.RED) CardKind.RED else CardKind.BLUE
         return board.count { !it.revealed && it.kind == kind }
     }
+
+    fun reset() {
+        phase = CodenamesPhase.LOBBY
+        board.clear()
+        currentClue = null; currentNumber = 0; guessesLeftThisTurn = 0
+        winner = null; endReason = null; lastEvent = null
+    }
 }
 
 object CodenamesWords {

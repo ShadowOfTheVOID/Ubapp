@@ -31,6 +31,9 @@ class CodenamesServer(context: Context, val hostName: String = "Host") {
     fun hostSubmitClue(clue: String, number: Int) { engine.submitClue(HOST_ID, clue, number); broadcastState(); emit() }
     fun hostGuess(index: Int) { engine.guess(HOST_ID, index); broadcastState(); emit() }
     fun hostEndTurn() { engine.endTurn(HOST_ID); broadcastState(); emit() }
+    fun hostNewGame() {
+        engine.reset(); broadcast(JSONObject().put("type", "reset")); broadcastLobby(); emit()
+    }
     fun hostCallTutorialVote() = openTutorialVote()
     fun hostTutorialVote(yes: Boolean) = submitTutorialVote(HOST_ID, yes)
     fun hostDismissTutorial() { engine.tutorialVote.markShown(); broadcastTutorialState(); emit() }
