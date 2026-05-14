@@ -1,93 +1,145 @@
 # Ubapp
 
-Cross-platform 2D / party game app built with **Flutter + Flame**, designed for offline same-room play. Two guest tiers:
+A collection of small offline party games for same-room play. **Native iOS
+(SwiftUI) and native Android (Kotlin/Compose)** — no shared runtime, no
+cross-platform framework.
 
-- **App-installed peers** → BLE-based proximity games (tag), plus all card / social / trivia games
-- **Browser-only guests** → join the host's local WebSocket server via QR code, play card / social / trivia games (no BLE needed)
+Two guest tiers:
 
-## What's in here
+- **App-installed peers** — needed for proximity games (BLE), e.g. tag.
+- **Browser-only guests** — connect via QR code to a host phone running an
+  in-app HTTP + WebSocket server. Used for social / card / trivia games where
+  no BLE is needed.
+
+## Layout
 
 ```
-lib/
-├── main.dart                          # MaterialApp entry
-├── menu/main_menu_screen.dart         # top-level mode picker
-├── games/
-│   └── tag/                           # offline party tag with 5 variants
-│       ├── tag_variant.dart           # Classic / Freeze / Zombie / Hot potato / Bomb
-│       ├── tag_protocol.dart          # sealed JSON message types
-│       ├── proximity.dart             # ProximitySource + sliding-window detector
-│       ├── ble_proximity.dart         # flutter_blue_plus central scan
-│       ├── tag_engine.dart            # deterministic state machine
-│       ├── tag_session.dart           # engine + proximity + transport glue
-│       ├── tag_lobby_screen.dart      # variant picker, host toggle, peer list
-│       └── tag_screen.dart            # full-screen role UI + countdown
-├── realtime/                          # Flame demo (player vs steering enemies)
-├── turnbased/                         # tic-tac-toe + minimax
-└── social/
-    ├── host_server.dart               # shelf HTTP + WebSocket, one-tap start
-    ├── social_screen.dart             # placeholder until card games land
-    └── transport.dart                 # interface for future BLE/WebSocket fan-out
+ios/                                    # SwiftUI app (Xcode 16, no xcodegen)
+├── Ubapp.xcodeproj/project.pbxproj     # hand-written, uses filesystem-synchronized group
+└── Ubapp/
+    ├── App/                            # UbappApp.swift, Info.plist
+    ├── Menu/                           # MainMenuView
+    ├── Games/<Name>/                   # one folder per game
+    ├── Social/                         # HostServer (Network.framework)
+    └── Tutorials/                      # tutorial copy + opt-in vote (TODO)
+
+android/                                # Gradle/Kotlin DSL, Jetpack Compose
+├── settings.gradle.kts, build.gradle.kts
+└── app/
+    └── src/main/
+        ├── AndroidManifest.xml
+        ├── java/com/example/ubapp/
+        │   ├── MainActivity.kt
+        │   ├── menu/                   # MainMenu
+        │   ├── games/<name>/           # one package per game
+        │   └── social/                 # HostServer (NanoHTTPD-WebSocket)
+        └── res/
 ```
 
-## Run
+## Running
 
-This repo is Dart source + `pubspec.yaml`. Generate the platform shells once:
+### iOS
 
-```bash
-flutter create . --project-name ubapp --org com.example --platforms=ios,android
-flutter pub get
-flutter run
+Requires Xcode 16 (the project uses `PBXFileSystemSynchronizedRootGroup` so
+new Swift files under `ios/Ubapp/` are picked up automatically — no need to
+edit `project.pbxproj`).
+
+```
+open ios/Ubapp.xcodeproj
 ```
 
-For running on a physical Android or iOS phone — toolchain prerequisites, signing setup, permissions, and how to host a multi-device session — see [`docs/mobile-setup.md`](docs/mobile-setup.md).
+Build target: iOS 17+.
 
-## Tag — what works, what's TODO
+### Android
 
-**Working (tested in single-device dev mode):**
+Requires Android Studio (Iguana or newer) with AGP 8.7 and Kotlin 2.0.
 
-- All 5 variants (Classic / Freeze / Zombie / Hot potato / Bomb) — pure game logic in `TagEngine`, deterministic, swap variants live.
-- Polished full-screen role UI: red "YOU'RE IT", blue "FROZEN", green "RUN", grey "OUT", with vibration on role change.
-- Variant-aware HUD: hides "it" identity for Bomb, shows unfreeze targets for Freeze tag, transfers role on contact.
-- One-tap host: `HostServer` spins up shelf HTTP + WebSocket on the local Wi-Fi, displays a QR code with the join URL.
-- Manual "touch player X" debug chips so the round is testable end-to-end without real BLE.
-
-**Needs BLE on real devices to be a real game:**
-
-1. **iOS BLE peripheral** — `flutter_blue_plus` is central-only. Add a small platform channel (~150 lines) wrapping `CBPeripheralManager` to advertise `serviceUuid + peerId payload`. Dock into `BleProximity` via the existing `ProximitySource` interface.
-2. **Android BLE peripheral** — drop in `flutter_ble_peripheral` or similar; same interface.
-3. **Cross-device transport** — wire `TagSession.broadcast` to send `TagMessage.encode()` over BLE GATT writes (or your WebSocket+BLE multiplex from `host_server.dart`).
-
-Architecturally none of those changes touch UI or game logic — `ProximitySource` and the broadcast callback are the seams.
-
-## Permissions to add after `flutter create`
-
-**`ios/Runner/Info.plist`:**
-
-```xml
-<key>NSBluetoothAlwaysUsageDescription</key>
-<string>Used to find nearby phones for tag and other party games.</string>
-<key>NSLocalNetworkUsageDescription</key>
-<string>Used to host or join games on the local Wi-Fi.</string>
-<key>NSBonjourServices</key>
-<array><string>_ubapp._tcp</string></array>
+```
+cd android
+# Generate the Gradle wrapper once if missing:
+gradle wrapper --gradle-version=8.10
+./gradlew :app:installDebug
 ```
 
-**`android/app/src/main/AndroidManifest.xml`:**
+Min SDK: 26. Target SDK: 35.
 
-```xml
-<uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />
-<uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
-<uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-<uses-permission android:name="android.permission.INTERNET" />
-<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-<uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-```
+## Architecture in one paragraph
 
-## What's coming next
+Each game lives in `<platform>/.../games/<name>/` with three layers: a **pure
+engine** (no UI, no I/O — just a deterministic state machine), a
+**session/server adapter** that connects the engine to a transport, and a
+**view/screen** that renders state and forwards user actions. Engines are
+deliberately deterministic so any client (Swift host, Kotlin host, browser
+guest, future BLE peer) computes the same state from the same ordered events.
+The transport is hot-swappable via small interfaces — `ProximitySource` for
+BLE proximity, `HostServer` for WebSocket fan-out — so the same engine and UI
+work whether you're plumbing real Bluetooth or a manual test stream.
 
-Priority order from your direction:
+## Migration status (Flutter → native)
 
-1. **Mafia / Imposter / Werewolf / Spyfall** — host runs the WebSocket server, browser guests join via QR. No BLE needed; all guests just need a phone with a browser.
-2. **Crazy 8s / Uno-style card games** — same path; phone is your hand, host shows table.
-3. **Connect Four** — drop-in to the existing `turnbased/` minimax.
-4. **Capture the flag tag variant** — needs team management + flag state on top of the existing tag engine.
+This branch began life as a Flutter/Dart codebase. The migration is in
+progress; the table below tracks what's done per game.
+
+| Game           | iOS engine | iOS view    | Android engine | Android view |
+|----------------|:----------:|:-----------:|:--------------:|:------------:|
+| Mafia          | done       | partial     | done           | placeholder  |
+| Werewolf       | done       | placeholder | done           | placeholder  |
+| Imposter       | done\*     | placeholder | done\*         | placeholder  |
+| Codenames      | done\*     | placeholder | done\*         | placeholder  |
+| Crazy Eights   | done       | placeholder | done           | placeholder  |
+| Tag (BLE)      | done       | placeholder | done           | placeholder  |
+| Tic-Tac-Toe    | done       | done        | done           | done         |
+| Connect Four   | done       | placeholder | done           | placeholder  |
+
+\* word/category banks are stubs — the original Flutter banks need
+re-porting to `ImposterWords` and `CodenamesWords`.
+
+### Still to port
+
+- **Browser bundles**: the rich HTML/CSS/JS strings (Mafia ~580 lines,
+  similar for each browser-tier game) that previously lived in
+  `<game>_browser.dart`. The Mafia bundle has a working join+log stub; the
+  others need the full lobby → game → reveal flow translated.
+- **Phase-specific UIs** for each social/card screen — night targets, day
+  votes, reveals, game-over, card layouts, etc.
+- **BLE proximity** (`tag/`): on iOS, `CBCentralManager` for scan and
+  `CBPeripheralManager` for advertise. On Android, the standard
+  `android.bluetooth.le` APIs. The pure engine + protocol are ready.
+- **Tutorial opt-in vote** (`tutorials/`): scaffolding only. Original lived
+  in `lib/tutorials/`.
+- **Real-time** (`realtime/`): SpriteKit on iOS, Compose Canvas on Android.
+- **Connect Four AI**.
+
+## Conventions worth keeping
+
+- **Engines never touch I/O.** No async, no streams, no system APIs inside
+  `*Engine.swift` / `*Engine.kt`. This keeps games trivially testable and
+  lets browsers (which can't use platform plugins) reuse the same JSON
+  protocol the engine speaks.
+- **JSON over the wire is line-oriented, dispatched on `type`.** When you
+  add a message type, add a handler on both sides (server adapter + browser
+  bundle / other peers).
+- **iOS uses a hand-written `project.pbxproj`** with a filesystem-synchronized
+  root group (Xcode 16 feature). Adding new Swift files never requires
+  editing the project file — just drop them under `ios/Ubapp/`.
+
+## Permissions
+
+- iOS: `Info.plist` declares Bluetooth (central + peripheral) and local
+  network usage strings.
+- Android: `AndroidManifest.xml` declares `BLUETOOTH_SCAN`,
+  `BLUETOOTH_ADVERTISE`, `BLUETOOTH_CONNECT`, `INTERNET`,
+  `ACCESS_WIFI_STATE`, `NEARBY_WIFI_DEVICES`.
+
+## Minimum players per round
+
+| Game          | Min | Max |
+|---------------|----:|----:|
+| Tag           | 2   | —   |
+| Mafia         | 4   | —   |
+| Werewolf      | 5   | —   |
+| Imposter      | 3   | —   |
+| Codenames     | 4   | —   |
+| Crazy Eights  | 2   | 8   |
+
+Enforced by `*Engine.canStart`.
