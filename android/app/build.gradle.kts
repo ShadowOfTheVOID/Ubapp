@@ -46,4 +46,7 @@ dependencies {
 
     // Embedded HTTP + WebSocket server for browser-tier games.
     implementation("org.nanohttpd:nanohttpd-websocket:2.3.1")
+
+    // WebSocket client for Tag peers connecting to a host.
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 }
