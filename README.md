@@ -80,36 +80,31 @@ work whether you're plumbing real Bluetooth or a manual test stream.
 This branch began life as a Flutter/Dart codebase. The migration is in
 progress; the table below tracks what's done per game.
 
-| Game           | iOS engine | iOS view    | Android engine | Android view |
-|----------------|:----------:|:-----------:|:--------------:|:------------:|
-| Mafia          | done       | partial     | done           | placeholder  |
-| Werewolf       | done       | placeholder | done           | placeholder  |
-| Imposter       | done\*     | placeholder | done\*         | placeholder  |
-| Codenames      | done\*     | placeholder | done\*         | placeholder  |
-| Crazy Eights   | done       | placeholder | done           | placeholder  |
-| Tag (BLE)      | done       | placeholder | done           | placeholder  |
-| Tic-Tac-Toe    | done       | done        | done           | done         |
-| Connect Four   | done       | placeholder | done           | placeholder  |
+| Game           | Engine | Server | Browser bundle | Host view (iOS) | Host view (Android) |
+|----------------|:------:|:------:|:--------------:|:---------------:|:-------------------:|
+| Mafia          | done   | done   | done           | done            | done                |
+| Werewolf       | done   | done   | done           | placeholder     | placeholder         |
+| Imposter       | done   | done   | done           | placeholder     | placeholder         |
+| Codenames      | done   | done   | done           | placeholder     | placeholder         |
+| Crazy Eights   | done   | done   | done           | placeholder     | placeholder         |
+| Tag (BLE)      | done   | n/a    | n/a            | placeholder     | placeholder         |
+| Tic-Tac-Toe    | done   | n/a    | n/a            | done            | done                |
+| Connect Four   | done   | n/a    | n/a            | done            | done                |
+| Real-time      | done   | n/a    | n/a            | done            | done                |
 
-\* word/category banks are stubs — the original Flutter banks need
-re-porting to `ImposterWords` and `CodenamesWords`.
+The browser bundles are loaded from `Resources/<name>_browser.html` (iOS)
+and `assets/<name>_browser.html` (Android) and are byte-identical to the
+original Flutter files — no string-escaping needed.
 
 ### Still to port
 
-- **Browser bundles**: the rich HTML/CSS/JS strings (Mafia ~580 lines,
-  similar for each browser-tier game) that previously lived in
-  `<game>_browser.dart`. The Mafia bundle has a working join+log stub; the
-  others need the full lobby → game → reveal flow translated.
-- **Phase-specific UIs** for each social/card screen — night targets, day
-  votes, reveals, game-over, card layouts, etc.
-- **BLE proximity** (`tag/`): on iOS, `CBCentralManager` for scan and
-  `CBPeripheralManager` for advertise. On Android, the standard
-  `android.bluetooth.le` APIs. The pure engine + protocol are ready.
-- **Tutorial opt-in vote** (`tutorials/`): scaffolding only. Original lived
-  in `lib/tutorials/`.
-- **Real-time** (`realtime/`): SpriteKit on iOS, Compose Canvas on Android.
-- **Connect Four AI**.
-
+- **Phase-specific host views** for Werewolf / Imposter / Codenames /
+  Crazy Eights — the Compose and SwiftUI sides each fall through to the
+  generic placeholder right now, even though their engines and browser
+  bundles are fully wired. The browser guests can play full games already.
+- **Tag lobby UI**: the proximity engine, BLE central+peripheral, and
+  websocket transports are all ported, but the lobby screen still shows
+  the placeholder.
 ## Conventions worth keeping
 
 - **Engines never touch I/O.** No async, no streams, no system APIs inside

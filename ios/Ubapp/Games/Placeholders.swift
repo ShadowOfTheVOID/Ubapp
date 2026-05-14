@@ -30,11 +30,6 @@ struct TagLobbyView: View {
         note: "Engine + protocol ported. BLE central/peripheral via CoreBluetooth (CBPeripheralManager) — pending.") }
 }
 
-struct RealtimeView: View {
-    var body: some View { TODOView(title: "Real-time",
-        note: "Single-device demo. Port from lib/realtime/ using SpriteKit pending.") }
-}
-
 struct TicTacToeView: View {
     @State private var model = TicTacToeModel()
     @State private var aiThinking = false

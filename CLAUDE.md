@@ -120,17 +120,19 @@ through anything that requires HTTPS.
 
 ## Pitfalls worth knowing
 
-- **iOS BLE peripheral isn't implemented yet.** `flutter_blue_plus` was
-  central-only on iOS in the original codebase; the native rewrite needs
-  `CBPeripheralManager` for advertising. The `ProximitySource` interface is
-  the seam — the rest of the tag stack stays unchanged.
 - **Browser bundle ↔ host view are in an implicit contract.** Both consume
-  the same JSON the server emits. The Mafia browser bundle is currently a
-  stub; the full lobby → game → reveal HTML still needs porting from the
-  original Flutter `<game>_browser.dart`.
-- **Codenames/Imposter word banks are stubs** with TODO comments. The full
-  banks (~400 codenames words, ~hundreds of imposter words) need to be
-  ported from the original Dart sources.
-- **Tutorial opt-in vote** (`TutorialVote`) is referenced in the Mafia
-  server but not yet ported. The Swift Mafia server omits the
-  `tutorial_*` message handlers; re-add when porting `tutorials/`.
+  the same JSON the server emits. The bundles are loaded verbatim from
+  `Resources/<name>_browser.html` (iOS) / `assets/<name>_browser.html`
+  (Android); when adding a message type, also update the matching
+  `.html` file or one side will silently drop events.
+- **iOS BLE in background.** `CBPeripheralManager.startAdvertising` only
+  honors the local-name field while the app is foreground — peripheral
+  advertising drops to a service-UUID-only payload when backgrounded.
+  Tag rounds assume foreground.
+- **Tutorial vote** lives under `Tutorials/` (`TutorialVote` + `GameTutorials`)
+  on both platforms. Each browser-tier server emits a `tutorial_vote_state`
+  message with the title + sections payload once the vote passes; the
+  browser bundle renders the tutorial card. The native host views currently
+  drive the vote/dismiss flow only for Mafia — wire it into Werewolf /
+  Imposter / Codenames / Crazy Eights view models when you build out
+  those host UIs.
