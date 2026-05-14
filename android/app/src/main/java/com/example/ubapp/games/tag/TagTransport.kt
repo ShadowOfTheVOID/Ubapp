@@ -4,7 +4,6 @@ import com.example.ubapp.social.GuestId
 import com.example.ubapp.social.HostServer
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 

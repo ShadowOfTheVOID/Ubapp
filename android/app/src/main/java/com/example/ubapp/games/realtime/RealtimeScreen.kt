@@ -15,7 +15,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Text
 import kotlinx.coroutines.delay
 import kotlin.math.cos
-import kotlin.math.hypot
 import kotlin.math.sin
 import kotlin.random.Random
 
