@@ -90,11 +90,6 @@ struct TicTacToeView: View {
     }
 }
 
-struct ConnectFourView: View {
-    var body: some View { TODOView(title: "Connect Four",
-        note: "Model ported (ConnectFour.swift). AI + UI pending.") }
-}
-
 struct SocialView: View {
     var body: some View { TODOView(title: "Social",
         note: "Empty placeholder in the Flutter app too. Reserved for future cross-game lobby.") }

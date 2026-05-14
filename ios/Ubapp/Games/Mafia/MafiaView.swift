@@ -2,9 +2,8 @@ import SwiftUI
 import CoreImage.CIFilterBuiltins
 
 /// Host's player UI: shows the QR for guests to join, the lobby roster, and
-/// the running game state. Mirrors lib/games/mafia/mafia_screen.dart — the
-/// fully-styled phase UIs (night targets, day vote, reveal, game-over) are
-/// TODO; this view shows enough to drive the engine end-to-end.
+/// per-phase action UI. The host plays as the special player with id
+/// MafiaServer.hostId (no WebSocket connection needed).
 struct MafiaView: View {
     @StateObject private var model = MafiaViewModel()
 
@@ -15,9 +14,7 @@ struct MafiaView: View {
                     GroupBox("Guests join here") {
                         VStack(alignment: .leading) {
                             if let qr = QRCode.image(for: url.absoluteString) {
-                                Image(uiImage: qr)
-                                    .interpolation(.none)
-                                    .resizable().scaledToFit()
+                                Image(uiImage: qr).interpolation(.none).resizable().scaledToFit()
                                     .frame(maxHeight: 220)
                             }
                             Text(url.absoluteString).font(.system(.body, design: .monospaced))
@@ -28,34 +25,115 @@ struct MafiaView: View {
                         .buttonStyle(.borderedProminent)
                 }
 
-                GroupBox("Players (\(model.players.count))") {
-                    ForEach(model.players, id: \.id) { p in
-                        HStack {
-                            Text(p.name)
-                            if p.isHost { Text("(host)").foregroundStyle(.secondary) }
-                            Spacer()
-                            if !p.alive { Text("dead").foregroundStyle(.red) }
-                        }
-                    }
-                }
+                phaseHeader
 
-                Text("Phase: \(String(describing: model.phase))").font(.headline)
-
-                if model.canStart {
-                    Button("Start round") { model.start() }.buttonStyle(.borderedProminent)
-                }
-                if model.phase == .dayReveal {
-                    Button("Continue to day vote") { model.advanceFromReveal() }
-                }
-
-                // TODO: full phase UIs (mafia night kill picker, doctor pick,
-                // day vote, reveal panel, game-over modal). Port from
-                // lib/games/mafia/mafia_screen.dart.
+                if model.phase == .lobby { lobbyView }
+                else if model.phase == .night { nightView }
+                else if model.phase == .dayReveal { dayRevealView }
+                else if model.phase == .dayVote { dayVoteView }
+                else if model.phase == .gameOver { gameOverView }
             }
             .padding()
         }
         .navigationTitle("Mafia")
         .onDisappear { model.stop() }
+    }
+
+    @ViewBuilder private var phaseHeader: some View {
+        HStack {
+            Text(phaseLabel).font(.headline)
+            Spacer()
+            Text("Day \(model.day)").font(.subheadline).foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder private var lobbyView: some View {
+        GroupBox("Players (\(model.players.count))") {
+            ForEach(model.players, id: \.id) { p in
+                HStack {
+                    Text(p.name)
+                    if p.isHost { Text("(host)").foregroundStyle(.secondary).font(.caption) }
+                    Spacer()
+                }
+            }
+        }
+        if model.canStart {
+            Button("Start round") { model.start() }.buttonStyle(.borderedProminent)
+        } else {
+            Text("Need at least 4 players to start.").foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder private var nightView: some View {
+        if let role = model.hostRole {
+            GroupBox("Your role: \(role.displayName)") {
+                Text(role.tagline).font(.callout).foregroundStyle(.secondary)
+            }
+        }
+        if let role = model.hostRole, role.hasNightAction {
+            let targets = model.alive.filter { $0.id != MafiaServer.hostId || role == .doctor }
+            targetPicker(prompt: role == .mafia ? "Pick a target to kill" : "Pick someone to save",
+                         targets: targets, kind: "night")
+        } else {
+            Text("Waiting for mafia and doctor to act…").foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder private var dayRevealView: some View {
+        GroupBox("Last night") {
+            if let kid = model.lastKilledId {
+                Text("\(model.name(kid)) was killed.")
+            } else if model.lastSavedId != nil {
+                Text("The doctor saved someone — no one died.")
+            } else {
+                Text("A quiet night. No one died.")
+            }
+        }
+        Button("Continue to day vote") { model.advanceFromReveal() }.buttonStyle(.borderedProminent)
+    }
+
+    @ViewBuilder private var dayVoteView: some View {
+        targetPicker(prompt: "Vote to eliminate",
+                     targets: model.alive.filter { $0.id != MafiaServer.hostId },
+                     kind: "vote", allowSkip: true)
+    }
+
+    @ViewBuilder private var gameOverView: some View {
+        GroupBox("Result") {
+            Text(model.winnerLabel).font(.title2.bold())
+            ForEach(model.players, id: \.id) { p in
+                HStack {
+                    Text(p.name)
+                    Spacer()
+                    Text(p.role?.displayName ?? "—").foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func targetPicker(prompt: String, targets: [MafiaPlayer], kind: String, allowSkip: Bool = false) -> some View {
+        GroupBox(prompt) {
+            ForEach(targets, id: \.id) { p in
+                Button {
+                    if kind == "night" { model.submitNight(targetId: p.id) }
+                    else { model.submitVote(targetId: p.id) }
+                } label: {
+                    HStack { Text(p.name); Spacer() }
+                        .padding(.vertical, 6)
+                }
+            }
+            if allowSkip {
+                Button("Skip vote") { model.submitVote(targetId: nil) }
+            }
+        }
+    }
+
+    private var phaseLabel: String {
+        switch model.phase {
+        case .lobby: "Lobby"; case .night: "Night"
+        case .dayReveal: "Day reveal"; case .dayVote: "Day vote"; case .gameOver: "Game over"
+        }
     }
 }
 
@@ -65,26 +143,41 @@ final class MafiaViewModel: ObservableObject {
     @Published var joinUrl: URL?
     @Published var phase: MafiaPhase = .lobby
     @Published var players: [MafiaPlayer] = []
+    @Published var alive: [MafiaPlayer] = []
     @Published var canStart = false
+    @Published var day = 0
+    @Published var lastKilledId: String?
+    @Published var lastSavedId: String?
+    @Published var winnerLabel = ""
 
     init() { server.onStateChange = { [weak self] in self?.refresh() } }
 
+    var hostRole: MafiaRole? { server.engine.players[MafiaServer.hostId]?.role }
+
     func startHosting() {
-        do {
-            joinUrl = try server.start()
-        } catch {
-            print("HostServer failed: \(error)")
-        }
+        do { joinUrl = try server.start() } catch { print("HostServer failed: \(error)") }
         refresh()
     }
     func start() { server.hostStart() }
     func advanceFromReveal() { server.advanceFromReveal() }
+    func submitNight(targetId: String) { server.hostNightAction(targetId: targetId) }
+    func submitVote(targetId: String?) { server.hostDayVote(targetId: targetId) }
     func stop() { server.stop() }
 
+    func name(_ id: String) -> String { server.engine.players[id]?.name ?? id }
+
     private func refresh() {
-        phase = server.engine.phase
-        players = Array(server.engine.players.values).sorted { $0.id < $1.id }
-        canStart = server.engine.canStart
+        let e = server.engine
+        phase = e.phase
+        players = Array(e.players.values).sorted { $0.id < $1.id }
+        alive = e.alive
+        canStart = e.canStart
+        day = e.day
+        lastKilledId = e.lastNight?.killedId
+        lastSavedId = e.lastNight?.savedId
+        if e.phase == .gameOver, let w = e.winner {
+            winnerLabel = w == .town ? "Town wins" : "Mafia wins"
+        }
     }
 }
 
