@@ -96,6 +96,22 @@ object GameTutorials {
         ),
     )
 
+    val secretHitler = GameTutorial(
+        title = "How to play Secret Hitler",
+        sections = listOf(
+            TutorialSection("Roles", "Liberals are the majority. Fascists are the minority; one of them is Hitler. Fascists know each other and know Hitler. Hitler only learns who the Fascists are in 5–6 player games."),
+            TutorialSection("Elect a government", "Each round the President nominates a Chancellor. Everyone votes Ja or Nein. A tie or majority Nein fails the vote and advances the rotation. Three failed votes in a row triggers chaos: the top policy is enacted automatically."),
+            TutorialSection("Legislative session", "After a successful vote the President draws 3 policy cards, discards 1, and passes 2 to the Chancellor, who enacts one of them. After five Fascist policies the Chancellor may request a veto — both leaders must agree to discard the pair."),
+            TutorialSection("Presidential powers", "Some Fascist policies grant the President a power: peek at the top of the deck, investigate a player's party, call a special election, or execute a player. The board changes with player count."),
+            TutorialSection("Winning", "Liberals win by enacting 5 Liberal policies or by executing Hitler. Fascists win by enacting 6 Fascist policies, or by getting Hitler elected Chancellor after 3 Fascist policies are on the board."),
+        ),
+        browserMenuSections = listOf(
+            TutorialSection("Your role", "A coloured card at the top shows your role: Liberal, Fascist, or Hitler. Fascists also see their allies. Keep your phone face-down between turns."),
+            TutorialSection("President / Chancellor turns", "When it's your turn to act (nominate, discard, enact, use a power) the buttons appear under the government card. Otherwise the screen tells you who the table is waiting on."),
+            TutorialSection("Voting", "When an election opens, tap Ja or Nein. Your vote locks in and the count updates as everyone else votes."),
+        ),
+    )
+
     val tag = GameTutorial(
         title = "How to play Tag (BLE proximity)",
         sections = listOf(
@@ -136,6 +152,7 @@ object GameTutorials {
         "imposter" -> imposter
         "codenames" -> codenames
         "crazy_eights" -> crazyEights
+        "secret_hitler" -> secretHitler
         "tag" -> tag
         "tic_tac_toe" -> ticTacToe
         "connect_four" -> connectFour

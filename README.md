@@ -87,6 +87,7 @@ progress; the table below tracks what's done per game.
 | Imposter       | done   | done   | done           | done            | done                |
 | Codenames      | done   | done   | done           | done            | done                |
 | Crazy Eights   | done   | done   | done           | done            | done                |
+| Secret Hitler  | done   | done   | done           | done            | done                |
 | Tag (BLE)      | done   | n/a    | n/a            | done            | done                |
 | Tic-Tac-Toe    | done   | n/a    | n/a            | done            | done                |
 | Connect Four   | done   | n/a    | n/a            | done            | done                |
@@ -128,5 +129,6 @@ tutorial opt-in) helper so adding a new game is mostly engine + adapter.
 | Imposter      | 3   | —   |
 | Codenames     | 4   | —   |
 | Crazy Eights  | 2   | 8   |
+| Secret Hitler | 5   | 10  |
 
 Enforced by `*Engine.canStart`.
