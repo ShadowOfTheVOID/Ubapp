@@ -1,0 +1,93 @@
+package com.example.ubapp.join
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import org.json.JSONObject
+
+/** Mirrors GuestTutorialState in iOS. */
+data class GuestTutorialState(
+    var isOpen: Boolean = false,
+    var yesCount: Int = 0,
+    var noCount: Int = 0,
+    var eligibleCount: Int = 0,
+    var result: Boolean? = null,
+    var tutorialShown: Boolean = false,
+) {
+    companion object {
+        fun from(m: JSONObject): GuestTutorialState = GuestTutorialState(
+            isOpen = m.optBoolean("isOpen", false),
+            yesCount = m.optInt("yesCount", 0),
+            noCount = m.optInt("noCount", 0),
+            eligibleCount = m.optInt("eligibleCount", 0),
+            result = if (m.isNull("result")) null else m.optBoolean("result"),
+            tutorialShown = m.optBoolean("tutorialShown", false),
+        )
+    }
+}
+
+data class GuestTutorialContent(
+    val title: String,
+    val sections: List<Pair<String, String>>,
+    val menuSections: List<Pair<String, String>>,
+) {
+    companion object {
+        fun readSections(arr: org.json.JSONArray?): List<Pair<String, String>> {
+            if (arr == null) return emptyList()
+            return (0 until arr.length()).map {
+                val o = arr.getJSONObject(it)
+                o.optString("heading") to o.optString("body")
+            }
+        }
+    }
+}
+
+@Composable
+fun TutorialGuestCard(
+    state: GuestTutorialState,
+    content: GuestTutorialContent?,
+    myVote: Boolean?,
+    onCall: () -> Unit,
+    onVote: (Boolean) -> Unit,
+) {
+    if (state.tutorialShown) return
+    when {
+        state.isOpen -> ElevatedCard(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(12.dp)) {
+                Text("Show tutorial first?", style = MaterialTheme.typography.titleSmall)
+                Text("${state.yesCount + state.noCount} / ${state.eligibleCount} voted — majority wins.",
+                     style = MaterialTheme.typography.bodySmall)
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { onVote(true) }, modifier = Modifier.weight(1f),
+                           colors = ButtonDefaults.buttonColors(
+                               containerColor = if (myVote == true) Color(0xFF2E7D32) else Color.Gray))
+                    { Text("Yes (${state.yesCount})") }
+                    Button(onClick = { onVote(false) }, modifier = Modifier.weight(1f),
+                           colors = ButtonDefaults.buttonColors(
+                               containerColor = if (myVote == false) Color(0xFFC62828) else Color.Gray))
+                    { Text("No (${state.noCount})") }
+                }
+            }
+        }
+        state.result == true && content != null -> ElevatedCard(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(12.dp)) {
+                Text(content.title, style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(8.dp))
+                for ((h, b) in content.sections + content.menuSections) {
+                    Text(h, style = MaterialTheme.typography.titleSmall)
+                    Text(b, style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(8.dp))
+                }
+                Text("Waiting for the host to finish reading…",
+                     style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        state.result == false -> Text("Majority voted to skip the tutorial.",
+                                       style = MaterialTheme.typography.bodySmall)
+        else -> OutlinedButton(onClick = onCall) { Text("Call tutorial vote") }
+    }
+}

@@ -105,7 +105,7 @@ final class WerewolfServer {
         engine.addPlayer(id: pid, name: name)
         guestToPlayer[guest] = pid
         playerToGuest[pid] = guest
-        send(guest, ["type": "welcome", "yourId": pid, "yourName": name])
+        send(guest, ["type": "welcome", "yourId": pid, "yourName": name, "game": "werewolf"])
         broadcastLobby()
         broadcastTutorialState()
         emit()

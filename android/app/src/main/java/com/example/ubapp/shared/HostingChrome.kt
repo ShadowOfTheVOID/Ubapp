@@ -12,6 +12,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
+import com.example.ubapp.join.JoinCode
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
 
@@ -27,6 +28,14 @@ fun HostingChrome(joinUrl: String?, onStart: () -> Unit) {
                 Spacer(Modifier.height(8.dp))
                 QRCode(joinUrl, size = 200)
                 Text(joinUrl, style = MaterialTheme.typography.bodySmall)
+                val host = runCatching { java.net.URI(joinUrl).host }.getOrNull()
+                val code = host?.let { JoinCode.encode(it) }
+                if (code != null) {
+                    Spacer(Modifier.height(4.dp))
+                    Text("App code: $code", style = MaterialTheme.typography.titleMedium)
+                }
+                Text("Browser guests scan the QR. App guests open \"Join a game\" and type the code or IP.",
+                     style = MaterialTheme.typography.bodySmall)
             }
         }
     }

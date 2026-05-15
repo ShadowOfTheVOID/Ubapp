@@ -6,7 +6,10 @@ cross-platform framework.
 
 Two guest tiers:
 
-- **App-installed peers** — needed for proximity games (BLE), e.g. tag.
+- **App-installed peers** — needed for proximity games (BLE), e.g. tag. App
+  guests can also join any browser-tier game natively via the **Join a game**
+  menu entry, typing the host's 7-character app code (or raw IP). The host's
+  hosting card displays both the QR code (for browser guests) and the app code.
 - **Browser-only guests** — connect via QR code to a host phone running an
   in-app HTTP + WebSocket server. Used for social / card / trivia games where
   no BLE is needed.
@@ -87,6 +90,7 @@ progress; the table below tracks what's done per game.
 | Imposter       | done   | done   | done           | done            | done                |
 | Codenames      | done   | done   | done           | done            | done                |
 | Crazy Eights   | done   | done   | done           | done            | done                |
+| Secret Hitler  | done   | done   | done           | done            | done                |
 | Tag (BLE)      | done   | n/a    | n/a            | done            | done                |
 | Tic-Tac-Toe    | done   | n/a    | n/a            | done            | done                |
 | Connect Four   | done   | n/a    | n/a            | done            | done                |
@@ -128,5 +132,6 @@ tutorial opt-in) helper so adding a new game is mostly engine + adapter.
 | Imposter      | 3   | —   |
 | Codenames     | 4   | —   |
 | Crazy Eights  | 2   | 8   |
+| Secret Hitler | 5   | 10  |
 
 Enforced by `*Engine.canStart`.

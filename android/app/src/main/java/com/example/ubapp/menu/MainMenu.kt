@@ -16,9 +16,11 @@ import com.example.ubapp.games.crazyeights.CrazyEightsScreen
 import com.example.ubapp.games.imposter.ImposterScreen
 import com.example.ubapp.games.mafia.MafiaScreen
 import com.example.ubapp.games.realtime.RealtimeScreen
+import com.example.ubapp.games.secrethitler.SecretHitlerScreen
 import com.example.ubapp.games.tag.TagLobbyScreen
 import com.example.ubapp.games.tictactoe.TicTacToeScreen
 import com.example.ubapp.games.werewolf.WerewolfScreen
+import com.example.ubapp.join.JoinFlowScreen
 import com.example.ubapp.social.SocialScreen
 
 private val routes = listOf(
@@ -27,11 +29,13 @@ private val routes = listOf(
     "imposter" to "Imposter",
     "codenames" to "Codenames",
     "crazy_eights" to "Crazy Eights",
+    "secret_hitler" to "Secret Hitler",
     "tag" to "Tag (BLE proximity)",
     "realtime" to "Real-time",
     "tictactoe" to "Turn-based (tic-tac-toe)",
     "connect_four" to "Connect Four",
     "social" to "Social",
+    "join" to "Join a game",
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -59,10 +63,12 @@ fun MainMenu() {
         composable("imposter") { ImposterScreen() }
         composable("codenames") { CodenamesScreen() }
         composable("crazy_eights") { CrazyEightsScreen() }
+        composable("secret_hitler") { SecretHitlerScreen() }
         composable("tag") { TagLobbyScreen() }
         composable("realtime") { RealtimeScreen() }
         composable("tictactoe") { TicTacToeScreen() }
         composable("connect_four") { ConnectFourScreen() }
         composable("social") { SocialScreen() }
+        composable("join") { JoinFlowScreen() }
     }
 }

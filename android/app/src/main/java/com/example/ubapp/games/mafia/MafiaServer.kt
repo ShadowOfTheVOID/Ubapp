@@ -88,7 +88,7 @@ class MafiaServer(context: Context, val hostName: String = "Host") {
         engine.addPlayer(pid, name)
         guestToPlayer[guest] = pid
         playerToGuest[pid] = guest
-        send(guest, JSONObject().put("type", "welcome").put("yourId", pid).put("yourName", name))
+        send(guest, JSONObject().put("type", "welcome").put("yourId", pid).put("yourName", name).put("game", "mafia"))
         broadcastLobby(); broadcastTutorialState(); emit()
     }
 
