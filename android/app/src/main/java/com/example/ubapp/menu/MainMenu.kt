@@ -22,6 +22,7 @@ import com.example.ubapp.games.tictactoe.TicTacToeScreen
 import com.example.ubapp.games.werewolf.WerewolfScreen
 import com.example.ubapp.join.JoinFlowScreen
 import com.example.ubapp.social.SocialScreen
+import com.example.ubapp.theme.UbappTheme
 
 private val routes = listOf(
     "mafia" to "Mafia",
@@ -44,16 +45,18 @@ fun MainMenu() {
     val nav = rememberNavController()
     NavHost(navController = nav, startDestination = "menu") {
         composable("menu") {
-            Scaffold(topBar = { TopAppBar(title = { Text("Ubapp") }) }) { pad ->
-                Column(
-                    Modifier.padding(pad).padding(24.dp).verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    for ((route, label) in routes) {
-                        Button(
-                            onClick = { nav.navigate(route) },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) { Text(label) }
+            UbappTheme {
+                Scaffold(topBar = { TopAppBar(title = { Text("Ubapp") }) }) { pad ->
+                    Column(
+                        Modifier.padding(pad).padding(24.dp).verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        for ((route, label) in routes) {
+                            Button(
+                                onClick = { nav.navigate(route) },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) { Text(label) }
+                        }
                     }
                 }
             }
@@ -68,7 +71,7 @@ fun MainMenu() {
         composable("realtime") { RealtimeScreen() }
         composable("tictactoe") { TicTacToeScreen() }
         composable("connect_four") { ConnectFourScreen() }
-        composable("social") { SocialScreen() }
+        composable("social") { UbappTheme { SocialScreen() } }
         composable("join") { JoinFlowScreen() }
     }
 }

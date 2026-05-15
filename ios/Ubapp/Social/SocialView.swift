@@ -12,6 +12,8 @@ struct SocialView: View {
                 .multilineTextAlignment(.center).foregroundStyle(.secondary)
         }
         .padding(32)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ubappChrome()
         .navigationTitle("Social")
     }
 }

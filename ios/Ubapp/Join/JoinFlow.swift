@@ -21,9 +21,9 @@ struct JoinFlowView: View {
                let yourId = welcomedId, let yourName = welcomedName {
                 gameView(client: client, game: game, yourId: yourId, yourName: yourName)
             } else if client != nil {
-                connectingView
+                connectingView.frame(maxWidth: .infinity, maxHeight: .infinity).ubappChrome()
             } else {
-                joinForm
+                joinForm.ubappChrome()
             }
         }
         .navigationTitle("Join a game")
