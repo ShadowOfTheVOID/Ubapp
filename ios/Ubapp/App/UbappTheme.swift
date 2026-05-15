@@ -1,11 +1,11 @@
 import SwiftUI
 
-/// Black + electric-cyan chrome for the menu and non-game shared screens
+/// Black + neon-magenta chrome for the menu and non-game shared screens
 /// (Social, Join). Per-game views set their own palettes and are not
 /// expected to inherit this — apply it on each non-game root, not on the
 /// enclosing `NavigationStack`, so pushed game screens render normally.
 enum UbappTheme {
-    static let accent = Color(red: 0.0, green: 0.898, blue: 1.0) // #00E5FF
+    static let accent = Color(red: 1.0, green: 0.180, blue: 0.533) // #FF2E88
     static let background = Color.black
     static let foreground = Color.white
 }
