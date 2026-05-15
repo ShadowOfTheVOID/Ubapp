@@ -15,6 +15,7 @@ import com.example.ubapp.games.imposter.ImposterGuestScreen
 import com.example.ubapp.games.mafia.MafiaGuestScreen
 import com.example.ubapp.games.secrethitler.SecretHitlerGuestScreen
 import com.example.ubapp.games.werewolf.WerewolfGuestScreen
+import com.example.ubapp.theme.UbappTheme
 import org.json.JSONObject
 
 /** Bundle handed to a per-game guest screen. */
@@ -58,6 +59,7 @@ fun JoinFlowScreen() {
         return
     }
 
+    UbappTheme {
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -127,5 +129,6 @@ fun JoinFlowScreen() {
                 queued.clear(); status = ""
             }) { Text("Cancel") }
         }
+    }
     }
 }

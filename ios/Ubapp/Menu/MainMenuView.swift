@@ -22,6 +22,7 @@ struct MainMenuView: View {
                 .controlSize(.large)
                 .padding(24)
             }
+            .ubappChrome()
             .navigationTitle("Ubapp")
         }
     }
