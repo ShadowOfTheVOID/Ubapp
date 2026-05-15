@@ -137,7 +137,7 @@ final class SecretHitlerServer {
         engine.addPlayer(id: pid, name: name)
         guestToPlayer[guest] = pid
         playerToGuest[pid] = guest
-        send(guest, ["type": "welcome", "yourId": pid, "yourName": name])
+        send(guest, ["type": "welcome", "yourId": pid, "yourName": name, "game": "secret_hitler"])
         broadcastState(); broadcastTutorialState(); emit()
     }
 

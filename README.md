@@ -6,7 +6,10 @@ cross-platform framework.
 
 Two guest tiers:
 
-- **App-installed peers** — needed for proximity games (BLE), e.g. tag.
+- **App-installed peers** — needed for proximity games (BLE), e.g. tag. App
+  guests can also join any browser-tier game natively via the **Join a game**
+  menu entry, typing the host's 7-character app code (or raw IP). The host's
+  hosting card displays both the QR code (for browser guests) and the app code.
 - **Browser-only guests** — connect via QR code to a host phone running an
   in-app HTTP + WebSocket server. Used for social / card / trivia games where
   no BLE is needed.

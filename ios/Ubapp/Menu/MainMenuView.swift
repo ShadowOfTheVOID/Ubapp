@@ -16,6 +16,7 @@ struct MainMenuView: View {
                     NavigationLink("Turn-based (tic-tac-toe)") { TicTacToeView() }
                     NavigationLink("Connect Four") { ConnectFourView() }
                     NavigationLink("Social") { SocialView() }
+                    NavigationLink("Join a game") { JoinFlowView() }
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)

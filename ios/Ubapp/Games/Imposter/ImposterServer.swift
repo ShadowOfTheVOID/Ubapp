@@ -99,7 +99,7 @@ final class ImposterServer {
         engine.addPlayer(id: pid, name: name)
         guestToPlayer[guest] = pid
         playerToGuest[pid] = guest
-        send(guest, ["type": "welcome", "yourId": pid, "yourName": name])
+        send(guest, ["type": "welcome", "yourId": pid, "yourName": name, "game": "imposter"])
         broadcastLobby()
         broadcastTutorialState()
         emit()

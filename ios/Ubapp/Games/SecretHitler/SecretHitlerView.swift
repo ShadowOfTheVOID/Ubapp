@@ -8,20 +8,7 @@ struct SecretHitlerView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                if let url = model.joinUrl {
-                    GroupBox("Guests join here") {
-                        VStack(alignment: .leading) {
-                            if let qr = QRCode.image(for: url.absoluteString) {
-                                Image(uiImage: qr).interpolation(.none).resizable().scaledToFit()
-                                    .frame(maxHeight: 220)
-                            }
-                            Text(url.absoluteString).font(.system(.body, design: .monospaced))
-                        }
-                    }
-                } else {
-                    Button("Start hosting") { model.startHosting() }
-                        .buttonStyle(.borderedProminent)
-                }
+                HostingChrome(joinUrl: model.joinUrl, onStart: model.startHosting)
 
                 trackHeader
 

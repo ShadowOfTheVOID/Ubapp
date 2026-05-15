@@ -20,6 +20,7 @@ import com.example.ubapp.games.secrethitler.SecretHitlerScreen
 import com.example.ubapp.games.tag.TagLobbyScreen
 import com.example.ubapp.games.tictactoe.TicTacToeScreen
 import com.example.ubapp.games.werewolf.WerewolfScreen
+import com.example.ubapp.join.JoinFlowScreen
 import com.example.ubapp.social.SocialScreen
 
 private val routes = listOf(
@@ -34,6 +35,7 @@ private val routes = listOf(
     "tictactoe" to "Turn-based (tic-tac-toe)",
     "connect_four" to "Connect Four",
     "social" to "Social",
+    "join" to "Join a game",
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -67,5 +69,6 @@ fun MainMenu() {
         composable("tictactoe") { TicTacToeScreen() }
         composable("connect_four") { ConnectFourScreen() }
         composable("social") { SocialScreen() }
+        composable("join") { JoinFlowScreen() }
     }
 }

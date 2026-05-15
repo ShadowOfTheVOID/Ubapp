@@ -106,7 +106,7 @@ final class MafiaServer {
         engine.addPlayer(id: pid, name: name)
         guestToPlayer[guest] = pid
         playerToGuest[pid] = guest
-        send(guest, ["type": "welcome", "yourId": pid, "yourName": name])
+        send(guest, ["type": "welcome", "yourId": pid, "yourName": name, "game": "mafia"])
         broadcastLobby()
         broadcastTutorialState()
         emit()

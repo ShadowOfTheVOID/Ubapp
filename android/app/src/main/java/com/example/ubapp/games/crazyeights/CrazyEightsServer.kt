@@ -75,7 +75,7 @@ class CrazyEightsServer(context: Context, val hostName: String = "Host") {
         val pid = "g${guestToPlayer.size + 1}"
         engine.addPlayer(pid, name)
         guestToPlayer[guest] = pid; playerToGuest[pid] = guest
-        send(guest, JSONObject().put("type", "welcome").put("yourId", pid).put("yourName", name))
+        send(guest, JSONObject().put("type", "welcome").put("yourId", pid).put("yourName", name).put("game", "crazy_eights"))
         broadcastLobby(); broadcastTutorialState(); emit()
     }
 
