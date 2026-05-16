@@ -260,7 +260,7 @@ final class WerewolfGuestModel: ObservableObject {
     @Published var tutorialContent: GuestTutorialContent?
     @Published var myTutorialVote: Bool?
 
-    private weak var client: GuestClient?
+    private weak var client: (any GuestLink)?
 
     func attach(ctx: GuestContext) {
         client = ctx.client

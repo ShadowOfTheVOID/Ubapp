@@ -36,6 +36,32 @@ final class HostServer {
     private(set) var hostIp: String?
     private(set) var boundPort: UInt16?
 
+    /// The host plays as a normal player through an in-process pipe instead
+    /// of a TCP socket. When set, `send(to:)`/`broadcast` deliver to this
+    /// sink and `injectFromLocal` feeds frames back in as if received.
+    private(set) var localGuestId: GuestId?
+    var onLocalSend: ((String) -> Void)?
+
+    /// Registers the in-process host guest and returns its stable id.
+    func attachLocalGuest() -> GuestId {
+        let id = GuestId(value: "local")
+        localGuestId = id
+        onJoin?(id)
+        return id
+    }
+
+    func detachLocalGuest() {
+        guard let id = localGuestId else { return }
+        localGuestId = nil
+        onLeave?(id)
+    }
+
+    /// Feeds a frame into the server as if the host guest had sent it.
+    func injectFromLocal(_ raw: String) {
+        guard let id = localGuestId else { return }
+        onMessage?(id, raw)
+    }
+
     init(port: UInt16 = 7654, html: String? = nil) {
         self.port = NWEndpoint.Port(rawValue: port)!
         self.html = html ?? Self.defaultHtml
@@ -218,6 +244,7 @@ final class HostServer {
     }
 
     func send(to: GuestId, _ payload: String) {
+        if to == localGuestId { onLocalSend?(payload); return }
         guard let conn = connections[to],
               let data = payload.data(using: .utf8) else { return }
         conn.send(content: encodeFrame(data), completion: .contentProcessed { _ in })
@@ -264,6 +291,7 @@ final class HostServer {
 
     func broadcast(_ payload: String) {
         for id in connections.keys { send(to: id, payload) }
+        if let local = localGuestId { send(to: local, payload) }
     }
 
     var guestCount: Int { connections.count }
@@ -272,6 +300,8 @@ final class HostServer {
     func stop() {
         for conn in connections.values { conn.cancel() }
         connections.removeAll()
+        localGuestId = nil
+        onLocalSend = nil
         listener?.cancel()
         listener = nil
     }

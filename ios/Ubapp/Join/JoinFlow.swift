@@ -143,7 +143,7 @@ struct JoinFlowView: View {
 /// Bundle handed to a per-game guest view: the live client, identity, and
 /// any messages that arrived between connect and the view mounting.
 struct GuestContext {
-    let client: GuestClient
+    let client: any GuestLink
     let game: String
     let yourId: String
     let yourName: String

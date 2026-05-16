@@ -27,9 +27,18 @@ final class MafiaServer {
     func start() throws -> URL? {
         engine.addPlayer(id: Self.hostId, name: hostName, isHost: true)
         let url = try server.start()
+        // The host plays as a normal player on the same screen guests see.
+        // Bind its in-process pipe to the `host` engine player so private
+        // sends (role) reach it and its inbound commands route as that player.
+        let local = server.attachLocalGuest()
+        guestToPlayer[local] = Self.hostId
+        playerToGuest[Self.hostId] = local
         emit()
         return url
     }
+
+    /// In-process pipe for the host's own player view.
+    func makeLoopback() -> LoopbackGuest { LoopbackGuest(server: server) }
 
     func stop() { server.stop() }
     var guestCount: Int { server.guestCount }

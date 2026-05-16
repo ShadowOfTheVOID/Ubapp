@@ -6,7 +6,7 @@ import Security
 /// dependency. JSON is sent/received as text frames — same wire format the
 /// browser bundle uses.
 @MainActor
-final class GuestClient: NSObject, URLSessionWebSocketDelegate, URLSessionDelegate {
+final class GuestClient: NSObject, GuestLink, URLSessionWebSocketDelegate, URLSessionDelegate {
     enum State { case connecting, open, closed, failed(String) }
 
     private(set) var state: State = .connecting
