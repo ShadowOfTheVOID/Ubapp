@@ -58,8 +58,9 @@ fun TagLobbyScreen() {
         session.value?.dispose()
         ble.value?.stop()
         transport.value?.dispose()
+        server.stopServer()
         session.value = null; ble.value = null; transport.value = null
-        hosting = false; peers = emptyList(); state = null
+        hosting = false; peers = emptyList(); state = null; joinUrl = null
         (ctx as? Activity)?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 
@@ -123,7 +124,11 @@ fun TagLobbyScreen() {
                 }) { Text("Start hosting") }
             }
         } else if (state == null) {
-            HostingChrome(joinUrl) { /* already started */ }
+            HostingChrome(
+                joinUrl = joinUrl,
+                onStart = { /* already started */ },
+                onStop = { stopAll() },
+            )
             ElevatedCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp)) {
                     Text("Connected peers (${peers.size + 1})",
