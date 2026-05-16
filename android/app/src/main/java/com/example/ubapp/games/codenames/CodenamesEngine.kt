@@ -6,6 +6,16 @@ enum class Team { RED, BLUE; val other: Team get() = if (this == RED) BLUE else 
 enum class CardKind { RED, BLUE, NEUTRAL, ASSASSIN }
 enum class CodenamesPhase { LOBBY, PLAYING, GAME_OVER }
 
+/** Host-configurable knobs. Defaults reproduce the 25-card / 1-assassin classic. */
+data class CodenamesOptions(
+    val boardSize: Int = 25,
+    val assassinCount: Int = 1,
+) {
+    companion object {
+        val allowedSizes = listOf(16, 25, 36)
+    }
+}
+
 class CodenamesCard(val word: String, val kind: CardKind) { var revealed: Boolean = false }
 class CodenamesPlayer(val id: String, val name: String, val isHost: Boolean) {
     var team: Team? = null
@@ -16,6 +26,8 @@ class CodenamesEngine(private val rng: Random = Random.Default) {
     val tutorialVote = com.example.ubapp.tutorials.TutorialVote()
     val players: MutableMap<String, CodenamesPlayer> = linkedMapOf()
     var phase: CodenamesPhase = CodenamesPhase.LOBBY
+    var options: CodenamesOptions = CodenamesOptions()
+        private set
 
     val board: MutableList<CodenamesCard> = mutableListOf()
     var startingTeam: Team = Team.RED
@@ -54,21 +66,35 @@ class CodenamesEngine(private val rng: Random = Random.Default) {
         return true
     }
 
+    fun setOptions(o: CodenamesOptions) {
+        if (phase != CodenamesPhase.LOBBY) return
+        options = o.copy(
+            boardSize = if (o.boardSize in CodenamesOptions.allowedSizes) o.boardSize else 25,
+            assassinCount = o.assassinCount.coerceIn(1, 3),
+        )
+    }
+
     fun start() {
         if (!canStart) return
         val pool = CodenamesWords.bank.toMutableList().also { it.shuffle(rng) }
-        val words = pool.take(25)
+        val n = options.boardSize
+        val words = pool.take(n)
         startingTeam = if (rng.nextBoolean()) Team.RED else Team.BLUE
         currentTeam = startingTeam
+        val assassins = options.assassinCount
+        val neutrals = (n * 7) / 25
+        val teamCards = n - neutrals - assassins
+        val startCount = (teamCards + 1) / 2
+        val otherCount = teamCards - startCount
         val kinds: MutableList<CardKind> = mutableListOf<CardKind>().apply {
-            repeat(if (startingTeam == Team.RED) 9 else 8) { add(CardKind.RED) }
-            repeat(if (startingTeam == Team.BLUE) 9 else 8) { add(CardKind.BLUE) }
-            repeat(7) { add(CardKind.NEUTRAL) }
-            add(CardKind.ASSASSIN)
+            repeat(if (startingTeam == Team.RED) startCount else otherCount) { add(CardKind.RED) }
+            repeat(if (startingTeam == Team.BLUE) startCount else otherCount) { add(CardKind.BLUE) }
+            repeat(neutrals) { add(CardKind.NEUTRAL) }
+            repeat(assassins) { add(CardKind.ASSASSIN) }
         }
         kinds.shuffle(rng)
         board.clear()
-        for (i in 0 until 25) board.add(CodenamesCard(words[i], kinds[i]))
+        for (i in 0 until n) board.add(CodenamesCard(words[i], kinds[i]))
 
         phase = CodenamesPhase.PLAYING
         currentClue = null; currentNumber = 0; guessesLeftThisTurn = 0
@@ -93,7 +119,7 @@ class CodenamesEngine(private val rng: Random = Random.Default) {
         val p = players[guesserId] ?: return null
         if (p.isSpymaster || p.team != currentTeam) return null
         if (currentClue == null || guessesLeftThisTurn <= 0) return null
-        if (boardIndex !in 0 until 25) return null
+        if (boardIndex !in 0 until board.size) return null
         val card = board[boardIndex]
         if (card.revealed) return null
         card.revealed = true

@@ -53,6 +53,29 @@ struct MafiaView: View {
                 }
             }
         }
+        GroupBox("Options") {
+            Toggle("Auto-balance mafia count", isOn: $model.autoMafiaCount)
+                .onChange(of: model.autoMafiaCount) { _, on in
+                    model.applyOptions(MafiaOptions(
+                        mafiaCount: on ? nil : model.mafiaCountValue,
+                        doctorEnabled: model.options.doctorEnabled))
+                }
+            if !model.autoMafiaCount {
+                Stepper(value: $model.mafiaCountValue,
+                        in: 1...max(1, model.maxMafiaCount)) {
+                    Text("Mafia: \(model.mafiaCountValue)")
+                }
+                .onChange(of: model.mafiaCountValue) { _, v in
+                    model.applyOptions(MafiaOptions(
+                        mafiaCount: v, doctorEnabled: model.options.doctorEnabled))
+                }
+            }
+            Toggle("Doctor", isOn: Binding(
+                get: { model.options.doctorEnabled },
+                set: { model.applyOptions(MafiaOptions(
+                    mafiaCount: model.autoMafiaCount ? nil : model.mafiaCountValue,
+                    doctorEnabled: $0)) }))
+        }
         if model.canStart {
             Button("Start round") { model.start() }.buttonStyle(.borderedProminent)
         } else {
@@ -145,11 +168,17 @@ final class MafiaViewModel: ObservableObject {
     @Published var lastKilledId: String?
     @Published var lastSavedId: String?
     @Published var winnerLabel = ""
+    @Published var options = MafiaOptions()
+    @Published var autoMafiaCount = true
+    @Published var mafiaCountValue = 1
+    @Published var maxMafiaCount = 1
     @Published var tutorialState = TutorialVoteCard.State(
         isOpen: false, yesCount: 0, noCount: 0, eligibleCount: 0,
         result: nil, tutorialShown: false)
 
     init() { server.onStateChange = { [weak self] in self?.refresh() } }
+
+    func applyOptions(_ o: MafiaOptions) { server.hostSetOptions(o) }
 
     func callTutorialVote() { server.hostCallTutorialVote() }
     func tutorialVote(_ yes: Bool) { server.hostTutorialVote(yes) }
@@ -180,6 +209,14 @@ final class MafiaViewModel: ObservableObject {
         lastSavedId = e.lastNight?.savedId
         if e.phase == .gameOver, let w = e.winner {
             winnerLabel = w == .town ? "Town wins" : "Mafia wins"
+        }
+        if options != e.options { options = e.options }
+        autoMafiaCount = e.options.mafiaCount == nil
+        maxMafiaCount = e.maxMafiaCount
+        if let c = e.options.mafiaCount, mafiaCountValue != c { mafiaCountValue = c }
+        else if e.options.mafiaCount == nil && mafiaCountValue == 1 {
+            // Suggest the formula-derived value for when the host toggles auto off.
+            mafiaCountValue = max(1, min(e.players.count - 2, e.players.count / 4))
         }
         let v = e.tutorialVote
         tutorialState = .init(

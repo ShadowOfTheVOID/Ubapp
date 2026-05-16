@@ -31,6 +31,10 @@ final class CrazyEightsServer {
     var guestCount: Int { server.guestCount }
 
     // MARK: Host actions
+    func hostSetOptions(_ o: CrazyEightsOptions) {
+        engine.setOptions(o)
+        broadcastOptions(); emit()
+    }
     func hostStart() {
         engine.start()
         broadcastState(); sendHandsPrivately(); emit()
@@ -78,6 +82,9 @@ final class CrazyEightsServer {
             if let pid = guestToPlayer[guest] { applyDraw(pid) }
         case "pass":
             if let pid = guestToPlayer[guest] { applyPass(pid) }
+        case "set_options":
+            // Only the host may mutate options.
+            break
         case "call_tutorial_vote": openTutorialVote()
         case "tutorial_vote":
             if let pid = guestToPlayer[guest], let yes = j["yes"] as? Bool {
@@ -113,7 +120,17 @@ final class CrazyEightsServer {
         guestToPlayer[guest] = pid
         playerToGuest[pid] = guest
         send(guest, ["type": "welcome", "yourId": pid, "yourName": name, "game": "crazy_eights"])
-        broadcastLobby(); broadcastTutorialState(); emit()
+        broadcastLobby(); broadcastOptions(); broadcastTutorialState(); emit()
+    }
+
+    private func broadcastOptions() {
+        let o = engine.options
+        broadcast([
+            "type": "options",
+            "startingHandSize": o.startingHandSize as Any,
+            "jackSkips": o.jackSkips,
+            "queenReverses": o.queenReverses,
+        ])
     }
 
     private func applyPlay(_ pid: String, json: [String: Any]) {

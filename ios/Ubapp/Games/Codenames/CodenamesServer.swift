@@ -39,6 +39,10 @@ final class CodenamesServer {
         engine.setSpymaster(Self.hostId, on)
         broadcastLobby(); sendRolesToAll(); emit()
     }
+    func hostSetOptions(_ o: CodenamesOptions) {
+        engine.setOptions(o)
+        broadcastOptions(); emit()
+    }
     func hostStart() {
         engine.start()
         broadcastState(); sendRolesToAll(); emit()
@@ -95,6 +99,9 @@ final class CodenamesServer {
             }
         case "end_turn":
             if let pid { engine.endTurn(guesserId: pid); broadcastState(); emit() }
+        case "set_options":
+            // Only the host may mutate options.
+            break
         case "call_tutorial_vote": openTutorialVote()
         case "tutorial_vote":
             if let pid, let yes = j["yes"] as? Bool { submitTutorialVote(voterId: pid, yes: yes) }
@@ -128,7 +135,17 @@ final class CodenamesServer {
         guestToPlayer[guest] = pid
         playerToGuest[pid] = guest
         send(guest, ["type": "welcome", "yourId": pid, "yourName": name, "game": "codenames"])
-        broadcastLobby(); broadcastTutorialState(); emit()
+        broadcastLobby(); broadcastOptions(); broadcastTutorialState(); emit()
+    }
+
+    private func broadcastOptions() {
+        let o = engine.options
+        broadcast([
+            "type": "options",
+            "boardSize": o.boardSize,
+            "assassinCount": o.assassinCount,
+            "allowedSizes": CodenamesOptions.allowedSizes,
+        ])
     }
 
     // MARK: Outbound

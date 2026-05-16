@@ -50,6 +50,38 @@ struct CrazyEightsView: View {
                 }
             }
         }
+        GroupBox("Options") {
+            Toggle("Custom starting hand", isOn: $model.customHandSize)
+                .onChange(of: model.customHandSize) { _, on in
+                    model.applyOptions(CrazyEightsOptions(
+                        startingHandSize: on ? model.handSizeValue : nil,
+                        jackSkips: model.options.jackSkips,
+                        queenReverses: model.options.queenReverses))
+                }
+            if model.customHandSize {
+                Stepper(value: $model.handSizeValue, in: 3...10) {
+                    Text("Starting hand: \(model.handSizeValue)")
+                }
+                .onChange(of: model.handSizeValue) { _, v in
+                    model.applyOptions(CrazyEightsOptions(
+                        startingHandSize: v,
+                        jackSkips: model.options.jackSkips,
+                        queenReverses: model.options.queenReverses))
+                }
+            }
+            Toggle("Jacks skip next player", isOn: Binding(
+                get: { model.options.jackSkips },
+                set: { model.applyOptions(CrazyEightsOptions(
+                    startingHandSize: model.customHandSize ? model.handSizeValue : nil,
+                    jackSkips: $0,
+                    queenReverses: model.options.queenReverses)) }))
+            Toggle("Queens reverse direction", isOn: Binding(
+                get: { model.options.queenReverses },
+                set: { model.applyOptions(CrazyEightsOptions(
+                    startingHandSize: model.customHandSize ? model.handSizeValue : nil,
+                    jackSkips: model.options.jackSkips,
+                    queenReverses: $0)) }))
+        }
         if model.canStart {
             Button("Start round") { model.start() }.buttonStyle(.borderedProminent)
         } else {
@@ -151,6 +183,9 @@ final class CrazyEightsViewModel: ObservableObject {
     @Published var justDrew = false
     @Published var lastEvent: String?
     @Published var winnerLabel = ""
+    @Published var options = CrazyEightsOptions()
+    @Published var customHandSize = false
+    @Published var handSizeValue = 5
     @Published var tutorialState = TutorialVoteCard.State(
         isOpen: false, yesCount: 0, noCount: 0, eligibleCount: 0,
         result: nil, tutorialShown: false)
@@ -161,6 +196,7 @@ final class CrazyEightsViewModel: ObservableObject {
         do { joinUrl = try server.start() } catch { print("HostServer failed: \(error)") }
         refresh()
     }
+    func applyOptions(_ o: CrazyEightsOptions) { server.hostSetOptions(o) }
     func start() { server.hostStart() }
     func play(_ c: Card, declaredSuit: Suit?) { _ = server.hostPlay(c, declaredSuit: declaredSuit) }
     func draw() { server.hostDraw() }
@@ -189,6 +225,9 @@ final class CrazyEightsViewModel: ObservableObject {
         if let wid = e.winnerId, let w = e.players[wid] {
             winnerLabel = "\(w.name) wins"
         } else { winnerLabel = "" }
+        if options != e.options { options = e.options }
+        customHandSize = e.options.startingHandSize != nil
+        if let s = e.options.startingHandSize, handSizeValue != s { handSizeValue = s }
         let v = e.tutorialVote
         tutorialState = .init(
             isOpen: v.isOpen, yesCount: v.yesCount, noCount: v.noCount,

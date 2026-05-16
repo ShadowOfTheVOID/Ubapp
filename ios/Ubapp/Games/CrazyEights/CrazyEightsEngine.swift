@@ -29,6 +29,16 @@ func standardDeck() -> [Card] {
 
 enum CrazyEightsPhase { case lobby, playing, gameOver }
 
+/// Host-configurable house rules. Defaults reproduce the classic game.
+struct CrazyEightsOptions: Equatable {
+    /// When non-nil, overrides the player-count-based deal size (clamped 3...10).
+    var startingHandSize: Int? = nil
+    /// Playing a Jack skips the next player.
+    var jackSkips: Bool = false
+    /// Playing a Queen reverses turn direction.
+    var queenReverses: Bool = false
+}
+
 final class CrazyEightsPlayer {
     let id: String, name: String, isHost: Bool
     var hand: [Card] = []
@@ -40,6 +50,7 @@ final class CrazyEightsEngine {
     private(set) var players: [String: CrazyEightsPlayer] = [:]
     private var order: [String] = []
     var phase: CrazyEightsPhase = .lobby
+    private(set) var options = CrazyEightsOptions()
 
     var drawPile: [Card] = []
     var discardPile: [Card] = []
@@ -47,6 +58,8 @@ final class CrazyEightsEngine {
     var activeSuit: Suit?
     var currentIndex = 0
     var justDrew = false
+    /// +1 for forward, -1 for reversed (when queenReverses is on).
+    private var direction = 1
     var winnerId: String?
     var lastEvent: String?
 
@@ -67,12 +80,20 @@ final class CrazyEightsEngine {
     func removePlayer(_ id: String) { if phase == .lobby { players[id] = nil } }
     var canStart: Bool { phase == .lobby && (2...8).contains(players.count) }
 
+    func setOptions(_ o: CrazyEightsOptions) {
+        guard phase == .lobby else { return }
+        var clamped = o
+        if let s = o.startingHandSize { clamped.startingHandSize = max(3, min(s, 10)) }
+        options = clamped
+    }
+
     func start() {
         guard canStart else { return }
         drawPile = standardDeck().shuffled(using: &rng)
         discardPile.removeAll()
         activeSuit = nil
-        let dealCount = players.count == 2 ? 7 : 5
+        direction = 1
+        let dealCount = options.startingHandSize ?? (players.count == 2 ? 7 : 5)
         order = Array(players.keys).shuffled(using: &rng)
         for _ in 0..<dealCount {
             for pid in order { players[pid]!.hand.append(drawPile.removeLast()) }
@@ -107,6 +128,9 @@ final class CrazyEightsEngine {
         discardPile.append(card)
         activeSuit = card.rank == 8 ? declaredSuit : nil
         justDrew = false
+        // House-rule effects evaluated before turn advance.
+        if options.queenReverses && card.rank == 12 && order.count > 2 { direction = -direction }
+        let skipNext = options.jackSkips && card.rank == 11 && order.count > 2
         lastEvent = card.rank == 8
             ? "\(p.name) played \(card.display) → \(declaredSuit!.glyph)"
             : "\(p.name) played \(card.display)"
@@ -116,6 +140,7 @@ final class CrazyEightsEngine {
             return nil
         }
         advanceTurn()
+        if skipNext { advanceTurn() }
         return nil
     }
 
@@ -144,7 +169,8 @@ final class CrazyEightsEngine {
     }
 
     private func advanceTurn() {
-        currentIndex = (currentIndex + 1) % order.count
+        let n = order.count
+        currentIndex = ((currentIndex + direction) % n + n) % n
         justDrew = false
     }
 
@@ -158,7 +184,7 @@ final class CrazyEightsEngine {
     func reset() {
         phase = .lobby
         drawPile.removeAll(); discardPile.removeAll()
-        activeSuit = nil; currentIndex = 0; justDrew = false
+        activeSuit = nil; currentIndex = 0; justDrew = false; direction = 1
         winnerId = nil; lastEvent = nil
         for p in players.values { p.hand.removeAll() }
     }

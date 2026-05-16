@@ -25,6 +25,9 @@ class WerewolfServer(context: Context, val hostName: String = "Host") {
     fun stop() = server.stopServer()
     val guestCount: Int get() = server.guestCount
 
+    fun hostSetOptions(o: WerewolfOptions) {
+        engine.setOptions(o); broadcastOptions(); emit()
+    }
     fun hostStart() { if (!engine.canStart) return; engine.start(); broadcastPhase(); sendRolesPrivately(); emit() }
     fun hostNightAction(targetId: String) = applyNightAction(HOST_ID, targetId)
     fun hostDayVote(targetId: String?) = applyDayVote(HOST_ID, targetId)
@@ -47,6 +50,8 @@ class WerewolfServer(context: Context, val hostName: String = "Host") {
                 applyDayVote(it, if (j.isNull("targetId")) null else j.getString("targetId"))
             }
             "hunter_shot" -> guestToPlayer[guest]?.let { applyHunterShot(it, j.getString("targetId")) }
+            // Only the host (not over WebSocket) may mutate options.
+            "set_options" -> Unit
             "call_tutorial_vote" -> openTutorialVote()
             "tutorial_vote" -> guestToPlayer[guest]?.let { submitTutorialVote(it, j.getBoolean("yes")) }
         }
@@ -70,7 +75,17 @@ class WerewolfServer(context: Context, val hostName: String = "Host") {
         engine.addPlayer(pid, name)
         guestToPlayer[guest] = pid; playerToGuest[pid] = guest
         send(guest, JSONObject().put("type", "welcome").put("yourId", pid).put("yourName", name).put("game", "werewolf"))
-        broadcastLobby(); broadcastTutorialState(); emit()
+        broadcastLobby(); broadcastOptions(); broadcastTutorialState(); emit()
+    }
+
+    private fun broadcastOptions() {
+        val o = engine.options
+        broadcast(JSONObject()
+            .put("type", "options")
+            .put("wolfCount", o.wolfCount ?: JSONObject.NULL)
+            .put("seerEnabled", o.seerEnabled)
+            .put("hunterEnabled", o.hunterEnabled)
+            .put("maxWolfCount", engine.maxWolfCount))
     }
 
     private fun applyNightAction(playerId: String, targetId: String) {

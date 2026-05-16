@@ -31,6 +31,11 @@ final class ImposterServer {
     var guestCount: Int { server.guestCount }
 
     // MARK: Host-side actions
+    func hostSetOptions(_ o: ImposterOptions) {
+        engine.setOptions(o)
+        broadcastOptions()
+        emit()
+    }
     func hostStart(category: String? = nil) {
         engine.start(categoryName: category)
         sendRolesPrivately()
@@ -67,6 +72,10 @@ final class ImposterServer {
             if let pid = guestToPlayer[guest] {
                 applyVote(voterId: pid, targetId: j["targetId"] as? String)
             }
+        case "set_options":
+            // Ignore — only the host (which never connects over WebSocket)
+            // is allowed to mutate options.
+            break
         case "call_tutorial_vote": openTutorialVote()
         case "tutorial_vote":
             if let pid = guestToPlayer[guest], let yes = j["yes"] as? Bool {
@@ -101,6 +110,7 @@ final class ImposterServer {
         playerToGuest[pid] = guest
         send(guest, ["type": "welcome", "yourId": pid, "yourName": name, "game": "imposter"])
         broadcastLobby()
+        broadcastOptions()
         broadcastTutorialState()
         emit()
     }
@@ -120,13 +130,34 @@ final class ImposterServer {
     }
 
     private func sendRolesPrivately() {
+        let hideCat = engine.options.hideCategory
         for p in engine.players.values where p.id != Self.hostId {
             var payload: [String: Any] = [
-                "type": "role", "category": engine.category, "isImposter": p.isImposter,
+                "type": "role",
+                "category": (p.isImposter && hideCat) ? "" : engine.category,
+                "hideCategory": p.isImposter && hideCat,
+                "isImposter": p.isImposter,
             ]
-            if !p.isImposter { payload["word"] = engine.secretWord }
+            if !p.isImposter {
+                payload["word"] = engine.secretWord
+            } else if let decoy = p.decoyWord {
+                payload["word"] = decoy
+                payload["isDecoy"] = true
+            }
             if let guest = playerToGuest[p.id] { send(guest, payload) }
         }
+    }
+
+    private func broadcastOptions() {
+        let o = engine.options
+        broadcast([
+            "type": "options",
+            "imposterCount": o.imposterCount,
+            "decoyWord": o.decoyWord,
+            "hideCategory": o.hideCategory,
+            "mixedPool": o.mixedPool,
+            "maxImposterCount": engine.maxImposterCount,
+        ])
     }
 
     // MARK: Tutorial vote
@@ -162,7 +193,7 @@ final class ImposterServer {
         broadcast([
             "type": "result",
             "winner": engine.winner == .town ? "town" : "imposter",
-            "imposterId": engine.imposterId as Any,
+            "imposterIds": Array(engine.imposterIds),
             "mostVotedId": engine.mostVotedId as Any,
             "imposterCaught": engine.imposterCaught as Any,
             "word": engine.secretWord,

@@ -27,6 +27,20 @@ struct TagLobbyView: View {
                     }
                     .pickerStyle(.segmented)
                     Text(model.variant.tagline).font(.caption).foregroundStyle(.secondary)
+                    GroupBox("Options") {
+                        Toggle("Custom round length", isOn: $model.customDuration)
+                        if model.customDuration {
+                            Stepper(value: $model.durationSecValue, in: 30...1800, step: 30) {
+                                let m = model.durationSecValue / 60
+                                let s = model.durationSecValue % 60
+                                Text("Round: \(m)m \(s)s")
+                            }
+                            Text(model.variant == .hotPotato
+                                 ? "For Hot Potato this sets the per-tag countdown."
+                                 : "Replaces the default round length for the selected variant.")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
                     Button("Start hosting") { model.startHosting() }
                         .buttonStyle(.borderedProminent)
                 } else if model.state == nil {
@@ -114,6 +128,8 @@ final class TagLobbyViewModel: ObservableObject {
     @Published var hosting = false
     @Published var joinUrl: URL?
     @Published var variant: TagVariant = .classic
+    @Published var customDuration = false
+    @Published var durationSecValue: Int = 300
     @Published var peers: [String] = []
     @Published var state: TagState?
     @Published var advertiseStatus: String = "BLE idle."
@@ -149,7 +165,8 @@ final class TagLobbyViewModel: ObservableObject {
         sess.onStateChange = { [weak self] s in self?.state = s }
         var names: [String: String] = [selfId: "Host"]
         for p in peers { names[p] = p }
-        sess.startHosting(variant: variant, peerNames: names)
+        sess.startHosting(variant: variant, peerNames: names,
+                          durationOverrideSec: customDuration ? durationSecValue : nil)
         session = sess
     }
 

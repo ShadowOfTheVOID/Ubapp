@@ -27,6 +27,9 @@ class CodenamesServer(context: Context, val hostName: String = "Host") {
 
     fun hostJoinTeam(team: Team) { engine.setTeam(HOST_ID, team); broadcastLobby(); sendRolesToAll(); emit() }
     fun hostSetSpymaster(on: Boolean) { engine.setSpymaster(HOST_ID, on); broadcastLobby(); sendRolesToAll(); emit() }
+    fun hostSetOptions(o: CodenamesOptions) {
+        engine.setOptions(o); broadcastOptions(); emit()
+    }
     fun hostStart() { engine.start(); broadcastState(); sendRolesToAll(); emit() }
     fun hostSubmitClue(clue: String, number: Int) { engine.submitClue(HOST_ID, clue, number); broadcastState(); emit() }
     fun hostGuess(index: Int) { engine.guess(HOST_ID, index); broadcastState(); emit() }
@@ -56,6 +59,8 @@ class CodenamesServer(context: Context, val hostName: String = "Host") {
             }
             "guess" -> pid?.let { engine.guess(it, j.getInt("index")); broadcastState(); emit() }
             "end_turn" -> pid?.let { engine.endTurn(it); broadcastState(); emit() }
+            // Only the host may mutate options.
+            "set_options" -> Unit
             "call_tutorial_vote" -> openTutorialVote()
             "tutorial_vote" -> pid?.let { submitTutorialVote(it, j.getBoolean("yes")) }
         }
@@ -80,7 +85,17 @@ class CodenamesServer(context: Context, val hostName: String = "Host") {
         engine.addPlayer(pid, name)
         guestToPlayer[guest] = pid; playerToGuest[pid] = guest
         send(guest, JSONObject().put("type", "welcome").put("yourId", pid).put("yourName", name).put("game", "codenames"))
-        broadcastLobby(); broadcastTutorialState(); emit()
+        broadcastLobby(); broadcastOptions(); broadcastTutorialState(); emit()
+    }
+
+    private fun broadcastOptions() {
+        val o = engine.options
+        val allowed = JSONArray(); for (n in CodenamesOptions.allowedSizes) allowed.put(n)
+        broadcast(JSONObject()
+            .put("type", "options")
+            .put("boardSize", o.boardSize)
+            .put("assassinCount", o.assassinCount)
+            .put("allowedSizes", allowed))
     }
 
     private fun broadcastLobby() {

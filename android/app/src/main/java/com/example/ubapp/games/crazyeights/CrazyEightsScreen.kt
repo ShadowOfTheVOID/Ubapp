@@ -64,6 +64,7 @@ fun CrazyEightsScreen() {
                         }
                     }
                 }
+                CrazyEightsOptionsCard(e, server)
                 Button(onClick = { server.hostStart() }, enabled = e.canStart) {
                     Text(if (e.canStart) "Start round" else "Need 2–8 players")
                 }
@@ -136,6 +137,53 @@ fun CrazyEightsScreen() {
             confirmButton = {},
             dismissButton = { TextButton(onClick = { pendingEight = null }) { Text("Cancel") } },
         )
+    }
+}
+
+@Composable
+private fun CrazyEightsOptionsCard(engine: CrazyEightsEngine, server: CrazyEightsServer) {
+    val custom = engine.options.startingHandSize != null
+    val current = engine.options.startingHandSize
+        ?: if (engine.players.size == 2) 7 else 5
+    ElevatedCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("Options", style = MaterialTheme.typography.titleSmall)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = custom, onCheckedChange = { on ->
+                    server.hostSetOptions(engine.options.copy(
+                        startingHandSize = if (on) current.coerceIn(3, 10) else null
+                    ))
+                })
+                Text("  Custom starting hand")
+            }
+            if (custom) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Hand: $current", Modifier.weight(1f))
+                    IconButton(onClick = {
+                        server.hostSetOptions(engine.options.copy(
+                            startingHandSize = (current - 1).coerceAtLeast(3)))
+                    }, enabled = current > 3) {
+                        Text("−", style = MaterialTheme.typography.titleLarge)
+                    }
+                    IconButton(onClick = {
+                        server.hostSetOptions(engine.options.copy(
+                            startingHandSize = (current + 1).coerceAtMost(10)))
+                    }, enabled = current < 10) {
+                        Text("+", style = MaterialTheme.typography.titleLarge)
+                    }
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = engine.options.jackSkips,
+                       onCheckedChange = { server.hostSetOptions(engine.options.copy(jackSkips = it)) })
+                Text("  Jacks skip next player")
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = engine.options.queenReverses,
+                       onCheckedChange = { server.hostSetOptions(engine.options.copy(queenReverses = it)) })
+                Text("  Queens reverse direction")
+            }
+        }
     }
 }
 

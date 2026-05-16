@@ -31,6 +31,10 @@ final class WerewolfServer {
     var guestCount: Int { server.guestCount }
 
     // MARK: Host-side actions
+    func hostSetOptions(_ o: WerewolfOptions) {
+        engine.setOptions(o)
+        broadcastOptions(); emit()
+    }
     func hostStart() {
         guard engine.canStart else { return }
         engine.start()
@@ -73,6 +77,9 @@ final class WerewolfServer {
             if let pid = guestToPlayer[guest], let t = j["targetId"] as? String {
                 applyHunterShot(playerId: pid, targetId: t)
             }
+        case "set_options":
+            // Only the host (not over WebSocket) may mutate options.
+            break
         case "call_tutorial_vote": openTutorialVote()
         case "tutorial_vote":
             if let pid = guestToPlayer[guest], let yes = j["yes"] as? Bool {
@@ -107,8 +114,20 @@ final class WerewolfServer {
         playerToGuest[pid] = guest
         send(guest, ["type": "welcome", "yourId": pid, "yourName": name, "game": "werewolf"])
         broadcastLobby()
+        broadcastOptions()
         broadcastTutorialState()
         emit()
+    }
+
+    private func broadcastOptions() {
+        let o = engine.options
+        broadcast([
+            "type": "options",
+            "wolfCount": o.wolfCount as Any,
+            "seerEnabled": o.seerEnabled,
+            "hunterEnabled": o.hunterEnabled,
+            "maxWolfCount": engine.maxWolfCount,
+        ])
     }
 
     private func applyNightAction(playerId: String, targetId: String) {

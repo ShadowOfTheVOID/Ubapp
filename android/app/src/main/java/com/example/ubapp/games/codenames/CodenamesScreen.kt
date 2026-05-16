@@ -91,6 +91,7 @@ fun CodenamesScreen() {
                         }
                     }
                 }
+                CodenamesOptionsCard(e, server)
                 Button(onClick = { server.hostStart() }, enabled = e.canStart) {
                     Text(if (e.canStart) "Start round"
                          else "Need ≥2 per team with a spymaster on each")
@@ -170,6 +171,40 @@ fun CodenamesScreen() {
                      style = MaterialTheme.typography.headlineSmall)
                 e.endReason?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                 Button(onClick = { server.hostNewGame() }) { Text("New game") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CodenamesOptionsCard(engine: CodenamesEngine, server: CodenamesServer) {
+    ElevatedCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("Options", style = MaterialTheme.typography.titleSmall)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Board size:", Modifier.weight(1f))
+                for (n in CodenamesOptions.allowedSizes) {
+                    val selected = engine.options.boardSize == n
+                    FilterChip(selected = selected,
+                               onClick = { server.hostSetOptions(engine.options.copy(boardSize = n)) },
+                               label = { Text("$n") },
+                               modifier = Modifier.padding(start = 4.dp))
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Assassins: ${engine.options.assassinCount}", Modifier.weight(1f))
+                IconButton(onClick = {
+                    server.hostSetOptions(engine.options.copy(
+                        assassinCount = (engine.options.assassinCount - 1).coerceAtLeast(1)))
+                }, enabled = engine.options.assassinCount > 1) {
+                    Text("−", style = MaterialTheme.typography.titleLarge)
+                }
+                IconButton(onClick = {
+                    server.hostSetOptions(engine.options.copy(
+                        assassinCount = (engine.options.assassinCount + 1).coerceAtMost(3)))
+                }, enabled = engine.options.assassinCount < 3) {
+                    Text("+", style = MaterialTheme.typography.titleLarge)
+                }
             }
         }
     }

@@ -7,6 +7,15 @@ enum Team: String { case red, blue
 enum CardKind: String { case red, blue, neutral, assassin }
 enum CodenamesPhase { case lobby, playing, gameOver }
 
+/// Host-configurable knobs. Defaults reproduce the 25-card / 1-assassin
+/// classic board.
+struct CodenamesOptions: Equatable {
+    /// Allowed board sizes — anything else is rejected by `setOptions`.
+    static let allowedSizes: [Int] = [16, 25, 36]
+    var boardSize: Int = 25
+    var assassinCount: Int = 1
+}
+
 final class CodenamesCard {
     let word: String
     let kind: CardKind
@@ -25,6 +34,7 @@ final class CodenamesEngine {
     private var rng: any RandomNumberGenerator
     private(set) var players: [String: CodenamesPlayer] = [:]
     var phase: CodenamesPhase = .lobby
+    private(set) var options = CodenamesOptions()
 
     var board: [CodenamesCard] = []
     var startingTeam: Team = .red
@@ -67,19 +77,37 @@ final class CodenamesEngine {
         return red.contains { $0.isSpymaster } && blue.contains { $0.isSpymaster }
     }
 
+    func setOptions(_ o: CodenamesOptions) {
+        guard phase == .lobby else { return }
+        var clamped = o
+        if !CodenamesOptions.allowedSizes.contains(clamped.boardSize) {
+            clamped.boardSize = 25
+        }
+        clamped.assassinCount = max(1, min(o.assassinCount, 3))
+        options = clamped
+    }
+
     func start() {
         guard canStart else { return }
         var pool = CodenamesWords.bank
         pool.shuffle(using: &rng)
-        let words = Array(pool.prefix(25))
+        let n = options.boardSize
+        let words = Array(pool.prefix(n))
         startingTeam = Bool.random(using: &rng) ? .red : .blue
         currentTeam = startingTeam
-        var kinds: [CardKind] = Array(repeating: .red, count: startingTeam == .red ? 9 : 8)
-            + Array(repeating: .blue, count: startingTeam == .blue ? 9 : 8)
-            + Array(repeating: .neutral, count: 7)
-            + [.assassin]
+        let assassins = options.assassinCount
+        // Neutrals scale with board size (~28%).
+        let neutrals = max(0, (n * 7) / 25)
+        let teamCards = n - neutrals - assassins
+        // Starting team gets the larger half so they take one more turn.
+        let startCount = (teamCards + 1) / 2
+        let otherCount = teamCards - startCount
+        var kinds: [CardKind] = Array(repeating: .red, count: startingTeam == .red ? startCount : otherCount)
+            + Array(repeating: .blue, count: startingTeam == .blue ? startCount : otherCount)
+            + Array(repeating: .neutral, count: neutrals)
+            + Array(repeating: .assassin, count: assassins)
         kinds.shuffle(using: &rng)
-        board = (0..<25).map { CodenamesCard(word: words[$0], kind: kinds[$0]) }
+        board = (0..<n).map { CodenamesCard(word: words[$0], kind: kinds[$0]) }
         phase = .playing
         currentClue = nil; currentNumber = 0; guessesLeftThisTurn = 0
         winner = nil; endReason = nil
@@ -105,7 +133,7 @@ final class CodenamesEngine {
         guard phase == .playing,
               let p = players[guesserId], !p.isSpymaster, p.team == currentTeam,
               currentClue != nil, guessesLeftThisTurn > 0,
-              (0..<25).contains(boardIndex) else { return nil }
+              (0..<board.count).contains(boardIndex) else { return nil }
         let card = board[boardIndex]
         guard !card.revealed else { return nil }
         card.revealed = true

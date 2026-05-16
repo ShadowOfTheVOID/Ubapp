@@ -41,7 +41,8 @@ final class TagEngine {
 
     @discardableResult
     func start(variant: TagVariant, startingItId: String, startTimeMs: Int64,
-               peerIds: [String], displayNames: [String: String]) -> TagState {
+               peerIds: [String], displayNames: [String: String],
+               durationOverrideSec: Int? = nil) -> TagState {
         var players: [String: TagPlayerView] = [:]
         for id in peerIds {
             let name = displayNames[id] ?? String(id.prefix(6))
@@ -49,9 +50,9 @@ final class TagEngine {
                 id: id, displayName: name,
                 status: id == startingItId ? .it : .runner)
         }
-        let durationMs: Int64 = variant == .hotPotato
-            ? 10 * 60 * 1000
-            : Int64(variant.duration * 1000)
+        let baseSec: TimeInterval = variant == .hotPotato ? 10 * 60 : variant.duration
+        let secs = TimeInterval(durationOverrideSec ?? Int(baseSec))
+        let durationMs = Int64(secs * 1000)
         let s = TagState(variant: variant, players: players,
                          startedAtMs: startTimeMs, deadlineMs: startTimeMs + durationMs)
         state = s

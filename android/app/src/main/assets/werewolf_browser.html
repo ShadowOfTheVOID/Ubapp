@@ -155,6 +155,7 @@
     tutorial: { isOpen: false, yesCount: 0, noCount: 0, eligibleCount: 0, result: null, tutorialShown: false },
     tutorialContent: null,
     myTutorialVote: null,
+    options: { wolfCount: null, seerEnabled: true, hunterEnabled: true, maxWolfCount: 1 },
   };
 
   function send(obj) {
@@ -177,6 +178,14 @@
         break;
       case 'lobby':
         state.lobby = m.players;
+        break;
+      case 'options':
+        state.options = {
+          wolfCount: (m.wolfCount === null || m.wolfCount === undefined) ? null : m.wolfCount,
+          seerEnabled: m.seerEnabled !== false,
+          hunterEnabled: m.hunterEnabled !== false,
+          maxWolfCount: m.maxWolfCount || 1,
+        };
         break;
       case 'role':
         state.role = m.role;
@@ -273,11 +282,20 @@
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
   }
 
+  function viewOptions() {
+    const o = state.options;
+    const wc = o.wolfCount === null ? 'auto' : String(o.wolfCount);
+    const seer = o.seerEnabled ? 'on' : 'off';
+    const hunter = o.hunterEnabled ? 'on' : 'off';
+    return `<div class="card"><h2>Game options</h2><p class="small">Wolves: <strong>${wc}</strong> · Seer: <strong>${seer}</strong> · Hunter: <strong>${hunter}</strong></p></div>`;
+  }
+
   function viewLobby() {
     return `
       <h1>Lobby</h1>
       ${viewTutorialBanner()}
       ${viewTutorialVote()}
+      ${viewOptions()}
       <div class="card">
         <p class="small">Waiting for the host to start the game.</p>
         <h2>Players (${state.lobby.length})</h2>

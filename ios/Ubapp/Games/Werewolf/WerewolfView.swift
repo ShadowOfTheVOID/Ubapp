@@ -48,6 +48,39 @@ struct WerewolfView: View {
                 }
             }
         }
+        GroupBox("Options") {
+            Toggle("Auto-balance wolf count", isOn: $model.autoWolfCount)
+                .onChange(of: model.autoWolfCount) { _, on in
+                    model.applyOptions(WerewolfOptions(
+                        wolfCount: on ? nil : model.wolfCountValue,
+                        seerEnabled: model.options.seerEnabled,
+                        hunterEnabled: model.options.hunterEnabled))
+                }
+            if !model.autoWolfCount {
+                Stepper(value: $model.wolfCountValue,
+                        in: 1...max(1, model.maxWolfCount)) {
+                    Text("Wolves: \(model.wolfCountValue)")
+                }
+                .onChange(of: model.wolfCountValue) { _, v in
+                    model.applyOptions(WerewolfOptions(
+                        wolfCount: v,
+                        seerEnabled: model.options.seerEnabled,
+                        hunterEnabled: model.options.hunterEnabled))
+                }
+            }
+            Toggle("Seer", isOn: Binding(
+                get: { model.options.seerEnabled },
+                set: { model.applyOptions(WerewolfOptions(
+                    wolfCount: model.autoWolfCount ? nil : model.wolfCountValue,
+                    seerEnabled: $0,
+                    hunterEnabled: model.options.hunterEnabled)) }))
+            Toggle("Hunter (6+ players)", isOn: Binding(
+                get: { model.options.hunterEnabled },
+                set: { model.applyOptions(WerewolfOptions(
+                    wolfCount: model.autoWolfCount ? nil : model.wolfCountValue,
+                    seerEnabled: model.options.seerEnabled,
+                    hunterEnabled: $0)) }))
+        }
         if model.canStart {
             Button("Start round") { model.start() }.buttonStyle(.borderedProminent)
         } else {
@@ -171,11 +204,17 @@ final class WerewolfViewModel: ObservableObject {
     @Published var pendingHunterShooter: String?
     @Published var fellowWolfNames: [String] = []
     @Published var winnerLabel = ""
+    @Published var options = WerewolfOptions()
+    @Published var autoWolfCount = true
+    @Published var wolfCountValue = 1
+    @Published var maxWolfCount = 1
     @Published var tutorialState = TutorialVoteCard.State(
         isOpen: false, yesCount: 0, noCount: 0, eligibleCount: 0,
         result: nil, tutorialShown: false)
 
     init() { server.onStateChange = { [weak self] in self?.refresh() } }
+
+    func applyOptions(_ o: WerewolfOptions) { server.hostSetOptions(o) }
 
     var hostRole: WerewolfRole? { server.engine.players[WerewolfServer.hostId]?.role }
 
@@ -216,6 +255,13 @@ final class WerewolfViewModel: ObservableObject {
         }
         if e.phase == .gameOver, let w = e.winner {
             winnerLabel = w == .town ? "Village wins" : "Werewolves win"
+        }
+        if options != e.options { options = e.options }
+        autoWolfCount = e.options.wolfCount == nil
+        maxWolfCount = e.maxWolfCount
+        if let c = e.options.wolfCount, wolfCountValue != c { wolfCountValue = c }
+        else if e.options.wolfCount == nil && wolfCountValue == 1 {
+            wolfCountValue = max(1, min(e.players.count - 3, e.players.count / 5))
         }
         let v = e.tutorialVote
         tutorialState = .init(

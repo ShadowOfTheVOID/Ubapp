@@ -50,10 +50,20 @@ fun ImposterGuestScreen(ctx: GuestContext) {
                             Text("IMPOSTER",
                                  style = MaterialTheme.typography.displayMedium,
                                  color = Color(0xFFC62828))
-                            Text("Category: ${s.category}",
-                                 style = MaterialTheme.typography.bodyMedium)
-                            Text("Bluff your way through.",
-                                 style = MaterialTheme.typography.bodySmall)
+                            if (!s.hideCategory) {
+                                Text("Category: ${s.category}",
+                                     style = MaterialTheme.typography.bodyMedium)
+                            }
+                            val decoy = s.word
+                            if (s.isDecoy && decoy != null) {
+                                Text("Decoy word: $decoy",
+                                     style = MaterialTheme.typography.titleLarge)
+                                Text("This isn't the real word — bluff carefully.",
+                                     style = MaterialTheme.typography.bodySmall)
+                            } else {
+                                Text("Bluff your way through.",
+                                     style = MaterialTheme.typography.bodySmall)
+                            }
                         } else {
                             Text("SECRET WORD",
                                  style = MaterialTheme.typography.labelSmall)
@@ -96,8 +106,13 @@ fun ImposterGuestScreen(ctx: GuestContext) {
             "result" -> {
                 val winner = if (s.winner == "town") "Town wins" else "Imposter wins"
                 Text(winner, style = MaterialTheme.typography.headlineSmall)
-                val imposterName = s.players.firstOrNull { it.id == s.imposterId }?.name ?: "?"
-                Text("The imposter was $imposterName.")
+                val names = s.imposterIds.mapNotNull { id ->
+                    s.players.firstOrNull { it.id == id }?.name
+                }
+                if (names.isNotEmpty()) {
+                    val label = if (names.size == 1) "imposter was" else "imposters were"
+                    Text("The $label ${names.joinToString(", ")}.")
+                }
                 val mv = s.mostVotedId
                 if (mv != null) {
                     val mvName = s.players.firstOrNull { it.id == mv }?.name ?: mv
@@ -120,10 +135,12 @@ class ImposterGuestState {
     var picked by mutableStateOf<String?>(null)
     var voted by mutableStateOf(false)
     var winner by mutableStateOf<String?>(null)
-    var imposterId by mutableStateOf<String?>(null)
+    var imposterIds by mutableStateOf<List<String>>(emptyList())
     var imposterCaught by mutableStateOf(false)
     var mostVotedId by mutableStateOf<String?>(null)
     var resultWord by mutableStateOf("")
+    var hideCategory by mutableStateOf(false)
+    var isDecoy by mutableStateOf(false)
     var error by mutableStateOf<String?>(null)
     var tutorialState by mutableStateOf(GuestTutorialState())
     var tutorialContent by mutableStateOf<GuestTutorialContent?>(null)
@@ -143,13 +160,20 @@ class ImposterGuestState {
                 category = m.optString("category")
                 word = if (m.isNull("word")) null else m.optString("word")
                 isImposter = m.optBoolean("isImposter")
+                hideCategory = m.optBoolean("hideCategory")
+                isDecoy = m.optBoolean("isDecoy")
                 phase = "playing"; voted = false; picked = null
             }
             "voting" -> { phase = "voting"; voted = false; picked = null }
             "result" -> {
                 phase = "result"
                 winner = m.optString("winner")
-                imposterId = m.optString("imposterId")
+                val arrIds = m.optJSONArray("imposterIds")
+                imposterIds = if (arrIds != null) {
+                    (0 until arrIds.length()).map { arrIds.getString(it) }
+                } else if (m.has("imposterId") && !m.isNull("imposterId")) {
+                    listOf(m.optString("imposterId"))
+                } else emptyList()
                 imposterCaught = m.optBoolean("imposterCaught")
                 mostVotedId = if (m.isNull("mostVotedId")) null else m.optString("mostVotedId").ifEmpty { null }
                 resultWord = m.optString("word")
