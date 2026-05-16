@@ -1,5 +1,6 @@
 import Foundation
 import Network
+import CryptoKit
 
 /// Identifies one connected guest (browser tab or app instance) for the
 /// duration of the connection. Stable across messages from the same socket.
@@ -11,8 +12,10 @@ struct GuestId: Hashable {
 /// upgrades requests at `/ws` to WebSocket. Everything else gets the
 /// game-supplied landing HTML. Mirrors lib/social/host_server.dart.
 ///
-/// Built on `Network.framework` (`NWListener` + WebSocket protocol options) so
-/// there's no third-party dependency. Each connection gets a stable [GuestId].
+/// Built on `Network.framework` (plain TCP listener) so there's no third-party
+/// dependency. WebSocket upgrade is handled manually — sending the 101 response
+/// and framing — so HTTP and WebSocket can coexist on the same port. Each
+/// connection gets a stable [GuestId].
 ///
 /// Game adapters consume [onMessage], [send] privately to one guest, or
 /// [broadcast] to all. The served HTML can be swapped via [html] before [start].
@@ -49,11 +52,6 @@ final class HostServer {
     /// Returns the URL guests should open. nil if no usable IPv4 (Wi-Fi,
     /// Personal Hotspot bridge, or cellular) is available.
     func start() throws -> URL? {
-        let opts = NWProtocolWebSocket.Options()
-        opts.autoReplyPing = true
-        let params = NWParameters.tcp
-        params.defaultProtocolStack.applicationProtocols.insert(opts, at: 0)
-
         let listener = try NWListener(using: .tcp, on: port)
         listener.newConnectionHandler = { [weak self] conn in
             self?.accept(conn)
@@ -68,16 +66,12 @@ final class HostServer {
     }
 
     private func accept(_ conn: NWConnection) {
-        // We sniff a single line of the request to decide HTTP-page vs WS.
-        // For WS upgrade Network.framework handles framing automatically once
-        // the WebSocket protocol option is in the stack — but only if the
-        // client speaks WebSocket. For plain HTTP GET / we reply with the HTML.
         conn.start(queue: queue)
         conn.receive(minimumIncompleteLength: 1, maximumLength: 4096) { [weak self] data, _, _, _ in
             guard let self else { return }
             if let d = data, let head = String(data: d, encoding: .utf8),
                head.contains("Upgrade: websocket") || head.contains("upgrade: websocket") {
-                self.registerSocket(conn)
+                self.upgradeWebSocket(conn, headers: head)
             } else {
                 self.serveHtml(conn)
             }
@@ -99,40 +93,132 @@ final class HostServer {
         })
     }
 
-    private func registerSocket(_ conn: NWConnection) {
-        let id = GuestId(value: "g\(nextId)")
-        nextId += 1
-        connections[id] = conn
-        onJoin?(id)
-        readNext(id: id, conn: conn)
+    // MARK: - WebSocket upgrade
+
+    private func upgradeWebSocket(_ conn: NWConnection, headers: String) {
+        guard let key = extractWebSocketKey(from: headers),
+              let accept = webSocketAccept(for: key) else {
+            conn.cancel(); return
+        }
+        let response = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: \(accept)\r\n\r\n"
+        conn.send(content: response.data(using: .utf8), completion: .contentProcessed { [weak self] error in
+            guard let self, error == nil else { conn.cancel(); return }
+            let id = GuestId(value: "g\(self.nextId)")
+            self.nextId += 1
+            self.connections[id] = conn
+            self.onJoin?(id)
+            self.readFrames(id: id, conn: conn, pending: Data())
+        })
     }
 
-    private func readNext(id: GuestId, conn: NWConnection) {
-        conn.receiveMessage { [weak self] data, ctx, _, error in
+    // MARK: - Frame I/O
+
+    private func readFrames(id: GuestId, conn: NWConnection, pending: Data) {
+        conn.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, isComplete, error in
             guard let self else { return }
             if let error {
                 _ = error
-                self.connections[id] = nil
-                self.onLeave?(id)
+                if self.connections.removeValue(forKey: id) != nil { self.onLeave?(id) }
                 return
             }
-            if let data, let text = String(data: data, encoding: .utf8) {
-                if let ctx, let meta = ctx.protocolMetadata.first as? NWProtocolWebSocket.Metadata,
-                   meta.opcode == .text || meta.opcode == .binary {
-                    self.onMessage?(id, text)
-                }
+            var buf = pending
+            if let data { buf.append(data) }
+
+            while buf.count >= 2 {
+                guard let (text, consumed) = self.parseFrame(buf) else { break }
+                buf = Data(buf.dropFirst(consumed))
+                if let text { self.onMessage?(id, text) }
             }
-            if self.connections[id] != nil { self.readNext(id: id, conn: conn) }
+
+            if isComplete {
+                if self.connections.removeValue(forKey: id) != nil { self.onLeave?(id) }
+            } else if self.connections[id] != nil {
+                self.readFrames(id: id, conn: conn, pending: buf)
+            }
         }
     }
 
-    func send(to: GuestId, _ payload: String) {
-        guard let conn = connections[to] else { return }
-        let meta = NWProtocolWebSocket.Metadata(opcode: .text)
-        let ctx = NWConnection.ContentContext(identifier: "msg", metadata: [meta])
-        conn.send(content: payload.data(using: .utf8), contentContext: ctx,
-                  isComplete: true, completion: .contentProcessed { _ in })
+    /// Parses one WebSocket frame from the start of `data` (which must begin at index 0).
+    /// Returns `(text?, bytesConsumed)`: text is nil for non-text frames (still consumed).
+    /// Returns nil if the frame is incomplete.
+    private func parseFrame(_ data: Data) -> (String?, Int)? {
+        guard data.count >= 2 else { return nil }
+        let b0 = data[0], b1 = data[1]
+        let opcode  = b0 & 0x0F
+        let masked  = (b1 & 0x80) != 0
+        var payloadLen = Int(b1 & 0x7F)
+        var headerLen  = 2
+
+        if payloadLen == 126 {
+            guard data.count >= 4 else { return nil }
+            payloadLen = Int(data[2]) << 8 | Int(data[3])
+            headerLen  = 4
+        } else if payloadLen == 127 {
+            guard data.count >= 10 else { return nil }
+            payloadLen = (0..<8).reduce(0) { $0 << 8 | Int(data[2 + $1]) }
+            headerLen  = 10
+        }
+
+        let maskLen  = masked ? 4 : 0
+        let totalLen = headerLen + maskLen + payloadLen
+        guard data.count >= totalLen else { return nil }
+
+        guard opcode == 1 else { return (nil, totalLen) }  // skip non-text (close, ping, binary…)
+
+        let maskStart    = headerLen
+        let payloadStart = maskStart + maskLen
+        var payload = Data(data[payloadStart ..< totalLen])
+        if masked {
+            let key = [data[maskStart], data[maskStart+1], data[maskStart+2], data[maskStart+3]]
+            for i in 0..<payload.count { payload[i] ^= key[i % 4] }
+        }
+        return (String(data: payload, encoding: .utf8), totalLen)
     }
+
+    func send(to: GuestId, _ payload: String) {
+        guard let conn = connections[to],
+              let data = payload.data(using: .utf8) else { return }
+        conn.send(content: encodeFrame(data), completion: .contentProcessed { _ in })
+    }
+
+    private func encodeFrame(_ payload: Data) -> Data {
+        var frame = Data()
+        frame.append(0x81)  // FIN + text opcode
+        let len = payload.count
+        if len < 126 {
+            frame.append(UInt8(len))
+        } else if len < 65536 {
+            frame.append(126)
+            frame.append(UInt8((len >> 8) & 0xFF))
+            frame.append(UInt8(len & 0xFF))
+        } else {
+            frame.append(127)
+            for shift in stride(from: 56, through: 0, by: -8) {
+                frame.append(UInt8((len >> shift) & 0xFF))
+            }
+        }
+        frame.append(contentsOf: payload)
+        return frame
+    }
+
+    // MARK: - WebSocket handshake helpers
+
+    private func extractWebSocketKey(from headers: String) -> String? {
+        for line in headers.components(separatedBy: .newlines) {
+            if line.lowercased().hasPrefix("sec-websocket-key:") {
+                return String(line.dropFirst("sec-websocket-key:".count))
+                    .trimmingCharacters(in: .whitespaces)
+            }
+        }
+        return nil
+    }
+
+    private func webSocketAccept(for key: String) -> String? {
+        guard let data = (key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").data(using: .utf8) else { return nil }
+        return Data(Insecure.SHA1.hash(data: data)).base64EncodedString()
+    }
+
+    // MARK: - Public API
 
     func broadcast(_ payload: String) {
         for id in connections.keys { send(to: id, payload) }
