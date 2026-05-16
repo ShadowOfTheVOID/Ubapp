@@ -134,8 +134,6 @@ final class TagLobbyViewModel: ObservableObject {
     @Published var state: TagState?
     @Published var advertiseStatus: String = "BLE idle."
 
-    deinit { stop() }
-
     func startHosting() {
         do { joinUrl = try server.start() } catch { print("HostServer failed: \(error)") }
         hosting = true

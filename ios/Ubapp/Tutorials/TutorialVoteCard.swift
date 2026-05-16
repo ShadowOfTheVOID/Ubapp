@@ -5,7 +5,7 @@ import SwiftUI
 /// once the vote passes. Used by every browser-tier host view.
 struct TutorialVoteCard: View {
     /// Mirrors `TutorialVote` snapshot fields we need for rendering.
-    struct State {
+    struct VoteState {
         var isOpen: Bool
         var yesCount: Int
         var noCount: Int
@@ -14,13 +14,21 @@ struct TutorialVoteCard: View {
         var tutorialShown: Bool
     }
 
-    let state: State
+    let state: VoteState
     let tutorial: GameTutorial
     let onCall: () -> Void
     let onVote: (Bool) -> Void
     let onDismiss: () -> Void
 
     @State private var myVote: Bool?
+
+    init(state: VoteState, tutorial: GameTutorial, onCall: @escaping () -> Void, onVote: @escaping (Bool) -> Void, onDismiss: @escaping () -> Void) {
+        self.state = state
+        self.tutorial = tutorial
+        self.onCall = onCall
+        self.onVote = onVote
+        self.onDismiss = onDismiss
+    }
 
     var body: some View {
         if state.tutorialShown {

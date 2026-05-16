@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Snapshot of the host's `tutorial_vote_state` message, used by every guest
-/// view's lobby tutorial card. Mirrors the host-side `TutorialVoteCard.State`.
+/// view's lobby tutorial card. Mirrors the host-side `TutorialVoteCard.VoteState`.
 struct GuestTutorialState {
     var isOpen = false
     var yesCount = 0

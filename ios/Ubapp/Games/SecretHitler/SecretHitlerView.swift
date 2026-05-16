@@ -316,7 +316,7 @@ final class SecretHitlerViewModel: ObservableObject {
     @Published var winnerLabel = ""
     @Published var winReasonLabel = ""
     @Published var hostAllies: [SecretHitlerPlayer] = []
-    @Published var tutorialState = TutorialVoteCard.State(
+    @Published var tutorialState = TutorialVoteCard.VoteState(
         isOpen: false, yesCount: 0, noCount: 0, eligibleCount: 0,
         result: nil, tutorialShown: false)
 

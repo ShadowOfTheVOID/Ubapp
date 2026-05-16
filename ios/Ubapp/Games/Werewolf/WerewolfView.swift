@@ -208,7 +208,7 @@ final class WerewolfViewModel: ObservableObject {
     @Published var autoWolfCount = true
     @Published var wolfCountValue = 1
     @Published var maxWolfCount = 1
-    @Published var tutorialState = TutorialVoteCard.State(
+    @Published var tutorialState = TutorialVoteCard.VoteState(
         isOpen: false, yesCount: 0, noCount: 0, eligibleCount: 0,
         result: nil, tutorialShown: false)
 
