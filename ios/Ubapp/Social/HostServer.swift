@@ -46,7 +46,8 @@ final class HostServer {
         return s
     }
 
-    /// Returns the LAN URL guests should open. nil if Wi-Fi IP unavailable.
+    /// Returns the URL guests should open. nil if no usable IPv4 (Wi-Fi,
+    /// Personal Hotspot bridge, or cellular) is available.
     func start() throws -> URL? {
         let opts = NWProtocolWebSocket.Options()
         opts.autoReplyPing = true
@@ -59,7 +60,7 @@ final class HostServer {
         }
         listener.start(queue: queue)
         self.listener = listener
-        self.hostIp = LocalNetwork.wifiIPv4()
+        self.hostIp = LocalNetwork.localIPv4()
         self.boundPort = port.rawValue
 
         guard let ip = hostIp else { return nil }
@@ -170,26 +171,44 @@ final class HostServer {
 }
 
 enum LocalNetwork {
-    /// Returns the device's Wi-Fi (en0) IPv4 address, or nil.
-    static func wifiIPv4() -> String? {
+    /// Returns the device's best-candidate IPv4 address for guests to reach.
+    /// Walks every up, non-loopback interface and prefers, in order:
+    ///   1. Wi-Fi (`en0`)
+    ///   2. Personal Hotspot bridge (`bridge*`) — host is sharing cellular
+    ///   3. Other Ethernet/USB (`en1`+)
+    ///   4. Cellular (`pdp_ip*`) — works for VPN/mesh peers; carrier NAT
+    ///      usually blocks direct guests
+    /// Skips loopback, AWDL, low-latency Wi-Fi, VPN tunnels and other
+    /// virtual interfaces.
+    static func localIPv4() -> String? {
         var ifaddr: UnsafeMutablePointer<ifaddrs>?
         guard getifaddrs(&ifaddr) == 0, let first = ifaddr else { return nil }
         defer { freeifaddrs(ifaddr) }
-        var ptr = first
-        while true {
-            let addr = ptr.pointee.ifa_addr.pointee
-            let name = String(cString: ptr.pointee.ifa_name)
-            if addr.sa_family == UInt8(AF_INET), name == "en0" {
-                var host = [CChar](repeating: 0, count: Int(NI_MAXHOST))
-                if getnameinfo(ptr.pointee.ifa_addr,
-                               socklen_t(ptr.pointee.ifa_addr.pointee.sa_len),
-                               &host, socklen_t(host.count),
-                               nil, 0, NI_NUMERICHOST) == 0 {
-                    return String(cString: host)
-                }
-            }
-            guard let next = ptr.pointee.ifa_next else { return nil }
-            ptr = next
+
+        var best: (priority: Int, addr: String)?
+        var ptr: UnsafeMutablePointer<ifaddrs>? = first
+        while let cur = ptr {
+            ptr = cur.pointee.ifa_next
+            guard let sa = cur.pointee.ifa_addr else { continue }
+            guard sa.pointee.sa_family == UInt8(AF_INET) else { continue }
+            let flags = cur.pointee.ifa_flags
+            guard (flags & UInt32(IFF_UP)) != 0,
+                  (flags & UInt32(IFF_LOOPBACK)) == 0 else { continue }
+            let name = String(cString: cur.pointee.ifa_name)
+            let priority: Int
+            if name == "en0" { priority = 0 }
+            else if name.hasPrefix("bridge") { priority = 1 }
+            else if name.hasPrefix("en") { priority = 2 }
+            else if name.hasPrefix("pdp_ip") { priority = 3 }
+            else { continue }
+            if let b = best, b.priority <= priority { continue }
+            var host = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+            guard getnameinfo(sa,
+                              socklen_t(sa.pointee.sa_len),
+                              &host, socklen_t(host.count),
+                              nil, 0, NI_NUMERICHOST) == 0 else { continue }
+            best = (priority, String(cString: host))
         }
+        return best?.addr
     }
 }

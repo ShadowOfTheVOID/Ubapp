@@ -32,10 +32,11 @@ class HostServer(
 
     var hostIp: String? = null; private set
 
-    /** Returns the LAN URL guests should open. null if Wi-Fi IP unavailable. */
+    /** Returns the URL guests should open. null if no usable IPv4 (Wi-Fi,
+     *  tethered hotspot, USB tether, or cellular) is available. */
     fun startServer(): String? {
         start(SOCKET_READ_TIMEOUT, false)
-        hostIp = wifiIPv4()
+        hostIp = localIPv4()
         return hostIp?.let { "http://$it:$port/" }
     }
 
@@ -113,15 +114,35 @@ class HostServer(
             runCatching { ctx.assets.open(name).bufferedReader().use { it.readText() } }
                 .getOrDefault(defaultHtml)
 
-        /** Returns the device's Wi-Fi IPv4 address, or null. */
-        fun wifiIPv4(): String? {
-            return runCatching {
-                NetworkInterface.getNetworkInterfaces().toList()
-                    .filter { it.isUp && !it.isLoopback }
-                    .flatMap { it.inetAddresses.toList() }
-                    .firstOrNull { !it.isLoopbackAddress && it.hostAddress?.contains(':') == false }
-                    ?.hostAddress
-            }.getOrNull()
+        /** Returns the device's best-candidate IPv4 address for guests to
+         *  reach. Walks every up, non-loopback interface and prefers, in
+         *  order:
+         *    1. Wi-Fi (`wlan*`)
+         *    2. Tethered hotspot soft-AP (`ap*`, `swlan*`) — host is sharing
+         *       cellular over Wi-Fi
+         *    3. USB / Ethernet tether (`rndis*`, `usb*`, `eth*`)
+         *    4. Cellular (`rmnet*`, `ccmni*`, `pdp*`) — works for VPN/mesh
+         *       peers; carrier NAT usually blocks direct guests
+         *  Other names (vpn tunnels, dummy, p2p) are skipped. */
+        fun localIPv4(): String? = runCatching {
+            NetworkInterface.getNetworkInterfaces().toList()
+                .filter { it.isUp && !it.isLoopback }
+                .flatMap { iface ->
+                    iface.inetAddresses.toList()
+                        .filter { !it.isLoopbackAddress && it.hostAddress?.contains(':') == false }
+                        .mapNotNull { addr -> addr.hostAddress?.let { iface.name to it } }
+                }
+                .mapNotNull { (name, addr) -> ifacePriority(name)?.let { it to addr } }
+                .minByOrNull { it.first }
+                ?.second
+        }.getOrNull()
+
+        private fun ifacePriority(name: String): Int? = when {
+            name.startsWith("wlan") -> 0
+            name.startsWith("ap") || name.startsWith("swlan") -> 1
+            name.startsWith("rndis") || name.startsWith("usb") || name.startsWith("eth") -> 2
+            name.startsWith("rmnet") || name.startsWith("ccmni") || name.startsWith("pdp") -> 3
+            else -> null
         }
     }
 }
