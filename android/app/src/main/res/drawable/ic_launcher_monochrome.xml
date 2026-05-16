@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Ubapp adaptive icon — MONOCHROME layer (Android 13+ "themed icons").
+  Single-tone version: all four pips filled white. The OS tints this layer
+  to match the user's wallpaper theme, so the magenta is dropped here.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M 32.8,40.1 a 7.3,7.3 0 1,0 14.6,0 a 7.3,7.3 0 1,0 -14.6,0 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M 60.6,40.1 a 7.3,7.3 0 1,0 14.6,0 a 7.3,7.3 0 1,0 -14.6,0 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M 32.8,67.9 a 7.3,7.3 0 1,0 14.6,0 a 7.3,7.3 0 1,0 -14.6,0 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M 60.6,67.9 a 7.3,7.3 0 1,0 14.6,0 a 7.3,7.3 0 1,0 -14.6,0 Z" />
+</vector>
