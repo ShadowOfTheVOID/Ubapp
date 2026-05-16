@@ -1,16 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Ubapp adaptive icon — FOREGROUND layer
+  Four dice-face pips. Top-left pip uses the magenta accent (#FF2E88) to
+  signal the host phone; the other three are white guests.
+
+  Geometry: foreground viewport is 108x108dp. The adaptive-icon safe zone
+  is the central 66dp circle (Android may mask down to ~72dp on most
+  shapes). All four pips fit inside the safe circle:
+    pip radius   = 7.3dp     (≈ 22% of safe diameter)
+    pip centers  = ±13.9dp from icon centre on both axes
+                 = (40.1, 40.1), (67.9, 40.1), (40.1, 67.9), (67.9, 67.9)
+    farthest pip edge from centre = 19.6 + 7.3 = 26.9dp  (safe limit 33dp)
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+
+    <!-- TL pip — magenta accent (host) -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M34,30 L34,78 L42,78 L42,58 L58,58 L58,50 L42,50 L42,38 L66,38 L66,30 Z" />
+        android:fillColor="#FFFF2E88"
+        android:pathData="M 32.8,40.1 a 7.3,7.3 0 1,0 14.6,0 a 7.3,7.3 0 1,0 -14.6,0 Z" />
+
+    <!-- TR pip — white -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M70,42 L70,78 L78,78 L78,42 Z" />
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M 60.6,40.1 a 7.3,7.3 0 1,0 14.6,0 a 7.3,7.3 0 1,0 -14.6,0 Z" />
+
+    <!-- BL pip — white -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M70,34 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0" />
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M 32.8,67.9 a 7.3,7.3 0 1,0 14.6,0 a 7.3,7.3 0 1,0 -14.6,0 Z" />
+
+    <!-- BR pip — white -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M 60.6,67.9 a 7.3,7.3 0 1,0 14.6,0 a 7.3,7.3 0 1,0 -14.6,0 Z" />
 </vector>
