@@ -9,7 +9,8 @@ struct WerewolfView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                HostingChrome(joinUrl: model.joinUrl, onStart: model.startHosting)
+                HostingChrome(joinUrl: model.joinUrl, onStart: model.startHosting,
+                              onStop: model.stop)
 
                 HStack {
                     Text(phaseLabel).font(.headline)
@@ -230,7 +231,7 @@ final class WerewolfViewModel: ObservableObject {
     func callTutorialVote() { server.hostCallTutorialVote() }
     func tutorialVote(_ yes: Bool) { server.hostTutorialVote(yes) }
     func dismissTutorial() { server.hostDismissTutorial() }
-    func stop() { server.stop() }
+    func stop() { server.stop(); joinUrl = nil }
 
     func name(_ id: String) -> String { server.engine.players[id]?.name ?? id }
 

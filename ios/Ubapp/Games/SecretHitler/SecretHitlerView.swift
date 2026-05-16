@@ -8,7 +8,8 @@ struct SecretHitlerView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                HostingChrome(joinUrl: model.joinUrl, onStart: model.startHosting)
+                HostingChrome(joinUrl: model.joinUrl, onStart: model.startHosting,
+                              onStop: model.stop)
 
                 trackHeader
 
@@ -337,7 +338,7 @@ final class SecretHitlerViewModel: ObservableObject {
         refresh()
     }
     func start() { server.hostStart() }
-    func stop() { server.stop() }
+    func stop() { server.stop(); joinUrl = nil }
 
     func callTutorialVote() { server.hostCallTutorialVote() }
     func tutorialVote(_ yes: Bool) { server.hostTutorialVote(yes) }

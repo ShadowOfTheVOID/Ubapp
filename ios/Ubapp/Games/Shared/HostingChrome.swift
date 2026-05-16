@@ -5,28 +5,65 @@ import SwiftUI
 struct HostingChrome: View {
     let joinUrl: URL?
     let onStart: () -> Void
+    var onStop: (() -> Void)? = nil
 
     var body: some View {
         if let url = joinUrl {
-            GroupBox("Guests join here") {
-                VStack(alignment: .leading, spacing: 8) {
-                    if let qr = QRCode.image(for: url.absoluteString) {
-                        Image(uiImage: qr).interpolation(.none).resizable().scaledToFit()
-                            .frame(maxHeight: 200)
-                    }
-                    Text(url.absoluteString).font(.system(.caption, design: .monospaced))
-                    if let host = url.host, let code = JoinCode.encode(ip: host) {
-                        HStack(spacing: 6) {
-                            Text("App code:").font(.caption).foregroundStyle(.secondary)
-                            Text(code).font(.system(.title3, design: .monospaced).bold())
+            VStack(spacing: 12) {
+                GroupBox {
+                    VStack(spacing: 12) {
+                        Text("Guests join here")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                        if let qr = QRCode.image(for: url.absoluteString) {
+                            Image(uiImage: qr)
+                                .interpolation(.none)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(maxWidth: 240, maxHeight: 240)
+                                .padding(8)
+                                .background(Color.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
                         }
+                        if let host = url.host, let code = JoinCode.encode(ip: host) {
+                            VStack(spacing: 2) {
+                                Text("App code")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Text(code)
+                                    .font(.system(.title, design: .monospaced).bold())
+                                    .tracking(2)
+                            }
+                        }
+                        Text(url.absoluteString)
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                        Text("Browser guests scan the QR. App guests open \"Join a game\" and type the code or IP.")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    Text("Browser guests scan the QR. App guests open \"Join a game\" and type the code or IP.")
-                        .font(.caption2).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+                }
+                if let onStop {
+                    Button(role: .destructive, action: onStop) {
+                        Label("Stop hosting", systemImage: "stop.circle.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
                 }
             }
+            .frame(maxWidth: .infinity)
         } else {
-            Button("Start hosting", action: onStart).buttonStyle(.borderedProminent)
+            Button(action: onStart) {
+                Label("Start hosting", systemImage: "play.circle.fill")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
         }
     }
 }

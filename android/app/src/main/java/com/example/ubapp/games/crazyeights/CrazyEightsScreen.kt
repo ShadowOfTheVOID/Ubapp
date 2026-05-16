@@ -46,7 +46,11 @@ fun CrazyEightsScreen() {
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        HostingChrome(joinUrl) { joinUrl = server.start() }
+        HostingChrome(
+            joinUrl = joinUrl,
+            onStart = { joinUrl = server.start() },
+            onStop = { server.stop(); joinUrl = null },
+        )
         Text("Phase: ${e.phase}", style = MaterialTheme.typography.titleMedium)
 
         when (e.phase) {
