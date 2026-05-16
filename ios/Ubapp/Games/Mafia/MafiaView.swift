@@ -10,7 +10,8 @@ struct MafiaView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                HostingChrome(joinUrl: model.joinUrl, onStart: model.startHosting)
+                HostingChrome(joinUrl: model.joinUrl, onStart: model.startHosting,
+                              onStop: model.stop)
 
                 phaseHeader
 
@@ -194,7 +195,7 @@ final class MafiaViewModel: ObservableObject {
     func advanceFromReveal() { server.advanceFromReveal() }
     func submitNight(targetId: String) { server.hostNightAction(targetId: targetId) }
     func submitVote(targetId: String?) { server.hostDayVote(targetId: targetId) }
-    func stop() { server.stop() }
+    func stop() { server.stop(); joinUrl = nil }
 
     func name(_ id: String) -> String { server.engine.players[id]?.name ?? id }
 

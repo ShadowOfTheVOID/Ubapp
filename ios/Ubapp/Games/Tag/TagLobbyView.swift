@@ -44,7 +44,8 @@ struct TagLobbyView: View {
                     Button("Start hosting") { model.startHosting() }
                         .buttonStyle(.borderedProminent)
                 } else if model.state == nil {
-                    HostingChrome(joinUrl: model.joinUrl, onStart: model.startHosting)
+                    HostingChrome(joinUrl: model.joinUrl, onStart: model.startHosting,
+                                  onStop: model.stop)
                     GroupBox("Connected peers (\(model.peers.count + 1))") {
                         HStack { Text("You (host)"); Spacer(); Text("ready").foregroundStyle(.green) }
                         ForEach(model.peers, id: \.self) { name in
@@ -190,8 +191,9 @@ final class TagLobbyViewModel: ObservableObject {
         session?.dispose()
         ble?.stop()
         transport?.dispose()
+        server.stop()
         session = nil; ble = nil; transport = nil
-        hosting = false; peers = []; state = nil
+        hosting = false; peers = []; state = nil; joinUrl = nil
         UIApplication.shared.isIdleTimerDisabled = false
     }
 }

@@ -10,7 +10,8 @@ struct CrazyEightsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                HostingChrome(joinUrl: model.joinUrl, onStart: model.startHosting)
+                HostingChrome(joinUrl: model.joinUrl, onStart: model.startHosting,
+                              onStop: model.stop)
 
                 Text(phaseLabel).font(.headline)
 
@@ -205,7 +206,7 @@ final class CrazyEightsViewModel: ObservableObject {
     func callTutorialVote() { server.hostCallTutorialVote() }
     func tutorialVote(_ yes: Bool) { server.hostTutorialVote(yes) }
     func dismissTutorial() { server.hostDismissTutorial() }
-    func stop() { server.stop() }
+    func stop() { server.stop(); joinUrl = nil }
 
     func canPlay(_ c: Card) -> Bool { server.engine.canPlay(c) }
 
