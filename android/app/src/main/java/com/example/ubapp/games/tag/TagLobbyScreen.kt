@@ -39,7 +39,7 @@ fun TagLobbyScreen() {
         Manifest.permission.BLUETOOTH_CONNECT,
     ))
 
-    val server = remember { HostServer(html = HostServer.htmlAsset(ctx, "tag_browser.html")) }
+    val server = remember { HostServer(html = HostServer.htmlAsset(ctx, "tag_browser.html"), ctx = ctx) }
     var hosting by remember { mutableStateOf(false) }
     var joinUrl by remember { mutableStateOf<String?>(null) }
     var variant by remember { mutableStateOf(TagVariant.CLASSIC) }

@@ -47,7 +47,7 @@ final class HostTagTransport: TagTransport {
 
 /// Peer-side: connects one WebSocket to the host. Outbound goes to the host,
 /// which fans out to all peers (including us).
-final class PeerTagTransport: NSObject, TagTransport, URLSessionWebSocketDelegate {
+final class PeerTagTransport: NSObject, TagTransport, URLSessionWebSocketDelegate, URLSessionDelegate {
     var onInbound: ((TagMessage) -> Void)?
     var onPeerConnected: ((String) -> Void)?
     var onPeerDisconnected: ((String) -> Void)?
@@ -55,7 +55,7 @@ final class PeerTagTransport: NSObject, TagTransport, URLSessionWebSocketDelegat
     private var task: URLSessionWebSocketTask?
     private var session: URLSession?
 
-    /// Connects to ws://<host>:<port>/ws derived from the host URL.
+    /// Connects to wss://<host>:<port>/ws derived from the host URL.
     init(serverUrl: URL) {
         super.init()
         var comps = URLComponents(url: serverUrl, resolvingAgainstBaseURL: false)!
@@ -95,6 +95,24 @@ final class PeerTagTransport: NSObject, TagTransport, URLSessionWebSocketDelegat
         task?.cancel(with: .goingAway, reason: nil)
         task = nil
         session?.invalidateAndCancel()
+    }
+
+    func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge,
+                    completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+        guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
+              let serverTrust = challenge.protectionSpace.serverTrust,
+              let cert = HostServer.bundledCert,
+              SecTrustSetAnchorCertificates(serverTrust, [cert] as CFArray) == errSecSuccess else {
+            completionHandler(.performDefaultHandling, nil); return
+        }
+        SecTrustSetAnchorCertificatesOnly(serverTrust, true)
+        var result: SecTrustResultType = .invalid
+        SecTrustEvaluate(serverTrust, &result)
+        if result == .unspecified || result == .proceed {
+            completionHandler(.useCredential, URLCredential(trust: serverTrust))
+        } else {
+            completionHandler(.cancelAuthenticationChallenge, nil)
+        }
     }
 }
 

@@ -7,6 +7,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import com.example.ubapp.games.codenames.CodenamesGuestScreen
@@ -29,6 +30,7 @@ data class GuestContext(
 
 @Composable
 fun JoinFlowScreen() {
+    val ctx = LocalContext.current
     var rawCode by remember { mutableStateOf("") }
     var name by remember { mutableStateOf("") }
     var client by remember { mutableStateOf<GuestClient?>(null) }
@@ -91,8 +93,8 @@ fun JoinFlowScreen() {
                         status = "Couldn't read that — enter the 7-character code or the IP."
                         return@Button
                     }
-                    val url = "ws://$ip:${JoinCode.DEFAULT_PORT}/ws"
-                    val gc = GuestClient(url)
+                    val url = "wss://$ip:${JoinCode.DEFAULT_PORT}/ws"
+                    val gc = GuestClient(url, ctx)
                     gc.onStateChange = { s ->
                         when (s.kind) {
                             GuestClient.StateKind.OPEN ->

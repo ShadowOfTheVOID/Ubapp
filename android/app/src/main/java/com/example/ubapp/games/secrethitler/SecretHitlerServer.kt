@@ -15,7 +15,7 @@ import org.json.JSONObject
  */
 class SecretHitlerServer(context: Context, val hostName: String = "Host") {
     val engine = SecretHitlerEngine()
-    private val server = HostServer(html = HostServer.htmlAsset(context, "secret_hitler_browser.html"))
+    private val server = HostServer(html = HostServer.htmlAsset(context, "secret_hitler_browser.html"), ctx = context)
     private val guestToPlayer = HashMap<GuestId, String>()
     private val playerToGuest = HashMap<String, GuestId>()
 

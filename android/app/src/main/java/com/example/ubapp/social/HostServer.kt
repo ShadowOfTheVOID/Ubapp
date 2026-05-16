@@ -4,7 +4,10 @@ import android.content.Context
 import fi.iki.elonen.NanoHTTPD
 import fi.iki.elonen.NanoWSD
 import java.net.NetworkInterface
+import java.security.KeyStore
 import java.util.concurrent.atomic.AtomicInteger
+import javax.net.ssl.KeyManagerFactory
+import javax.net.ssl.SSLContext
 
 /** Identifies one connected guest (browser tab or app instance) for the
  *  duration of the connection. Stable across messages from the same socket. */
@@ -21,10 +24,12 @@ import java.util.concurrent.atomic.AtomicInteger
 class HostServer(
     val port: Int = 7654,
     var html: String = defaultHtml,
+    ctx: Context? = null,
 ) : NanoWSD(port) {
 
     private val sockets = HashMap<GuestId, GuestSocket>()
     private val nextId = AtomicInteger(0)
+    private val sslFactory = ctx?.let { buildSslSocketFactory(it) }
 
     var onJoin: ((GuestId) -> Unit)? = null
     var onLeave: ((GuestId) -> Unit)? = null
@@ -35,9 +40,11 @@ class HostServer(
     /** Returns the URL guests should open. null if no usable IPv4 (Wi-Fi,
      *  tethered hotspot, USB tether, or cellular) is available. */
     fun startServer(): String? {
+        if (sslFactory != null) makeSecure(sslFactory, null)
         start(SOCKET_READ_TIMEOUT, false)
         hostIp = localIPv4()
-        return hostIp?.let { "http://$it:$port/" }
+        val scheme = if (sslFactory != null) "https" else "http"
+        return hostIp?.let { "$scheme://$it:$port/" }
     }
 
     fun stopServer() {
@@ -108,6 +115,17 @@ class HostServer(
         </body>
         </html>
         """
+
+        fun buildSslSocketFactory(ctx: Context): javax.net.ssl.SSLServerSocketFactory? =
+            runCatching {
+                val ks = KeyStore.getInstance("PKCS12")
+                ctx.assets.open("ubapp.p12").use { ks.load(it, "ubapp".toCharArray()) }
+                val kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm())
+                kmf.init(ks, "ubapp".toCharArray())
+                val ssl = SSLContext.getInstance("TLS")
+                ssl.init(kmf.keyManagers, null, null)
+                ssl.serverSocketFactory
+            }.getOrNull()
 
         /** Loads a bundled HTML file from `assets/` (e.g. "mafia_browser.html"). */
         fun htmlAsset(ctx: Context, name: String): String =

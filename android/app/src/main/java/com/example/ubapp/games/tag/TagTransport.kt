@@ -66,7 +66,7 @@ class PeerTagTransport private constructor(serverUrl: String) : TagTransport {
     }
 
     companion object {
-        /** Convert "http://host:port/" to "ws://host:port/ws" and connect. */
+        /** Convert "https://host:port/" to "wss://host:port/ws" and connect. */
         fun connect(serverUrl: String): PeerTagTransport {
             val wsUrl = serverUrl
                 .replaceFirst("https://", "wss://")

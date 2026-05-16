@@ -10,7 +10,7 @@ import org.json.JSONObject
 /** Wraps [HostServer] with Codenames-specific routing. */
 class CodenamesServer(context: Context, val hostName: String = "Host") {
     val engine = CodenamesEngine()
-    private val server = HostServer(html = HostServer.htmlAsset(context, "codenames_browser.html"))
+    private val server = HostServer(html = HostServer.htmlAsset(context, "codenames_browser.html"), ctx = context)
     private val guestToPlayer = HashMap<GuestId, String>()
     private val playerToGuest = HashMap<String, GuestId>()
     var onStateChange: (() -> Unit)? = null

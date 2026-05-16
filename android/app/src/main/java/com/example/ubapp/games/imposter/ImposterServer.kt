@@ -10,7 +10,7 @@ import org.json.JSONObject
 /** Wraps [HostServer] with Imposter-specific routing. */
 class ImposterServer(context: Context, val hostName: String = "Host") {
     val engine = ImposterEngine()
-    private val server = HostServer(html = HostServer.htmlAsset(context, "imposter_browser.html"))
+    private val server = HostServer(html = HostServer.htmlAsset(context, "imposter_browser.html"), ctx = context)
     private val guestToPlayer = HashMap<GuestId, String>()
     private val playerToGuest = HashMap<String, GuestId>()
     var onStateChange: (() -> Unit)? = null
