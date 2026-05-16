@@ -80,7 +80,7 @@
 <script>
 (() => {
   const root = document.getElementById('root');
-  const ws = new WebSocket(`ws://${location.host}/ws`);
+  const ws = new WebSocket(`wss://${location.host}/ws`);
   const state = { me:null, isSpymaster:false, myTeam:null, phase:'lobby', players:[],
     board:[], currentTeam:null, currentClue:null, currentNumber:0, guessesLeft:0,
     redLeft:0, blueLeft:0, winner:null, endReason:null, lastEvent:'',

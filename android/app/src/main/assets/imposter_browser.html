@@ -55,7 +55,7 @@
 <script>
 (() => {
   const root = document.getElementById('root');
-  const ws = new WebSocket(`ws://${location.host}/ws`);
+  const ws = new WebSocket(`wss://${location.host}/ws`);
   const state = { me:null, phase:'lobby', players:[], category:'', word:null, isImposter:false, hideCategory:false, isDecoy:false, picked:null, voted:false, result:null,
     options:{imposterCount:1, decoyWord:false, hideCategory:false, mixedPool:false, maxImposterCount:1},
     tutorial:{isOpen:false,yesCount:0,noCount:0,eligibleCount:0,result:null,tutorialShown:false}, tutorialContent:null, myTutorialVote:null };

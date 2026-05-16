@@ -1,6 +1,7 @@
 import Foundation
 import Network
 import CryptoKit
+import Security
 
 /// Identifies one connected guest (browser tab or app instance) for the
 /// duration of the connection. Stable across messages from the same socket.
@@ -52,7 +53,8 @@ final class HostServer {
     /// Returns the URL guests should open. nil if no usable IPv4 (Wi-Fi,
     /// Personal Hotspot bridge, or cellular) is available.
     func start() throws -> URL? {
-        let listener = try NWListener(using: .tcp, on: port)
+        let tls = Self.tlsParameters()
+        let listener = try NWListener(using: tls ?? NWParameters.tcp, on: port)
         listener.newConnectionHandler = { [weak self] conn in
             self?.accept(conn)
         }
@@ -62,7 +64,47 @@ final class HostServer {
         self.boundPort = port.rawValue
 
         guard let ip = hostIp else { return nil }
-        return URL(string: "http://\(ip):\(port.rawValue)/")
+        let scheme = tls != nil ? "https" : "http"
+        return URL(string: "\(scheme)://\(ip):\(port.rawValue)/")
+    }
+
+    // MARK: - TLS
+
+    /// The self-signed certificate extracted from the bundled PKCS12.
+    /// Used by both the server (to present) and guest clients (to pin).
+    static let bundledCert: SecCertificate? = {
+        guard let url = Bundle.main.url(forResource: "ubapp", withExtension: "p12"),
+              let data = try? Data(contentsOf: url) else { return nil }
+        let opts: [String: Any] = [kSecImportExportPassphrase as String: "ubapp"]
+        var items: CFArray?
+        guard SecPKCS12Import(data as CFData, opts as CFDictionary, &items) == errSecSuccess,
+              let arr = items as? [[String: Any]], let first = arr.first,
+              let chain = first[kSecImportItemCertChain as String] as? [SecCertificate] else { return nil }
+        return chain.first
+    }()
+
+    /// Builds TLS NWParameters using the bundled self-signed PKCS12 identity.
+    /// Returns nil (falls back to plain TCP) if the resource is missing.
+    private static func tlsParameters() -> NWParameters? {
+        guard let url = Bundle.main.url(forResource: "ubapp", withExtension: "p12"),
+              let p12Data = try? Data(contentsOf: url) else { return nil }
+        let opts: [String: Any] = [kSecImportExportPassphrase as String: "ubapp"]
+        var items: CFArray?
+        guard SecPKCS12Import(p12Data as CFData, opts as CFDictionary, &items) == errSecSuccess,
+              let arr = items as? [[String: Any]], let first = arr.first,
+              let identity = first[kSecImportItemIdentity as String] else { return nil }
+        let secIdentity = identity as! SecIdentity
+
+        let tlsOpts = NWProtocolTLS.Options()
+        sec_protocol_options_set_local_identity(
+            tlsOpts.securityProtocolOptions,
+            sec_identity_create(secIdentity)!
+        )
+        sec_protocol_options_set_peer_authentication_required(
+            tlsOpts.securityProtocolOptions, false
+        )
+        let params = NWParameters(tls: tlsOpts, tcp: NWProtocolTCP.Options())
+        return params
     }
 
     private func accept(_ conn: NWConnection) {

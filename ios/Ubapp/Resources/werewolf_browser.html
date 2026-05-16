@@ -129,7 +129,7 @@
 <script>
 (() => {
   const root = document.getElementById('root');
-  const ws = new WebSocket(`ws://${location.host}/ws`);
+  const ws = new WebSocket(`wss://${location.host}/ws`);
 
   let state = {
     connected: false,

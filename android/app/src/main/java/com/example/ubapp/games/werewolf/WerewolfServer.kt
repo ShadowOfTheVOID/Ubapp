@@ -10,7 +10,7 @@ import org.json.JSONObject
 /** Wraps [HostServer] with Werewolf-specific routing. */
 class WerewolfServer(context: Context, val hostName: String = "Host") {
     val engine = WerewolfEngine()
-    private val server = HostServer(html = HostServer.htmlAsset(context, "werewolf_browser.html"))
+    private val server = HostServer(html = HostServer.htmlAsset(context, "werewolf_browser.html"), ctx = context)
     private val guestToPlayer = HashMap<GuestId, String>()
     private val playerToGuest = HashMap<String, GuestId>()
     var onStateChange: (() -> Unit)? = null

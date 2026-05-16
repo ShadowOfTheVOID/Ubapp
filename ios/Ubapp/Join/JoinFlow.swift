@@ -96,7 +96,7 @@ struct JoinFlowView: View {
             return
         }
         pendingHost = ip
-        let urlString = "ws://\(ip):\(JoinCode.defaultPort)/ws"
+        let urlString = "wss://\(ip):\(JoinCode.defaultPort)/ws"
         guard let url = URL(string: urlString) else {
             status = "Bad URL: \(urlString)"; return
         }

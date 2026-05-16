@@ -1,11 +1,12 @@
 import Foundation
+import Security
 
 /// WebSocket client used by app guests to join a host phone running the
 /// in-app server. Built on `URLSessionWebSocketTask` so there's no extra
 /// dependency. JSON is sent/received as text frames — same wire format the
 /// browser bundle uses.
 @MainActor
-final class GuestClient: NSObject, URLSessionWebSocketDelegate {
+final class GuestClient: NSObject, URLSessionWebSocketDelegate, URLSessionDelegate {
     enum State { case connecting, open, closed, failed(String) }
 
     private(set) var state: State = .connecting
@@ -24,6 +25,29 @@ final class GuestClient: NSObject, URLSessionWebSocketDelegate {
         let config = URLSessionConfiguration.default
         self.session = URLSession(configuration: config, delegate: self, delegateQueue: .main)
     }
+
+    // MARK: - TLS: trust the bundled self-signed server cert
+
+    nonisolated func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge,
+                                completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+        guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
+              let serverTrust = challenge.protectionSpace.serverTrust else {
+            completionHandler(.performDefaultHandling, nil)
+            return
+        }
+        if Self.bundledCert.map({ SecTrustSetAnchorCertificates(serverTrust, [$0] as CFArray) == errSecSuccess }) == true {
+            SecTrustSetAnchorCertificatesOnly(serverTrust, true)
+            var result: SecTrustResultType = .invalid
+            SecTrustEvaluate(serverTrust, &result)
+            if result == .unspecified || result == .proceed {
+                completionHandler(.useCredential, URLCredential(trust: serverTrust))
+                return
+            }
+        }
+        completionHandler(.cancelAuthenticationChallenge, nil)
+    }
+
+    private static var bundledCert: SecCertificate? { HostServer.bundledCert }
 
     func connect() {
         task = session.webSocketTask(with: url)
