@@ -31,20 +31,22 @@ final class GuestClient: NSObject, URLSessionWebSocketDelegate, URLSessionDelega
     nonisolated func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge,
                                 completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
         guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
-              let serverTrust = challenge.protectionSpace.serverTrust else {
+              let serverTrust = challenge.protectionSpace.serverTrust,
+              let pinned = Self.bundledCert else {
             completionHandler(.performDefaultHandling, nil)
             return
         }
-        if Self.bundledCert.map({ SecTrustSetAnchorCertificates(serverTrust, [$0] as CFArray) == errSecSuccess }) == true {
-            SecTrustSetAnchorCertificatesOnly(serverTrust, true)
-            var result: SecTrustResultType = .invalid
-            SecTrustEvaluate(serverTrust, &result)
-            if result == .unspecified || result == .proceed {
-                completionHandler(.useCredential, URLCredential(trust: serverTrust))
-                return
-            }
+        // The host presents a fixed self-signed cert, but guests reach it at
+        // the host's dynamic LAN IP, so that IP can never be in the cert's
+        // SAN. Default trust evaluation enforces hostname matching and would
+        // always fail (surfacing as a "cancelled" error). Pin on the exact
+        // certificate bytes instead — identity, not hostname, is the trust.
+        guard let leaf = (SecTrustCopyCertificateChain(serverTrust) as? [SecCertificate])?.first,
+              (SecCertificateCopyData(leaf) as Data) == (SecCertificateCopyData(pinned) as Data) else {
+            completionHandler(.cancelAuthenticationChallenge, nil)
+            return
         }
-        completionHandler(.cancelAuthenticationChallenge, nil)
+        completionHandler(.useCredential, URLCredential(trust: serverTrust))
     }
 
     private nonisolated static var bundledCert: SecCertificate? { HostServer.bundledCert }
