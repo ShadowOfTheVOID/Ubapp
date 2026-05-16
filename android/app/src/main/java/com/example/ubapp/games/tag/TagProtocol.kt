@@ -31,12 +31,14 @@ sealed class TagMessage {
     data class Start(
         val variant: TagVariant, val startingItId: String, val startTimeMs: Long,
         val peerIds: List<String>, val peerNames: Map<String, String>,
+        val durationOverrideSec: Int? = null,
     ) : TagMessage() {
         override fun toJson() = JSONObject().apply {
             put("type", "start"); put("variant", variant.name.lowercase())
             put("startingItId", startingItId); put("startTimeMs", startTimeMs)
             put("peerIds", JSONArray(peerIds))
             put("peerNames", JSONObject(peerNames as Map<*, *>))
+            durationOverrideSec?.let { put("durationOverrideSec", it) }
         }
     }
     data class Tag(val taggerId: String, val victimId: String, val timeMs: Long) : TagMessage() {
@@ -68,6 +70,8 @@ sealed class TagMessage {
                         startingItId = j.getString("startingItId"),
                         startTimeMs = j.getLong("startTimeMs"),
                         peerIds = ids, peerNames = names,
+                        durationOverrideSec = if (j.has("durationOverrideSec") && !j.isNull("durationOverrideSec"))
+                            j.getInt("durationOverrideSec") else null,
                     )
                 }
                 "tag" -> Tag(j.getString("taggerId"), j.getString("victimId"), j.getLong("timeMs"))

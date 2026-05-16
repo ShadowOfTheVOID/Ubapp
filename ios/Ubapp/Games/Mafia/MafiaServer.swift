@@ -35,6 +35,10 @@ final class MafiaServer {
     var guestCount: Int { server.guestCount }
 
     // MARK: Host-side actions
+    func hostSetOptions(_ o: MafiaOptions) {
+        engine.setOptions(o)
+        broadcastOptions(); emit()
+    }
     func hostStart() {
         guard engine.canStart else { return }
         engine.start()
@@ -74,6 +78,10 @@ final class MafiaServer {
             if let pid = guestToPlayer[guest] {
                 applyDayVote(playerId: pid, targetId: j["targetId"] as? String)
             }
+        case "set_options":
+            // Only the host (which doesn't connect over WebSocket) may
+            // mutate options. Ignore inbound from guests.
+            break
         case "call_tutorial_vote": openTutorialVote()
         case "tutorial_vote":
             if let pid = guestToPlayer[guest], let yes = j["yes"] as? Bool {
@@ -108,8 +116,19 @@ final class MafiaServer {
         playerToGuest[pid] = guest
         send(guest, ["type": "welcome", "yourId": pid, "yourName": name, "game": "mafia"])
         broadcastLobby()
+        broadcastOptions()
         broadcastTutorialState()
         emit()
+    }
+
+    private func broadcastOptions() {
+        let o = engine.options
+        broadcast([
+            "type": "options",
+            "mafiaCount": o.mafiaCount as Any,
+            "doctorEnabled": o.doctorEnabled,
+            "maxMafiaCount": engine.maxMafiaCount,
+        ])
     }
 
     private func openTutorialVote() {

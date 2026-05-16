@@ -51,8 +51,17 @@ struct ImposterGuestView: View {
                 VStack(spacing: 12) {
                     Text("YOUR ROLE").font(.caption).foregroundStyle(.secondary)
                     Text("IMPOSTER").font(.system(size: 42, weight: .heavy)).foregroundStyle(.red)
-                    Text("Category: \(model.category)").foregroundStyle(.secondary)
-                    Text("Bluff your way through.").font(.caption).foregroundStyle(.secondary)
+                    if !model.hideCategory {
+                        Text("Category: \(model.category)").foregroundStyle(.secondary)
+                    }
+                    if let decoy = model.word, model.isDecoy {
+                        Text("Decoy word: \(decoy)")
+                            .font(.system(size: 24, weight: .bold))
+                        Text("This isn't the real word — bluff carefully.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    } else {
+                        Text("Bluff your way through.").font(.caption).foregroundStyle(.secondary)
+                    }
                 }.padding(8)
             }
         } else {
@@ -95,8 +104,11 @@ struct ImposterGuestView: View {
     @ViewBuilder private var result: some View {
         let winner = model.winner == "town" ? "Town wins" : "Imposter wins"
         GroupBox(winner) {
-            let imposterName = model.players.first(where: { $0.id == model.imposterId })?.name ?? "?"
-            Text("The imposter was \(imposterName).")
+            let names = model.imposterIds.compactMap { id in
+                model.players.first(where: { $0.id == id })?.name
+            }
+            let label = names.count == 1 ? "imposter was" : "imposters were"
+            Text(names.isEmpty ? "Imposters: ?" : "The \(label) \(names.joined(separator: ", ")).")
             if let m = model.mostVotedId, let p = model.players.first(where: { $0.id == m }) {
                 Text("You voted out \(p.name) — \(model.imposterCaught ? "correct!" : "wrong.")")
             } else {
@@ -119,10 +131,12 @@ final class ImposterGuestModel: ObservableObject {
     @Published var picked: String?
     @Published var voted = false
     @Published var winner: String?
-    @Published var imposterId: String?
+    @Published var imposterIds: [String] = []
     @Published var imposterCaught = false
     @Published var mostVotedId: String?
     @Published var resultWord: String = ""
+    @Published var hideCategory = false
+    @Published var isDecoy = false
     @Published var error: String?
     @Published var tutorialState = GuestTutorialState()
     @Published var tutorialContent: GuestTutorialContent?
@@ -151,13 +165,16 @@ final class ImposterGuestModel: ObservableObject {
             category = m["category"] as? String ?? ""
             word = m["word"] as? String
             isImposter = m["isImposter"] as? Bool ?? false
+            hideCategory = m["hideCategory"] as? Bool ?? false
+            isDecoy = m["isDecoy"] as? Bool ?? false
             phase = "playing"; voted = false; picked = nil
         case "voting":
             phase = "voting"; voted = false; picked = nil
         case "result":
             phase = "result"
             winner = m["winner"] as? String
-            imposterId = m["imposterId"] as? String
+            if let ids = m["imposterIds"] as? [String] { imposterIds = ids }
+            else if let single = m["imposterId"] as? String { imposterIds = [single] }
             imposterCaught = m["imposterCaught"] as? Bool ?? false
             mostVotedId = m["mostVotedId"] as? String
             resultWord = m["word"] as? String ?? ""

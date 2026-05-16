@@ -27,27 +27,30 @@ final class TagSession {
     }
 
     /// Host: pick the starting "it", broadcast Start, kick off the round.
-    func startHosting(variant: TagVariant, peerNames: [String: String]) {
+    func startHosting(variant: TagVariant, peerNames: [String: String],
+                      durationOverrideSec: Int? = nil) {
         self.peerNames = peerNames
         let ids = Array(peerNames.keys).shuffled()
         guard let first = ids.first else { return }
+        let now = Int64(Date().timeIntervalSince1970 * 1000)
         let start: TagMessage = .start(
-            variant: variant, startingItId: first,
-            startTimeMs: Int64(Date().timeIntervalSince1970 * 1000),
-            peerIds: ids, peerNames: peerNames)
+            variant: variant, startingItId: first, startTimeMs: now,
+            peerIds: ids, peerNames: peerNames,
+            durationOverrideSec: durationOverrideSec)
         transport.send(start)
         beginRound(variant: variant, startingItId: first,
-                   startTimeMs: Int64(Date().timeIntervalSince1970 * 1000),
-                   peerIds: ids)
+                   startTimeMs: now, peerIds: ids,
+                   durationOverrideSec: durationOverrideSec)
     }
 
     private func handleIncoming(_ msg: TagMessage) {
         switch msg {
-        case let .start(variant, startingItId, startTimeMs, peerIds, names):
+        case let .start(variant, startingItId, startTimeMs, peerIds, names, override):
             if engine.state != nil { return }
             self.peerNames = names
             beginRound(variant: variant, startingItId: startingItId,
-                       startTimeMs: startTimeMs, peerIds: peerIds)
+                       startTimeMs: startTimeMs, peerIds: peerIds,
+                       durationOverrideSec: override)
         case let .tag(taggerId, victimId, _):
             if engine.applyTag(taggerId: taggerId, victimId: victimId) { emit() }
         case let .unfreeze(unfreezerId, victimId, _):
@@ -62,15 +65,21 @@ final class TagSession {
     }
 
     private func beginRound(variant: TagVariant, startingItId: String,
-                            startTimeMs: Int64, peerIds: [String]) {
+                            startTimeMs: Int64, peerIds: [String],
+                            durationOverrideSec: Int? = nil) {
         engine.start(variant: variant, startingItId: startingItId,
-                     startTimeMs: startTimeMs, peerIds: peerIds, displayNames: peerNames)
+                     startTimeMs: startTimeMs, peerIds: peerIds, displayNames: peerNames,
+                     durationOverrideSec: durationOverrideSec)
         let det = ProximityDetector { [weak self] peer in self?.onProximityTouch(peer) }
         self.detector = det
         proximity.onEvent = { [weak self] e in self?.detector?.ingest(e) }
         proximity.start()
         emit()
-        if variant == .hotPotato { restartHotPotatoTimer(durationMs: Int(variant.duration * 1000)) }
+        if variant == .hotPotato {
+            // Hot Potato uses the per-tag countdown — keep the variant default
+            // even when the round duration was overridden.
+            restartHotPotatoTimer(durationMs: Int(variant.duration * 1000))
+        }
     }
 
     private func onProximityTouch(_ peerId: String) {

@@ -5,6 +5,13 @@ import kotlin.random.Random
 enum class WerewolfPhase { LOBBY, NIGHT, DAY_REVEAL, DAY_VOTE, HUNTER_SHOT, GAME_OVER }
 enum class WerewolfWinner { WEREWOLVES, TOWN }
 
+/** Host-configurable knobs. Defaults reproduce the formula-driven game. */
+data class WerewolfOptions(
+    val wolfCount: Int? = null,
+    val seerEnabled: Boolean = true,
+    val hunterEnabled: Boolean = true,
+)
+
 enum class WerewolfRole(val displayName: String, val tagline: String) {
     WEREWOLF("Werewolf", "Hunt the village. Coordinate with your pack at night."),
     SEER("Seer", "Each night, learn whether one player is a werewolf."),
@@ -31,6 +38,8 @@ class WerewolfEngine(private val rng: Random = Random.Default) {
     var phase: WerewolfPhase = WerewolfPhase.LOBBY
     var day: Int = 0
     var winner: WerewolfWinner? = null
+    var options: WerewolfOptions = WerewolfOptions()
+        private set
 
     private val wolfVotes = mutableMapOf<String, String>()
     private var seerTarget: String? = null
@@ -50,15 +59,23 @@ class WerewolfEngine(private val rng: Random = Random.Default) {
     fun removePlayer(id: String) { if (phase == WerewolfPhase.LOBBY) players.remove(id) }
     val canStart: Boolean get() = phase == WerewolfPhase.LOBBY && players.size >= 5
 
+    val maxWolfCount: Int get() = maxOf(1, players.size - 1)
+
+    fun setOptions(o: WerewolfOptions) {
+        if (phase != WerewolfPhase.LOBBY) return
+        options = o.copy(wolfCount = o.wolfCount?.coerceIn(1, maxWolfCount))
+    }
+
     fun start() {
         if (!canStart) return
         val ids = players.keys.toMutableList().also { it.shuffle(rng) }
-        val wolfCount = (ids.size / 5).coerceIn(1, ids.size - 3)
-        val includeHunter = ids.size >= 6
+        val formulaCount = (ids.size / 5).coerceIn(1, ids.size - 3)
+        val wolfCount = (options.wolfCount ?: formulaCount).coerceIn(1, ids.size - 1)
+        val includeHunter = options.hunterEnabled && ids.size >= 6
         var i = 0
         while (i < wolfCount) { players[ids[i]]!!.role = WerewolfRole.WEREWOLF; i++ }
-        players[ids[i++]]!!.role = WerewolfRole.SEER
-        if (includeHunter) players[ids[i++]]!!.role = WerewolfRole.HUNTER
+        if (options.seerEnabled && i < ids.size) { players[ids[i]]!!.role = WerewolfRole.SEER; i++ }
+        if (includeHunter && i < ids.size) { players[ids[i]]!!.role = WerewolfRole.HUNTER; i++ }
         while (i < ids.size) { players[ids[i]]!!.role = WerewolfRole.VILLAGER; i++ }
         phase = WerewolfPhase.NIGHT
         day = 1

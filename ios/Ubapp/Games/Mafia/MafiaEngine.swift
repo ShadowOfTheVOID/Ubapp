@@ -3,6 +3,14 @@ import Foundation
 enum MafiaPhase { case lobby, night, dayReveal, dayVote, gameOver }
 enum MafiaWinner { case mafia, town }
 
+/// Host-configurable knobs. Defaults reproduce the formula-driven game so
+/// an unconfigured session plays exactly like before this struct existed.
+struct MafiaOptions: Equatable {
+    /// When non-nil, replaces the `players/4` formula at start time.
+    var mafiaCount: Int? = nil
+    var doctorEnabled: Bool = true
+}
+
 enum MafiaRole: String {
     case mafia, doctor, villager
     var displayName: String {
@@ -42,6 +50,7 @@ final class MafiaEngine {
     var phase: MafiaPhase = .lobby
     var day: Int = 0
     var winner: MafiaWinner?
+    private(set) var options = MafiaOptions()
 
     private var mafiaVotes: [String: String] = [:]
     private var doctorTarget: String?
@@ -72,16 +81,30 @@ final class MafiaEngine {
 
     var canStart: Bool { phase == .lobby && players.count >= 4 }
 
+    /// Max evil players the current lobby can sustain (at least one villager
+    /// must remain). Used to clamp `MafiaOptions.mafiaCount`.
+    var maxMafiaCount: Int { max(1, players.count - 1) }
+
+    func setOptions(_ o: MafiaOptions) {
+        guard phase == .lobby else { return }
+        var clamped = o
+        if let c = o.mafiaCount {
+            clamped.mafiaCount = max(1, min(c, maxMafiaCount))
+        }
+        options = clamped
+    }
+
     func start() {
         guard canStart else { return }
-        var ids = Array(players.keys).shuffled(using: &rng)
-        let mafiaCount = max(1, min(ids.count - 2, ids.count / 4))
-        for i in 0..<ids.count {
-            let p = players[ids[i]]!
-            if i < mafiaCount { p.role = .mafia }
-            else if i == mafiaCount { p.role = .doctor }
-            else { p.role = .villager }
+        let ids = Array(players.keys).shuffled(using: &rng)
+        let formulaCount = max(1, min(ids.count - 2, ids.count / 4))
+        let mafiaCount = max(1, min(options.mafiaCount ?? formulaCount, ids.count - 1))
+        var i = 0
+        while i < mafiaCount { players[ids[i]]!.role = .mafia; i += 1 }
+        if options.doctorEnabled && i < ids.count {
+            players[ids[i]]!.role = .doctor; i += 1
         }
+        while i < ids.count { players[ids[i]]!.role = .villager; i += 1 }
         phase = .night
         day = 1
     }

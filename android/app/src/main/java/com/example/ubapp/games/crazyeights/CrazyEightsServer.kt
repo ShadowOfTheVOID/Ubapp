@@ -25,6 +25,9 @@ class CrazyEightsServer(context: Context, val hostName: String = "Host") {
     fun stop() = server.stopServer()
     val guestCount: Int get() = server.guestCount
 
+    fun hostSetOptions(o: CrazyEightsOptions) {
+        engine.setOptions(o); broadcastOptions(); emit()
+    }
     fun hostStart() { engine.start(); broadcastState(); sendHandsPrivately(); emit() }
     fun hostPlay(card: Card, declaredSuit: Suit? = null): String? {
         val err = engine.playCard(HOST_ID, card, declaredSuit)
@@ -52,6 +55,8 @@ class CrazyEightsServer(context: Context, val hostName: String = "Host") {
             "play" -> pid?.let { applyPlay(it, j) }
             "draw" -> pid?.let { engine.drawOne(it); broadcastState(); sendHandsPrivately(); emit() }
             "pass" -> pid?.let { engine.passAfterDraw(it); broadcastState(); emit() }
+            // Only the host may mutate options.
+            "set_options" -> Unit
             "call_tutorial_vote" -> openTutorialVote()
             "tutorial_vote" -> pid?.let { submitTutorialVote(it, j.getBoolean("yes")) }
         }
@@ -76,7 +81,16 @@ class CrazyEightsServer(context: Context, val hostName: String = "Host") {
         engine.addPlayer(pid, name)
         guestToPlayer[guest] = pid; playerToGuest[pid] = guest
         send(guest, JSONObject().put("type", "welcome").put("yourId", pid).put("yourName", name).put("game", "crazy_eights"))
-        broadcastLobby(); broadcastTutorialState(); emit()
+        broadcastLobby(); broadcastOptions(); broadcastTutorialState(); emit()
+    }
+
+    private fun broadcastOptions() {
+        val o = engine.options
+        broadcast(JSONObject()
+            .put("type", "options")
+            .put("startingHandSize", o.startingHandSize ?: JSONObject.NULL)
+            .put("jackSkips", o.jackSkips)
+            .put("queenReverses", o.queenReverses))
     }
 
     private fun applyPlay(pid: String, j: JSONObject) {

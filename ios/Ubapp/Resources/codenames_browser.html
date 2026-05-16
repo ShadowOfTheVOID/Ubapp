@@ -86,6 +86,7 @@
     redLeft:0, blueLeft:0, winner:null, endReason:null, lastEvent:'',
     smView:null, // [{kind}] for spymaster only
     clueText:'', clueNumber:1,
+    options:{boardSize:25, assassinCount:1, allowedSizes:[16,25,36]},
     tutorial:{isOpen:false,yesCount:0,noCount:0,eligibleCount:0,result:null,tutorialShown:false}, tutorialContent:null, myTutorialVote:null };
 
   function send(o){ if (ws.readyState===1) ws.send(JSON.stringify(o)); }
@@ -95,6 +96,12 @@
     switch (m.type) {
       case 'welcome': state.me = { id:m.yourId, name:m.yourName }; break;
       case 'lobby': state.players = m.players; state.phase='lobby'; break;
+      case 'options':
+        state.options = {
+          boardSize: m.boardSize || 25,
+          assassinCount: m.assassinCount || 1,
+          allowedSizes: Array.isArray(m.allowedSizes) ? m.allowedSizes : [16,25,36],
+        }; break;
       case 'role': state.isSpymaster = !!m.isSpymaster; state.myTeam = m.team; state.smView = m.smView || null; break;
       case 'state':
         state.board = m.board; state.currentTeam = m.currentTeam;
@@ -147,10 +154,13 @@
       return `<div class="panel" style="margin:0 0 6px;padding:8px 12px"><strong>${esc(p.name)}</strong>${p.isHost?' (host)':''} ${teamPill}${sm}${you}</div>`;
     }).join('');
 
+    const o = state.options;
+    const optsCard = `<div class="panel"><h2>Game options</h2><p class="small">Board: <strong>${o.boardSize}</strong> · Assassins: <strong>${o.assassinCount}</strong></p></div>`;
     root.innerHTML = `<h1>Codenames</h1>
       ${viewTutorialBanner()}
       ${viewTutorialVote()}
       <div class="panel">${myTeamButtons}</div>
+      ${optsCard}
       <div class="panel"><p class="small">Need ≥2 per team, one spymaster each. Host starts when ready.</p>${list}</div>`;
     document.getElementById('join-red').addEventListener('click', ()=>send({type:'team', team:'red'}));
     document.getElementById('join-blue').addEventListener('click', ()=>send({type:'team', team:'blue'}));

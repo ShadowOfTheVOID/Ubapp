@@ -5,6 +5,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -50,6 +51,7 @@ fun WerewolfScreen() {
                         }
                     }
                 }
+                WerewolfOptionsCard(e, server)
                 Button(onClick = { server.hostStart() }, enabled = e.canStart) {
                     Text(if (e.canStart) "Start round" else "Need 5+ players")
                 }
@@ -125,6 +127,54 @@ fun WerewolfScreen() {
                         Text(p.name); Text(p.role?.displayName ?: "—")
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WerewolfOptionsCard(engine: WerewolfEngine, server: WerewolfServer) {
+    val auto = engine.options.wolfCount == null
+    val maxCount = engine.maxWolfCount
+    val current = engine.options.wolfCount
+        ?: (engine.players.size / 5).coerceIn(1, maxOf(1, engine.players.size - 3))
+    ElevatedCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("Options", style = MaterialTheme.typography.titleSmall)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = auto, onCheckedChange = { on ->
+                    server.hostSetOptions(engine.options.copy(
+                        wolfCount = if (on) null else current.coerceIn(1, maxCount)
+                    ))
+                })
+                Text("  Auto-balance wolf count")
+            }
+            if (!auto) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Wolves: $current", Modifier.weight(1f))
+                    IconButton(onClick = {
+                        server.hostSetOptions(engine.options.copy(
+                            wolfCount = (current - 1).coerceAtLeast(1)))
+                    }, enabled = current > 1) {
+                        Text("−", style = MaterialTheme.typography.titleLarge)
+                    }
+                    IconButton(onClick = {
+                        server.hostSetOptions(engine.options.copy(
+                            wolfCount = (current + 1).coerceAtMost(maxCount)))
+                    }, enabled = current < maxCount) {
+                        Text("+", style = MaterialTheme.typography.titleLarge)
+                    }
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = engine.options.seerEnabled,
+                       onCheckedChange = { server.hostSetOptions(engine.options.copy(seerEnabled = it)) })
+                Text("  Seer")
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = engine.options.hunterEnabled,
+                       onCheckedChange = { server.hostSetOptions(engine.options.copy(hunterEnabled = it)) })
+                Text("  Hunter (6+ players)")
             }
         }
     }

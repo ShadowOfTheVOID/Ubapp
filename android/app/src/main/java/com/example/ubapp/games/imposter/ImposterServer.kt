@@ -29,6 +29,10 @@ class ImposterServer(context: Context, val hostName: String = "Host") {
     fun stop() = server.stopServer()
     val guestCount: Int get() = server.guestCount
 
+    fun hostSetOptions(o: ImposterOptions) {
+        engine.setOptions(o)
+        broadcastOptions(); emit()
+    }
     fun hostStart(category: String? = null) {
         engine.start(category)
         sendRolesPrivately(); emit()
@@ -51,6 +55,9 @@ class ImposterServer(context: Context, val hostName: String = "Host") {
             "vote" -> guestToPlayer[guest]?.let {
                 applyVote(it, if (j.isNull("targetId")) null else j.getString("targetId"))
             }
+            // Only the host (which never connects over WebSocket) can mutate
+            // options — ignore inbound `set_options` from guests.
+            "set_options" -> Unit
             "call_tutorial_vote" -> openTutorialVote()
             "tutorial_vote" -> guestToPlayer[guest]?.let { submitTutorialVote(it, j.getBoolean("yes")) }
         }
@@ -77,7 +84,7 @@ class ImposterServer(context: Context, val hostName: String = "Host") {
         engine.addPlayer(pid, name)
         guestToPlayer[guest] = pid; playerToGuest[pid] = guest
         send(guest, JSONObject().put("type", "welcome").put("yourId", pid).put("yourName", name).put("game", "imposter"))
-        broadcastLobby(); broadcastTutorialState(); emit()
+        broadcastLobby(); broadcastOptions(); broadcastTutorialState(); emit()
     }
 
     private fun applyVote(voterId: String, targetId: String?) {
@@ -92,23 +99,44 @@ class ImposterServer(context: Context, val hostName: String = "Host") {
         broadcast(JSONObject().put("type", "lobby").put("players", arr).put("canStart", engine.canStart))
     }
     private fun sendRolesPrivately() {
+        val hideCat = engine.options.hideCategory
         for (p in engine.players.values) {
             if (p.id == HOST_ID) continue
             val guest = playerToGuest[p.id] ?: continue
-            val payload = JSONObject().put("type", "role").put("category", engine.category).put("isImposter", p.isImposter)
-            if (!p.isImposter) payload.put("word", engine.secretWord)
+            val hide = p.isImposter && hideCat
+            val payload = JSONObject()
+                .put("type", "role")
+                .put("category", if (hide) "" else engine.category)
+                .put("hideCategory", hide)
+                .put("isImposter", p.isImposter)
+            if (!p.isImposter) {
+                payload.put("word", engine.secretWord)
+            } else if (p.decoyWord != null) {
+                payload.put("word", p.decoyWord).put("isDecoy", true)
+            }
             send(guest, payload)
         }
+    }
+    private fun broadcastOptions() {
+        val o = engine.options
+        broadcast(JSONObject()
+            .put("type", "options")
+            .put("imposterCount", o.imposterCount)
+            .put("decoyWord", o.decoyWord)
+            .put("hideCategory", o.hideCategory)
+            .put("mixedPool", o.mixedPool)
+            .put("maxImposterCount", engine.maxImposterCount))
     }
     private fun broadcastResult() {
         val arr = JSONArray()
         for (p in engine.players.values) {
             arr.put(JSONObject().put("id", p.id).put("name", p.name).put("isImposter", p.isImposter))
         }
+        val imps = JSONArray(); for (id in engine.imposterIds) imps.put(id)
         broadcast(JSONObject()
             .put("type", "result")
             .put("winner", if (engine.winner == ImposterWinner.TOWN) "town" else "imposter")
-            .put("imposterId", engine.imposterId ?: JSONObject.NULL)
+            .put("imposterIds", imps)
             .put("mostVotedId", engine.mostVotedId ?: JSONObject.NULL)
             .put("imposterCaught", engine.imposterCaught ?: JSONObject.NULL)
             .put("word", engine.secretWord).put("category", engine.category)

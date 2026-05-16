@@ -3,9 +3,25 @@ import Foundation
 enum ImposterPhase { case lobby, playing, voting, result, gameOver }
 enum ImposterWinner { case town, imposter }
 
+/// Host-configurable knobs. Defaults reproduce the classic single-imposter
+/// game so an unconfigured session plays exactly like before this struct
+/// existed.
+struct ImposterOptions: Equatable {
+    var imposterCount: Int = 1
+    /// When true, imposters see a different word drawn from the same
+    /// category instead of nothing.
+    var decoyWord: Bool = false
+    /// When true, imposters see neither category nor word.
+    var hideCategory: Bool = false
+    /// When true, the secret word is drawn from the union of every
+    /// category and the category banner reads "Mixed".
+    var mixedPool: Bool = false
+}
+
 final class ImposterPlayer {
     let id: String, name: String, isHost: Bool
     var isImposter = false
+    var decoyWord: String?
     init(id: String, name: String, isHost: Bool) { self.id = id; self.name = name; self.isHost = isHost }
 }
 
@@ -13,10 +29,11 @@ final class ImposterEngine {
     private var rng: any RandomNumberGenerator
     private(set) var players: [String: ImposterPlayer] = [:]
     var phase: ImposterPhase = .lobby
+    var options = ImposterOptions()
 
     var category = ""
     var secretWord = ""
-    var imposterId: String?
+    var imposterIds: Set<String> = []
 
     var votes: [String: String?] = [:]
     var mostVotedId: String?
@@ -37,16 +54,46 @@ final class ImposterEngine {
     var canStart: Bool { phase == .lobby && players.count >= 3 }
     var availableCategories: [String] { Array(ImposterWords.categories.keys) }
 
+    /// Max imposters the current lobby supports. At least one non-imposter
+    /// must remain or there's no game.
+    var maxImposterCount: Int { max(1, players.count - 1) }
+
+    func setOptions(_ o: ImposterOptions) {
+        guard phase == .lobby else { return }
+        var clamped = o
+        clamped.imposterCount = max(1, min(o.imposterCount, max(1, players.count - 1)))
+        options = clamped
+    }
+
     func start(categoryName: String? = nil) {
         guard canStart else { return }
         let cats = Array(ImposterWords.categories.keys)
-        category = (categoryName.flatMap { ImposterWords.categories[$0] != nil ? $0 : nil })
-            ?? cats[Int.random(in: 0..<cats.count, using: &rng)]
-        let words = ImposterWords.categories[category]!
-        secretWord = words[Int.random(in: 0..<words.count, using: &rng)]
-        let ids = Array(players.keys)
-        imposterId = ids[Int.random(in: 0..<ids.count, using: &rng)]
-        for p in players.values { p.isImposter = (p.id == imposterId) }
+        if options.mixedPool {
+            category = "Mixed"
+            let pool = ImposterWords.categories.values.flatMap { $0 }
+            secretWord = pool[Int.random(in: 0..<pool.count, using: &rng)]
+        } else {
+            category = (categoryName.flatMap { ImposterWords.categories[$0] != nil ? $0 : nil })
+                ?? cats[Int.random(in: 0..<cats.count, using: &rng)]
+            let words = ImposterWords.categories[category]!
+            secretWord = words[Int.random(in: 0..<words.count, using: &rng)]
+        }
+        let ids = Array(players.keys).shuffled(using: &rng)
+        let count = min(max(1, options.imposterCount), max(1, ids.count - 1))
+        imposterIds = Set(ids.prefix(count))
+        for p in players.values {
+            p.isImposter = imposterIds.contains(p.id)
+            p.decoyWord = nil
+            if p.isImposter && options.decoyWord {
+                let pool = options.mixedPool
+                    ? ImposterWords.categories.values.flatMap { $0 }
+                    : (ImposterWords.categories[category] ?? [])
+                let alternatives = pool.filter { $0 != secretWord }
+                if !alternatives.isEmpty {
+                    p.decoyWord = alternatives[Int.random(in: 0..<alternatives.count, using: &rng)]
+                }
+            }
+        }
         phase = .playing
     }
 
@@ -73,16 +120,16 @@ final class ImposterEngine {
             else if c == maxCount { tied.append(id) }
         }
         mostVotedId = tied.count == 1 ? tied[0] : nil
-        imposterCaught = mostVotedId == imposterId
+        imposterCaught = mostVotedId.map { imposterIds.contains($0) }
         winner = (imposterCaught == true) ? .town : .imposter
         phase = .result
     }
 
     func reset() {
         phase = .lobby
-        category = ""; secretWord = ""; imposterId = nil
+        category = ""; secretWord = ""; imposterIds.removeAll()
         votes.removeAll(); mostVotedId = nil; imposterCaught = nil; winner = nil
-        for p in players.values { p.isImposter = false }
+        for p in players.values { p.isImposter = false; p.decoyWord = nil }
     }
 }
 

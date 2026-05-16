@@ -47,7 +47,18 @@ struct ImposterView: View {
                 }
             }
             .pickerStyle(.segmented)
+            .disabled(model.options.mixedPool)
         }
+        GroupBox("Options") {
+            Stepper(value: $model.options.imposterCount,
+                    in: 1...max(1, model.maxImposterCount)) {
+                Text("Imposters: \(model.options.imposterCount)")
+            }
+            Toggle("Decoy word for imposters", isOn: $model.options.decoyWord)
+            Toggle("Hide category from imposters", isOn: $model.options.hideCategory)
+            Toggle("Mixed-category pool", isOn: $model.options.mixedPool)
+        }
+        .onChange(of: model.options) { _, new in model.applyOptions(new) }
         if model.canStart {
             Button("Start round") { model.start() }.buttonStyle(.borderedProminent)
         } else {
@@ -56,11 +67,20 @@ struct ImposterView: View {
     }
 
     @ViewBuilder private var playingView: some View {
-        GroupBox("Category") { Text(model.category).font(.title3.bold()) }
+        if !(model.hostIsImposter && model.options.hideCategory) {
+            GroupBox("Category") { Text(model.category).font(.title3.bold()) }
+        }
         if model.hostIsImposter {
             GroupBox("Your card") {
                 Text("IMPOSTER").font(.largeTitle.bold()).foregroundStyle(.red)
-                Text("Bluff your way through.").font(.callout).foregroundStyle(.secondary)
+                if let decoy = model.hostDecoyWord {
+                    Text("Decoy word: \(decoy)").font(.title3.bold())
+                    Text("This isn't the real word — bluff carefully.")
+                        .font(.callout).foregroundStyle(.secondary)
+                } else {
+                    Text("Bluff your way through.")
+                        .font(.callout).foregroundStyle(.secondary)
+                }
             }
         } else {
             GroupBox("Your secret word") {
@@ -84,7 +104,10 @@ struct ImposterView: View {
     @ViewBuilder private var resultView: some View {
         GroupBox("Result") {
             Text(model.winnerLabel).font(.title2.bold())
-            if let imp = model.imposterName { Text("The imposter was \(imp).") }
+            if !model.imposterNames.isEmpty {
+                let label = model.imposterNames.count == 1 ? "imposter was" : "imposters were"
+                Text("The \(label) \(model.imposterNames.joined(separator: ", ")).")
+            }
             Text("Word: \(model.secretWord)  ·  Category: \(model.category)")
                 .foregroundStyle(.secondary)
         }
@@ -111,8 +134,11 @@ final class ImposterViewModel: ObservableObject {
     @Published var category = ""
     @Published var secretWord = ""
     @Published var hostIsImposter = false
-    @Published var imposterName: String?
+    @Published var hostDecoyWord: String?
+    @Published var imposterNames: [String] = []
     @Published var winnerLabel = ""
+    @Published var options = ImposterOptions()
+    @Published var maxImposterCount: Int = 1
     @Published var tutorialState = TutorialVoteCard.State(
         isOpen: false, yesCount: 0, noCount: 0, eligibleCount: 0,
         result: nil, tutorialShown: false)
@@ -126,7 +152,10 @@ final class ImposterViewModel: ObservableObject {
         do { joinUrl = try server.start() } catch { print("HostServer failed: \(error)") }
         refresh()
     }
-    func start() { server.hostStart(category: selectedCategory) }
+    func applyOptions(_ o: ImposterOptions) { server.hostSetOptions(o) }
+    func start() {
+        server.hostStart(category: options.mixedPool ? nil : selectedCategory)
+    }
     func beginVoting() { server.hostBeginVoting() }
     func vote(_ targetId: String?) { server.hostVote(targetId: targetId) }
     func newRound() { server.hostNewRound() }
@@ -142,11 +171,15 @@ final class ImposterViewModel: ObservableObject {
         canStart = e.canStart
         category = e.category
         secretWord = e.secretWord
-        hostIsImposter = e.players[ImposterServer.hostId]?.isImposter == true
-        imposterName = e.imposterId.flatMap { e.players[$0]?.name }
+        let host = e.players[ImposterServer.hostId]
+        hostIsImposter = host?.isImposter == true
+        hostDecoyWord = host?.decoyWord
+        imposterNames = e.imposterIds.compactMap { e.players[$0]?.name }.sorted()
         if let w = e.winner {
             winnerLabel = w == .town ? "Town wins" : "Imposter wins"
         } else { winnerLabel = "" }
+        if options != e.options { options = e.options }
+        maxImposterCount = e.maxImposterCount
         let v = e.tutorialVote
         tutorialState = .init(
             isOpen: v.isOpen, yesCount: v.yesCount, noCount: v.noCount,

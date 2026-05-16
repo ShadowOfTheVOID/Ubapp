@@ -146,6 +146,7 @@
     tutorial: { isOpen: false, yesCount: 0, noCount: 0, eligibleCount: 0, result: null, tutorialShown: false },
     tutorialContent: null,  // {title, sections:[{heading,body}], menuSections:[...]}
     myTutorialVote: null,
+    options: { mafiaCount: null, doctorEnabled: true, maxMafiaCount: 1 },
   };
 
   function send(obj) {
@@ -168,6 +169,13 @@
         break;
       case 'lobby':
         state.lobby = m.players;
+        break;
+      case 'options':
+        state.options = {
+          mafiaCount: (m.mafiaCount === null || m.mafiaCount === undefined) ? null : m.mafiaCount,
+          doctorEnabled: m.doctorEnabled !== false,
+          maxMafiaCount: m.maxMafiaCount || 1,
+        };
         break;
       case 'role':
         state.role = m.role;
@@ -256,6 +264,7 @@
       <h1>Lobby</h1>
       ${viewTutorialBanner()}
       ${viewTutorialVote()}
+      ${viewOptions()}
       <div class="card">
         <p class="small">Waiting for the host to start the game.</p>
         <h2>Players (${state.lobby.length})</h2>
@@ -269,6 +278,13 @@
         </div>
       </div>
     `;
+  }
+
+  function viewOptions() {
+    const o = state.options;
+    const mc = o.mafiaCount === null ? 'auto' : String(o.mafiaCount);
+    const doc = o.doctorEnabled ? 'on' : 'off';
+    return `<div class="card"><h2>Game options</h2><p class="small">Mafia: <strong>${mc}</strong> · Doctor: <strong>${doc}</strong></p></div>`;
   }
 
   function viewTutorialBanner() {

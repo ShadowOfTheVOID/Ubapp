@@ -29,6 +29,7 @@ class TagEngine(val selfId: String) {
     fun start(
         variant: TagVariant, startingItId: String, startTimeMs: Long,
         peerIds: List<String>, displayNames: Map<String, String>,
+        durationOverrideSec: Int? = null,
     ): TagState {
         val players = LinkedHashMap<String, TagPlayerView>()
         for (id in peerIds) {
@@ -38,7 +39,8 @@ class TagEngine(val selfId: String) {
                 if (id == startingItId) PlayerStatus.IT else PlayerStatus.RUNNER,
             )
         }
-        val duration = if (variant == TagVariant.HOT_POTATO) 10 * 60_000L else variant.durationMs
+        val baseMs = if (variant == TagVariant.HOT_POTATO) 10 * 60_000L else variant.durationMs
+        val duration = durationOverrideSec?.let { it * 1000L } ?: baseMs
         val s = TagState(variant, players, startTimeMs, startTimeMs + duration)
         state = s
         return s

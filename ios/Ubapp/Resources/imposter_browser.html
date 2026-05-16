@@ -56,7 +56,8 @@
 (() => {
   const root = document.getElementById('root');
   const ws = new WebSocket(`ws://${location.host}/ws`);
-  const state = { me:null, phase:'lobby', players:[], category:'', word:null, isImposter:false, picked:null, voted:false, result:null,
+  const state = { me:null, phase:'lobby', players:[], category:'', word:null, isImposter:false, hideCategory:false, isDecoy:false, picked:null, voted:false, result:null,
+    options:{imposterCount:1, decoyWord:false, hideCategory:false, mixedPool:false, maxImposterCount:1},
     tutorial:{isOpen:false,yesCount:0,noCount:0,eligibleCount:0,result:null,tutorialShown:false}, tutorialContent:null, myTutorialVote:null };
 
   function send(o){ if (ws.readyState===1) ws.send(JSON.stringify(o)); }
@@ -66,7 +67,8 @@
     switch (m.type) {
       case 'welcome': state.me = { id:m.yourId, name:m.yourName }; break;
       case 'lobby':   state.players = m.players; state.phase='lobby'; break;
-      case 'role':    state.category = m.category; state.word = m.word; state.isImposter = m.isImposter; state.phase='playing'; state.voted=false; state.picked=null; state.result=null; break;
+      case 'options': state.options = { imposterCount:m.imposterCount||1, decoyWord:!!m.decoyWord, hideCategory:!!m.hideCategory, mixedPool:!!m.mixedPool, maxImposterCount:m.maxImposterCount||1 }; break;
+      case 'role':    state.category = m.category; state.word = m.word; state.isImposter = !!m.isImposter; state.hideCategory = !!m.hideCategory; state.isDecoy = !!m.isDecoy; state.phase='playing'; state.voted=false; state.picked=null; state.result=null; break;
       case 'voting':  state.phase='voting'; state.picked=null; state.voted=false; break;
       case 'result':  state.phase='result'; state.result = m; break;
       case 'reset':   state.phase='lobby'; state.word=null; state.result=null; break;
@@ -90,7 +92,17 @@
   }
 
   function renderLobby(){
-    root.innerHTML = `<h1>Lobby</h1>${viewTutorialBanner()}${viewTutorialVote()}<div class="card"><p class="small">Waiting for the host to start.</p><h2>Players (${state.players.length})</h2>${state.players.map(p=>`<div class="player"><span>${esc(p.name)}${p.isHost?' <span class="pill">host</span>':''}</span>${state.me.id===p.id?'<span class="pill you">you</span>':''}</div>`).join('')}</div>`;
+    root.innerHTML = `<h1>Lobby</h1>${viewTutorialBanner()}${viewTutorialVote()}${viewOptions()}<div class="card"><p class="small">Waiting for the host to start.</p><h2>Players (${state.players.length})</h2>${state.players.map(p=>`<div class="player"><span>${esc(p.name)}${p.isHost?' <span class="pill">host</span>':''}</span>${state.me.id===p.id?'<span class="pill you">you</span>':''}</div>`).join('')}</div>`;
+  }
+
+  function viewOptions(){
+    const o = state.options;
+    const flags = [];
+    if (o.decoyWord) flags.push('decoy word');
+    if (o.hideCategory) flags.push('hide category');
+    if (o.mixedPool) flags.push('mixed pool');
+    const flagsLine = flags.length ? flags.join(' · ') : 'classic rules';
+    return `<div class="card"><h2>Game options</h2><p class="small">Imposters: <strong>${o.imposterCount}</strong> · ${flagsLine}</p></div>`;
   }
 
   function viewTutorialBanner(){
@@ -124,9 +136,16 @@
   }
 
   function renderPlaying(){
-    const card = state.isImposter
-      ? `<div class="secret-card imposter"><div class="label">your role</div><div class="word">IMPOSTER</div><div class="category">Category: <strong>${esc(state.category)}</strong></div><p class="small">Bluff your way through. Don't get voted out.</p></div>`
-      : `<div class="secret-card"><div class="label">secret word</div><div class="word">${esc(state.word||'')}</div><div class="category">Category: <strong>${esc(state.category)}</strong></div><p class="small">Discuss in person. Find the imposter.</p></div>`;
+    let card;
+    if (state.isImposter) {
+      const catLine = state.hideCategory ? '' : `<div class="category">Category: <strong>${esc(state.category)}</strong></div>`;
+      const decoyLine = state.isDecoy && state.word
+        ? `<div class="category">Decoy word: <strong>${esc(state.word)}</strong></div><p class="small">This isn't the real word — bluff carefully.</p>`
+        : `<p class="small">Bluff your way through. Don't get voted out.</p>`;
+      card = `<div class="secret-card imposter"><div class="label">your role</div><div class="word">IMPOSTER</div>${catLine}${decoyLine}</div>`;
+    } else {
+      card = `<div class="secret-card"><div class="label">secret word</div><div class="word">${esc(state.word||'')}</div><div class="category">Category: <strong>${esc(state.category)}</strong></div><p class="small">Discuss in person. Find the imposter.</p></div>`;
+    }
     root.innerHTML = card + `<div class="card center small">Waiting for the host to call a vote…</div>`;
   }
 
@@ -145,8 +164,11 @@
     const r = state.result;
     const winner = r.winner==='town' ? 'Town wins' : 'Imposter wins';
     const accused = r.mostVotedId ? r.players.find(p=>p.id===r.mostVotedId) : null;
-    const imposter = r.players.find(p=>p.id===r.imposterId);
-    root.innerHTML = `<h1>${winner}</h1><div class="card center"><p>The imposter was <strong>${esc(imposter ? imposter.name : '?')}</strong>.</p>${accused?`<p>You voted out <strong>${esc(accused.name)}</strong>${r.imposterCaught?' — correct!':' — wrong!'}</p>`:'<p>The vote tied — no one was eliminated.</p>'}<p>Secret word was <strong>${esc(r.word)}</strong> (${esc(r.category)}).</p></div><div class="card center small">Waiting for the host to start a new round…</div>`;
+    const ids = Array.isArray(r.imposterIds) ? r.imposterIds : (r.imposterId ? [r.imposterId] : []);
+    const names = ids.map(id => { const p = r.players.find(pp=>pp.id===id); return p ? p.name : '?'; });
+    const label = names.length === 1 ? 'imposter was' : 'imposters were';
+    const impLine = names.length ? `<p>The ${label} <strong>${esc(names.join(', '))}</strong>.</p>` : '';
+    root.innerHTML = `<h1>${winner}</h1><div class="card center">${impLine}${accused?`<p>You voted out <strong>${esc(accused.name)}</strong>${r.imposterCaught?' — correct!':' — wrong!'}</p>`:'<p>The vote tied — no one was eliminated.</p>'}<p>Secret word was <strong>${esc(r.word)}</strong> (${esc(r.category)}).</p></div><div class="card center small">Waiting for the host to start a new round…</div>`;
   }
 
   // join handler bind

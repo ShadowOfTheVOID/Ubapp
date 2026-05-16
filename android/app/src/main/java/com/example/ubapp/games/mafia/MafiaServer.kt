@@ -37,6 +37,10 @@ class MafiaServer(context: Context, val hostName: String = "Host") {
     val guestCount: Int get() = server.guestCount
 
     // Host actions
+    fun hostSetOptions(o: MafiaOptions) {
+        engine.setOptions(o)
+        broadcastOptions(); emit()
+    }
     fun hostStart() {
         if (!engine.canStart) return
         engine.start()
@@ -62,6 +66,8 @@ class MafiaServer(context: Context, val hostName: String = "Host") {
             "vote" -> guestToPlayer[guest]?.let {
                 applyDayVote(it, if (j.isNull("targetId")) null else j.getString("targetId"))
             }
+            // Only the host (not connected over WebSocket) may mutate options.
+            "set_options" -> Unit
             "call_tutorial_vote" -> openTutorialVote()
             "tutorial_vote" -> guestToPlayer[guest]?.let { submitTutorialVote(it, j.getBoolean("yes")) }
         }
@@ -89,7 +95,16 @@ class MafiaServer(context: Context, val hostName: String = "Host") {
         guestToPlayer[guest] = pid
         playerToGuest[pid] = guest
         send(guest, JSONObject().put("type", "welcome").put("yourId", pid).put("yourName", name).put("game", "mafia"))
-        broadcastLobby(); broadcastTutorialState(); emit()
+        broadcastLobby(); broadcastOptions(); broadcastTutorialState(); emit()
+    }
+
+    private fun broadcastOptions() {
+        val o = engine.options
+        broadcast(JSONObject()
+            .put("type", "options")
+            .put("mafiaCount", o.mafiaCount ?: JSONObject.NULL)
+            .put("doctorEnabled", o.doctorEnabled)
+            .put("maxMafiaCount", engine.maxMafiaCount))
     }
 
     private fun applyNightAction(playerId: String, targetId: String) {

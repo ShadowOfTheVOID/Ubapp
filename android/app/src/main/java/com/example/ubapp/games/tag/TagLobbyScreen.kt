@@ -43,6 +43,8 @@ fun TagLobbyScreen() {
     var hosting by remember { mutableStateOf(false) }
     var joinUrl by remember { mutableStateOf<String?>(null) }
     var variant by remember { mutableStateOf(TagVariant.CLASSIC) }
+    var customDuration by remember { mutableStateOf(false) }
+    var durationSec by remember { mutableIntStateOf(300) }
     var peers by remember { mutableStateOf<List<String>>(emptyList()) }
     var state by remember { mutableStateOf<TagState?>(null) }
     var advertiseStatus by remember { mutableStateOf("BLE idle.") }
@@ -79,6 +81,35 @@ fun TagLobbyScreen() {
                 }
             }
             Text(variant.tagline, style = MaterialTheme.typography.bodySmall)
+            ElevatedCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Options", style = MaterialTheme.typography.titleSmall)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Switch(checked = customDuration, onCheckedChange = { customDuration = it })
+                        Text("  Custom round length")
+                    }
+                    if (customDuration) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            val m = durationSec / 60
+                            val s = durationSec % 60
+                            Text("Round: ${m}m ${s}s", Modifier.weight(1f))
+                            IconButton(onClick = { durationSec = (durationSec - 30).coerceAtLeast(30) },
+                                       enabled = durationSec > 30) {
+                                Text("−", style = MaterialTheme.typography.titleLarge)
+                            }
+                            IconButton(onClick = { durationSec = (durationSec + 30).coerceAtMost(1800) },
+                                       enabled = durationSec < 1800) {
+                                Text("+", style = MaterialTheme.typography.titleLarge)
+                            }
+                        }
+                        Text(
+                            if (variant == TagVariant.HOT_POTATO)
+                                "For Hot Potato this sets the per-tag countdown."
+                            else "Replaces the default round length for the selected variant.",
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
 
             PermissionGate(perms) {
                 Button(onClick = {
@@ -115,7 +146,8 @@ fun TagLobbyScreen() {
                     sess.onStateChange = { s -> state = s }
                     val names = mutableMapOf(selfId to "Host")
                     for (p in peers) names[p] = p
-                    sess.startHosting(variant, names)
+                    sess.startHosting(variant, names,
+                                       durationOverrideSec = if (customDuration) durationSec else null)
                     session.value = sess
                 },
             ) { Text("Begin round") }

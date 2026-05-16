@@ -5,6 +5,13 @@ import kotlin.random.Random
 enum class MafiaPhase { LOBBY, NIGHT, DAY_REVEAL, DAY_VOTE, GAME_OVER }
 enum class MafiaWinner { MAFIA, TOWN }
 
+/** Host-configurable knobs. Defaults reproduce the formula-driven game. */
+data class MafiaOptions(
+    /** When non-null, replaces the players/4 formula at start time. */
+    val mafiaCount: Int? = null,
+    val doctorEnabled: Boolean = true,
+)
+
 enum class MafiaRole(val displayName: String, val tagline: String) {
     MAFIA("Mafia", "Eliminate the town. Coordinate with your fellow mafia at night."),
     DOCTOR("Doctor", "Save one player each night. You can self-save once per game."),
@@ -32,6 +39,8 @@ class MafiaEngine(private val rng: Random = Random.Default) {
     var phase: MafiaPhase = MafiaPhase.LOBBY
     var day: Int = 0
     var winner: MafiaWinner? = null
+    var options: MafiaOptions = MafiaOptions()
+        private set
 
     private val mafiaVotes = mutableMapOf<String, String>()
     private var doctorTarget: String? = null
@@ -50,18 +59,26 @@ class MafiaEngine(private val rng: Random = Random.Default) {
 
     val canStart: Boolean get() = phase == MafiaPhase.LOBBY && players.size >= 4
 
+    val maxMafiaCount: Int get() = maxOf(1, players.size - 1)
+
+    fun setOptions(o: MafiaOptions) {
+        if (phase != MafiaPhase.LOBBY) return
+        options = o.copy(
+            mafiaCount = o.mafiaCount?.coerceIn(1, maxMafiaCount)
+        )
+    }
+
     fun start() {
         if (!canStart) return
         val ids = players.keys.toMutableList().also { it.shuffle(rng) }
-        val mafiaCount = (ids.size / 4).coerceIn(1, ids.size - 2)
-        for (i in ids.indices) {
-            val p = players[ids[i]]!!
-            p.role = when {
-                i < mafiaCount -> MafiaRole.MAFIA
-                i == mafiaCount -> MafiaRole.DOCTOR
-                else -> MafiaRole.VILLAGER
-            }
+        val formulaCount = (ids.size / 4).coerceIn(1, ids.size - 2)
+        val mafiaCount = (options.mafiaCount ?: formulaCount).coerceIn(1, ids.size - 1)
+        var i = 0
+        while (i < mafiaCount) { players[ids[i]]!!.role = MafiaRole.MAFIA; i++ }
+        if (options.doctorEnabled && i < ids.size) {
+            players[ids[i]]!!.role = MafiaRole.DOCTOR; i++
         }
+        while (i < ids.size) { players[ids[i]]!!.role = MafiaRole.VILLAGER; i++ }
         phase = MafiaPhase.NIGHT
         day = 1
     }

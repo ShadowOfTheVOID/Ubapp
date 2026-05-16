@@ -19,6 +19,13 @@ fun standardDeck(): List<Card> =
 
 enum class CrazyEightsPhase { LOBBY, PLAYING, GAME_OVER }
 
+/** Host-configurable house rules. Defaults reproduce the classic game. */
+data class CrazyEightsOptions(
+    val startingHandSize: Int? = null,
+    val jackSkips: Boolean = false,
+    val queenReverses: Boolean = false,
+)
+
 class CrazyEightsPlayer(val id: String, val name: String, val isHost: Boolean) {
     val hand: MutableList<Card> = mutableListOf()
 }
@@ -35,6 +42,8 @@ class CrazyEightsEngine(private val rng: Random = Random.Default) {
     val players: MutableMap<String, CrazyEightsPlayer> = linkedMapOf()
     private val order: MutableList<String> = mutableListOf()
     var phase: CrazyEightsPhase = CrazyEightsPhase.LOBBY
+    var options: CrazyEightsOptions = CrazyEightsOptions()
+        private set
 
     val drawPile: MutableList<Card> = mutableListOf()
     val discardPile: MutableList<Card> = mutableListOf()
@@ -42,6 +51,7 @@ class CrazyEightsEngine(private val rng: Random = Random.Default) {
     var activeSuit: Suit? = null
     var currentIndex: Int = 0
     var justDrew: Boolean = false
+    private var direction: Int = 1
     var winnerId: String? = null
     var lastEvent: String? = null
 
@@ -55,11 +65,16 @@ class CrazyEightsEngine(private val rng: Random = Random.Default) {
     fun removePlayer(id: String) { if (phase == CrazyEightsPhase.LOBBY) players.remove(id) }
     val canStart: Boolean get() = phase == CrazyEightsPhase.LOBBY && players.size in 2..8
 
+    fun setOptions(o: CrazyEightsOptions) {
+        if (phase != CrazyEightsPhase.LOBBY) return
+        options = o.copy(startingHandSize = o.startingHandSize?.coerceIn(3, 10))
+    }
+
     fun start() {
         if (!canStart) return
-        drawPile.clear(); discardPile.clear(); activeSuit = null
+        drawPile.clear(); discardPile.clear(); activeSuit = null; direction = 1
         drawPile.addAll(standardDeck().shuffled(rng))
-        val dealCount = if (players.size == 2) 7 else 5
+        val dealCount = options.startingHandSize ?: (if (players.size == 2) 7 else 5)
         order.clear(); order.addAll(players.keys.shuffled(rng))
         repeat(dealCount) {
             for (pid in order) players[pid]!!.hand.add(drawPile.removeAt(drawPile.size - 1))
@@ -94,12 +109,15 @@ class CrazyEightsEngine(private val rng: Random = Random.Default) {
         discardPile.add(card)
         activeSuit = if (card.rank == 8) declaredSuit else null
         justDrew = false
+        if (options.queenReverses && card.rank == 12 && order.size > 2) direction = -direction
+        val skipNext = options.jackSkips && card.rank == 11 && order.size > 2
         lastEvent = if (card.rank == 8) "${p.name} played $card → ${declaredSuit!!.glyph}"
                     else "${p.name} played $card"
         if (p.hand.isEmpty()) {
             phase = CrazyEightsPhase.GAME_OVER; winnerId = p.id; return null
         }
         advanceTurn()
+        if (skipNext) advanceTurn()
         return null
     }
 
@@ -125,7 +143,8 @@ class CrazyEightsEngine(private val rng: Random = Random.Default) {
     }
 
     private fun advanceTurn() {
-        currentIndex = (currentIndex + 1) % order.size
+        val n = order.size
+        currentIndex = ((currentIndex + direction) % n + n) % n
         justDrew = false
     }
 
@@ -139,7 +158,7 @@ class CrazyEightsEngine(private val rng: Random = Random.Default) {
     fun reset() {
         phase = CrazyEightsPhase.LOBBY
         drawPile.clear(); discardPile.clear()
-        activeSuit = null; currentIndex = 0; justDrew = false
+        activeSuit = null; currentIndex = 0; justDrew = false; direction = 1
         winnerId = null; lastEvent = null
         for (p in players.values) p.hand.clear()
     }

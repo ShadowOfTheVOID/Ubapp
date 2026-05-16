@@ -5,18 +5,31 @@ import kotlin.random.Random
 enum class ImposterPhase { LOBBY, PLAYING, VOTING, RESULT, GAME_OVER }
 enum class ImposterWinner { TOWN, IMPOSTER }
 
+/** Host-configurable knobs. Defaults reproduce the classic single-imposter
+ *  game so an unconfigured session plays exactly like before this struct
+ *  existed. */
+data class ImposterOptions(
+    val imposterCount: Int = 1,
+    val decoyWord: Boolean = false,
+    val hideCategory: Boolean = false,
+    val mixedPool: Boolean = false,
+)
+
 class ImposterPlayer(val id: String, val name: String, val isHost: Boolean) {
     var isImposter: Boolean = false
+    var decoyWord: String? = null
 }
 
 class ImposterEngine(private val rng: Random = Random.Default) {
     val tutorialVote = com.example.ubapp.tutorials.TutorialVote()
     val players: MutableMap<String, ImposterPlayer> = linkedMapOf()
     var phase: ImposterPhase = ImposterPhase.LOBBY
+    var options: ImposterOptions = ImposterOptions()
+        private set
 
     var category: String = ""
     var secretWord: String = ""
-    var imposterId: String? = null
+    var imposterIds: Set<String> = emptySet()
 
     val votes: MutableMap<String, String?> = mutableMapOf()
     var mostVotedId: String? = null
@@ -29,17 +42,45 @@ class ImposterEngine(private val rng: Random = Random.Default) {
     fun removePlayer(id: String) { if (phase == ImposterPhase.LOBBY) players.remove(id) }
     val canStart: Boolean get() = phase == ImposterPhase.LOBBY && players.size >= 3
     val availableCategories: Set<String> get() = ImposterWords.categories.keys
+    val maxImposterCount: Int get() = maxOf(1, players.size - 1)
+
+    fun setOptions(o: ImposterOptions) {
+        if (phase != ImposterPhase.LOBBY) return
+        options = o.copy(
+            imposterCount = o.imposterCount.coerceIn(1, maxOf(1, players.size - 1))
+        )
+    }
 
     fun start(categoryName: String? = null) {
         if (!canStart) return
         val cats = ImposterWords.categories.keys.toList()
-        category = categoryName?.takeIf { ImposterWords.categories.containsKey(it) }
-            ?: cats[rng.nextInt(cats.size)]
-        val words = ImposterWords.categories[category]!!
-        secretWord = words[rng.nextInt(words.size)]
-        val ids = players.keys.toList()
-        imposterId = ids[rng.nextInt(ids.size)]
-        for (p in players.values) p.isImposter = (p.id == imposterId)
+        if (options.mixedPool) {
+            category = "Mixed"
+            val pool = ImposterWords.categories.values.flatten()
+            secretWord = pool[rng.nextInt(pool.size)]
+        } else {
+            category = categoryName?.takeIf { ImposterWords.categories.containsKey(it) }
+                ?: cats[rng.nextInt(cats.size)]
+            val words = ImposterWords.categories[category]!!
+            secretWord = words[rng.nextInt(words.size)]
+        }
+        val ids = players.keys.toList().shuffled(rng)
+        val count = options.imposterCount.coerceIn(1, maxOf(1, ids.size - 1))
+        imposterIds = ids.take(count).toSet()
+        for (p in players.values) {
+            p.isImposter = p.id in imposterIds
+            p.decoyWord = null
+            if (p.isImposter && options.decoyWord) {
+                val pool = if (options.mixedPool)
+                    ImposterWords.categories.values.flatten()
+                else
+                    ImposterWords.categories[category].orEmpty()
+                val alternatives = pool.filter { it != secretWord }
+                if (alternatives.isNotEmpty()) {
+                    p.decoyWord = alternatives[rng.nextInt(alternatives.size)]
+                }
+            }
+        }
         phase = ImposterPhase.PLAYING
     }
 
@@ -66,16 +107,16 @@ class ImposterEngine(private val rng: Random = Random.Default) {
             else if (c == max) tied.add(id)
         }
         mostVotedId = if (tied.size == 1) tied[0] else null
-        imposterCaught = mostVotedId == imposterId
+        imposterCaught = mostVotedId?.let { it in imposterIds }
         winner = if (imposterCaught == true) ImposterWinner.TOWN else ImposterWinner.IMPOSTER
         phase = ImposterPhase.RESULT
     }
 
     fun reset() {
         phase = ImposterPhase.LOBBY
-        category = ""; secretWord = ""; imposterId = null
+        category = ""; secretWord = ""; imposterIds = emptySet()
         votes.clear(); mostVotedId = null; imposterCaught = null; winner = null
-        for (p in players.values) p.isImposter = false
+        for (p in players.values) { p.isImposter = false; p.decoyWord = null }
     }
 }
 

@@ -51,6 +51,22 @@ struct CodenamesView: View {
                 }
             }
         }
+        GroupBox("Options") {
+            Picker("Board size", selection: $model.boardSize) {
+                ForEach(CodenamesOptions.allowedSizes, id: \.self) { n in
+                    Text("\(n)").tag(n)
+                }
+            }.pickerStyle(.segmented)
+            .onChange(of: model.boardSize) { _, v in
+                model.applyOptions(CodenamesOptions(boardSize: v, assassinCount: model.assassinCount))
+            }
+            Stepper(value: $model.assassinCount, in: 1...3) {
+                Text("Assassins: \(model.assassinCount)")
+            }
+            .onChange(of: model.assassinCount) { _, v in
+                model.applyOptions(CodenamesOptions(boardSize: model.boardSize, assassinCount: v))
+            }
+        }
         if model.canStart {
             Button("Start round") { model.start() }.buttonStyle(.borderedProminent)
         } else {
@@ -186,6 +202,8 @@ final class CodenamesViewModel: ObservableObject {
     @Published var clueNumber = 1
     @Published var winnerLabel = ""
     @Published var endReason: String?
+    @Published var boardSize: Int = 25
+    @Published var assassinCount: Int = 1
     @Published var tutorialState = TutorialVoteCard.State(
         isOpen: false, yesCount: 0, noCount: 0, eligibleCount: 0,
         result: nil, tutorialShown: false)
@@ -206,6 +224,7 @@ final class CodenamesViewModel: ObservableObject {
     }
     func joinTeam(_ t: Team) { server.hostJoinTeam(t) }
     func setSpymaster(_ on: Bool) { server.hostSetSpymaster(on) }
+    func applyOptions(_ o: CodenamesOptions) { server.hostSetOptions(o) }
     func start() { server.hostStart() }
     func sendClue() {
         let c = clueDraft.trimmingCharacters(in: .whitespaces)
@@ -243,6 +262,8 @@ final class CodenamesViewModel: ObservableObject {
             winnerLabel = "\(w.name2.uppercased()) wins"
         } else { winnerLabel = "" }
         endReason = e.endReason
+        if boardSize != e.options.boardSize { boardSize = e.options.boardSize }
+        if assassinCount != e.options.assassinCount { assassinCount = e.options.assassinCount }
         let v = e.tutorialVote
         tutorialState = .init(
             isOpen: v.isOpen, yesCount: v.yesCount, noCount: v.noCount,

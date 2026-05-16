@@ -3,6 +3,14 @@ import Foundation
 enum WerewolfPhase { case lobby, night, dayReveal, dayVote, hunterShot, gameOver }
 enum WerewolfWinner { case werewolves, town }
 
+/// Host-configurable knobs. Defaults reproduce the formula-driven game.
+struct WerewolfOptions: Equatable {
+    /// When non-nil, replaces the `players/5` formula at start time.
+    var wolfCount: Int? = nil
+    var seerEnabled: Bool = true
+    var hunterEnabled: Bool = true
+}
+
 enum WerewolfRole: String {
     case werewolf, seer, hunter, villager
     var displayName: String {
@@ -41,6 +49,7 @@ final class WerewolfEngine {
     var phase: WerewolfPhase = .lobby
     var day = 0
     var winner: WerewolfWinner?
+    private(set) var options = WerewolfOptions()
 
     private var wolfVotes: [String: String] = [:]
     private var seerTarget: String?
@@ -67,15 +76,32 @@ final class WerewolfEngine {
     func removePlayer(_ id: String) { if phase == .lobby { players[id] = nil } }
     var canStart: Bool { phase == .lobby && players.count >= 5 }
 
+    /// Max wolves the current lobby supports (at least one villager remains).
+    var maxWolfCount: Int { max(1, players.count - 1) }
+
+    func setOptions(_ o: WerewolfOptions) {
+        guard phase == .lobby else { return }
+        var clamped = o
+        if let c = o.wolfCount {
+            clamped.wolfCount = max(1, min(c, maxWolfCount))
+        }
+        options = clamped
+    }
+
     func start() {
         guard canStart else { return }
         let ids = Array(players.keys).shuffled(using: &rng)
-        let wolfCount = max(1, min(ids.count - 3, ids.count / 5))
-        let includeHunter = ids.count >= 6
+        let formulaCount = max(1, min(ids.count - 3, ids.count / 5))
+        let wolfCount = max(1, min(options.wolfCount ?? formulaCount, ids.count - 1))
+        let includeHunter = options.hunterEnabled && ids.count >= 6
         var i = 0
         while i < wolfCount { players[ids[i]]!.role = .werewolf; i += 1 }
-        players[ids[i]]!.role = .seer; i += 1
-        if includeHunter { players[ids[i]]!.role = .hunter; i += 1 }
+        if options.seerEnabled && i < ids.count {
+            players[ids[i]]!.role = .seer; i += 1
+        }
+        if includeHunter && i < ids.count {
+            players[ids[i]]!.role = .hunter; i += 1
+        }
         while i < ids.count { players[ids[i]]!.role = .villager; i += 1 }
         phase = .night
         day = 1

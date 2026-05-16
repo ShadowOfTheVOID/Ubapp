@@ -34,7 +34,8 @@ enum TagVariant: String, CaseIterable {
 enum TagMessage {
     case hello(peerId: String, displayName: String)
     case start(variant: TagVariant, startingItId: String, startTimeMs: Int64,
-               peerIds: [String], peerNames: [String: String])
+               peerIds: [String], peerNames: [String: String],
+               durationOverrideSec: Int?)
     case tag(taggerId: String, victimId: String, timeMs: Int64)
     case unfreeze(unfreezerId: String, victimId: String, timeMs: Int64)
     case end(reason: String, winnerId: String?)
@@ -52,10 +53,12 @@ enum TagMessage {
         switch self {
         case let .hello(peerId, displayName):
             return ["type": "hello", "peerId": peerId, "displayName": displayName]
-        case let .start(variant, startingItId, startTimeMs, peerIds, peerNames):
-            return ["type": "start", "variant": variant.rawValue,
+        case let .start(variant, startingItId, startTimeMs, peerIds, peerNames, durationOverrideSec):
+            var d: [String: Any] = ["type": "start", "variant": variant.rawValue,
                     "startingItId": startingItId, "startTimeMs": startTimeMs,
                     "peerIds": peerIds, "peerNames": peerNames]
+            if let s = durationOverrideSec { d["durationOverrideSec"] = s }
+            return d
         case let .tag(taggerId, victimId, timeMs):
             return ["type": "tag", "taggerId": taggerId, "victimId": victimId, "timeMs": timeMs]
         case let .unfreeze(unfreezerId, victimId, timeMs):
@@ -87,7 +90,8 @@ enum TagMessage {
                 startingItId: j["startingItId"] as! String,
                 startTimeMs: (j["startTimeMs"] as! NSNumber).int64Value,
                 peerIds: j["peerIds"] as! [String],
-                peerNames: (j["peerNames"] as? [String: String]) ?? [:])
+                peerNames: (j["peerNames"] as? [String: String]) ?? [:],
+                durationOverrideSec: (j["durationOverrideSec"] as? NSNumber)?.intValue)
         case "tag":
             return .tag(taggerId: j["taggerId"] as! String, victimId: j["victimId"] as! String,
                         timeMs: (j["timeMs"] as! NSNumber).int64Value)

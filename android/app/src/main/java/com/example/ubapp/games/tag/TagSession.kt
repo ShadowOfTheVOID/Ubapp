@@ -24,14 +24,15 @@ class TagSession(
 
     init { transport.onInbound = ::handleIncoming }
 
-    fun startHosting(variant: TagVariant, peerNames: Map<String, String>) {
+    fun startHosting(variant: TagVariant, peerNames: Map<String, String>,
+                     durationOverrideSec: Int? = null) {
         this.peerNames = peerNames
         val ids = peerNames.keys.shuffled()
         val first = ids.firstOrNull() ?: return
         val now = System.currentTimeMillis()
-        val msg = TagMessage.Start(variant, first, now, ids, peerNames)
+        val msg = TagMessage.Start(variant, first, now, ids, peerNames, durationOverrideSec)
         transport.send(msg)
-        beginRound(variant, first, now, ids)
+        beginRound(variant, first, now, ids, durationOverrideSec)
     }
 
     private fun handleIncoming(msg: TagMessage) {
@@ -39,7 +40,7 @@ class TagSession(
             is TagMessage.Start -> {
                 if (engine.state != null) return
                 peerNames = msg.peerNames
-                beginRound(msg.variant, msg.startingItId, msg.startTimeMs, msg.peerIds)
+                beginRound(msg.variant, msg.startingItId, msg.startTimeMs, msg.peerIds, msg.durationOverrideSec)
             }
             is TagMessage.Tag ->
                 if (engine.applyTag(msg.taggerId, msg.victimId)) emit()
@@ -52,13 +53,16 @@ class TagSession(
         }
     }
 
-    private fun beginRound(variant: TagVariant, startingItId: String, startTimeMs: Long, peerIds: List<String>) {
-        engine.start(variant, startingItId, startTimeMs, peerIds, peerNames)
+    private fun beginRound(variant: TagVariant, startingItId: String, startTimeMs: Long,
+                           peerIds: List<String>, durationOverrideSec: Int? = null) {
+        engine.start(variant, startingItId, startTimeMs, peerIds, peerNames, durationOverrideSec)
         val det = ProximityDetector(onTouch = ::onProximityTouch)
         detector = det
         proximity.onEvent = { e -> detector?.ingest(e) }
         proximity.start()
         emit()
+        // Hot Potato uses the per-tag countdown — keep the variant default
+        // even when the round duration was overridden.
         if (variant == TagVariant.HOT_POTATO) restartHotPotatoTimer(variant.durationMs)
     }
 
