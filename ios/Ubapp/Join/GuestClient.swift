@@ -47,7 +47,7 @@ final class GuestClient: NSObject, URLSessionWebSocketDelegate, URLSessionDelega
         completionHandler(.cancelAuthenticationChallenge, nil)
     }
 
-    private static var bundledCert: SecCertificate? { HostServer.bundledCert }
+    private nonisolated static var bundledCert: SecCertificate? { HostServer.bundledCert }
 
     func connect() {
         task = session.webSocketTask(with: url)
