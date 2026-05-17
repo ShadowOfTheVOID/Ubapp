@@ -138,7 +138,9 @@ final class ImposterServer {
 
     private func sendRolesPrivately() {
         let hideCat = engine.options.hideCategory
-        for p in engine.players.values where p.id != Self.hostId {
+        // Includes the host: it plays through its own in-process loopback
+        // guest, so it must receive the same private role message.
+        for p in engine.players.values {
             var payload: [String: Any] = [
                 "type": "role",
                 "category": (p.isImposter && hideCat) ? "" : engine.category,

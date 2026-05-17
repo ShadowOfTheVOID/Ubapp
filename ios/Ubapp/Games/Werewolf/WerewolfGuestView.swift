@@ -35,6 +35,7 @@ struct WerewolfGuestView: View {
         }
         .navigationTitle("Werewolf")
         .onAppear { model.attach(ctx: ctx) }
+        .onDisappear { ctx.client.onMessage = nil }
     }
 
     @ViewBuilder private var lobby: some View {

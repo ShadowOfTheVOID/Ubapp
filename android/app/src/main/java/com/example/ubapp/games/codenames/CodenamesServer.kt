@@ -141,8 +141,9 @@ class CodenamesServer(context: Context, val hostName: String = "Host") {
     }
 
     private fun sendRolesToAll() {
+        // Includes the host: it plays through its own in-process loopback
+        // guest, so it must receive the same private role message.
         for (p in engine.players.values) {
-            if (p.id == HOST_ID) continue
             val guest = playerToGuest[p.id] ?: continue
             val payload = JSONObject()
                 .put("type", "role")

@@ -184,7 +184,9 @@ final class CrazyEightsServer {
         ])
     }
     private func sendHandsPrivately() {
-        for p in engine.players.values where p.id != Self.hostId {
+        // Includes the host: it plays through its own in-process loopback
+        // guest, so it must receive its private hand.
+        for p in engine.players.values {
             guard let guest = playerToGuest[p.id] else { continue }
             send(guest, [
                 "type": "hand",
