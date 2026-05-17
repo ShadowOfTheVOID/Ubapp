@@ -21,7 +21,7 @@ import org.json.JSONObject
 
 /** Bundle handed to a per-game guest screen. */
 data class GuestContext(
-    val client: GuestClient,
+    val client: GuestLink,
     val game: String,
     val yourId: String,
     val yourName: String,
