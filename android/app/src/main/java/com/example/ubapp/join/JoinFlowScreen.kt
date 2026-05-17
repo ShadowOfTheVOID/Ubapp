@@ -95,14 +95,28 @@ fun JoinFlowScreen() {
                     }
                     val url = "wss://$ip:${JoinCode.DEFAULT_PORT}/ws"
                     val gc = GuestClient(url, ctx)
+                    // Drop the live client and fall back to the join form,
+                    // surfacing `message`. Guarded on `client` so the
+                    // re-entrant CLOSED that close() emits is a no-op instead
+                    // of recursing, and so a later CLOSED can't overwrite a
+                    // FAILED message with the generic one.
+                    fun failBack(message: String) {
+                        if (client == null) return
+                        val live = client
+                        client = null
+                        welcomedGame = null; yourId = null; yourName = null
+                        queued.clear()
+                        status = message
+                        live?.close()
+                    }
                     gc.onStateChange = { s ->
                         when (s.kind) {
                             GuestClient.StateKind.OPEN ->
                                 gc.send(JSONObject().put("type", "join").put("name", name.trim()))
                             GuestClient.StateKind.FAILED ->
-                                status = "Connection failed: ${s.message ?: "unknown"}"
+                                failBack("Connection failed: ${s.message ?: "unknown"}")
                             GuestClient.StateKind.CLOSED ->
-                                if (welcomedGame == null) status = "Connection closed before joining."
+                                if (welcomedGame == null) failBack("Connection closed before joining.")
                             else -> Unit
                         }
                     }

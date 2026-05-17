@@ -23,6 +23,12 @@ final class GuestClient: NSObject, GuestLink, URLSessionWebSocketDelegate, URLSe
         self.url = url
         super.init()
         let config = URLSessionConfiguration.default
+        // LAN host that isn't actually serving (wrong code, not hosting, or a
+        // proximity-only game like Tag) should fail in seconds, not hang on
+        // the default 60s request timeout — which reads to the user as an
+        // infinite "Connecting…" spinner.
+        config.timeoutIntervalForRequest = 10
+        config.waitsForConnectivity = false
         self.session = URLSession(configuration: config, delegate: self, delegateQueue: .main)
     }
 

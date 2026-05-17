@@ -105,8 +105,8 @@ struct JoinFlowView: View {
         c.onStateChange = { s in
             switch s {
             case .open: c.send(["type": "join", "name": trimmedName])
-            case .failed(let m): status = "Connection failed: \(m)"
-            case .closed: if welcomedGame == nil { status = "Connection closed before joining." }
+            case .failed(let m): failBack("Connection failed: \(m)")
+            case .closed: if welcomedGame == nil { failBack("Connection closed before joining.") }
             default: break
             }
         }
@@ -131,12 +131,21 @@ struct JoinFlowView: View {
         client = c
     }
 
-    private func reset() {
-        client?.close()
+    private func reset() { failBack("") }
+
+    /// Drop the live client and return to the join form, surfacing `message`
+    /// (empty for a plain cancel). Guarded on `client` so the re-entrant
+    /// `.closed` that `GuestClient.close()` emits is a no-op instead of
+    /// recursing — and so a later `.closed` can't overwrite a `.failed`
+    /// message with the generic one.
+    private func failBack(_ message: String) {
+        guard let live = client else { return }
         client = nil
+        pendingHost = nil
         welcomedGame = nil; welcomedId = nil; welcomedName = nil
         queuedMessages = []
-        status = ""
+        status = message
+        live.close()
     }
 }
 
