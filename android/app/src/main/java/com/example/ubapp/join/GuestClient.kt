@@ -76,7 +76,12 @@ class GuestClient(private val url: String, ctx: Context? = null) : GuestLink {
 
     companion object {
         private fun buildOkHttp(ctx: Context?): OkHttpClient {
-            val base = OkHttpClient.Builder().pingInterval(20, TimeUnit.SECONDS)
+            // A LAN host that isn't actually serving (wrong code, not
+            // hosting, or a proximity-only game like Tag) should fail in
+            // seconds, not read to the user as an endless "Connecting…".
+            val base = OkHttpClient.Builder()
+                .pingInterval(20, TimeUnit.SECONDS)
+                .connectTimeout(10, TimeUnit.SECONDS)
             val tm = ctx?.let { bundledTrustManager(it) } ?: return base.build()
             val ssl = SSLContext.getInstance("TLS").also { it.init(null, arrayOf(tm), null) }
             return base

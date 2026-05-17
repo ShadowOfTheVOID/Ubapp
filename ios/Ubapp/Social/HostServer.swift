@@ -145,10 +145,33 @@ final class HostServer {
 
     private func accept(_ conn: NWConnection) {
         conn.start(queue: queue)
-        conn.receive(minimumIncompleteLength: 1, maximumLength: 4096) { [weak self] data, _, _, _ in
+        readRequestHead(conn, accumulated: Data())
+    }
+
+    /// Reads until the HTTP header block is complete (CRLFCRLF) before
+    /// deciding WebSocket-upgrade vs. serve-HTML. A single `receive` can
+    /// return only part of the guest's handshake (TLS record / TCP
+    /// segmentation), and deciding off that partial read would either serve
+    /// HTML to a WebSocket client or drop a handshake whose
+    /// `Sec-WebSocket-Key` line hadn't arrived yet — surfacing on the guest
+    /// as "Socket is not connected" and an endless "Connecting…".
+    private func readRequestHead(_ conn: NWConnection, accumulated: Data) {
+        conn.receive(minimumIncompleteLength: 1, maximumLength: 4096) { [weak self] data, _, isComplete, error in
             guard let self else { return }
-            if let d = data, let head = String(data: d, encoding: .utf8),
-               head.contains("Upgrade: websocket") || head.contains("upgrade: websocket") {
+            if error != nil { conn.cancel(); return }
+            var buf = accumulated
+            if let data { buf.append(data) }
+
+            if buf.range(of: Data("\r\n\r\n".utf8)) == nil {
+                // Headers not finished. Keep reading unless the peer hung up
+                // or the request is implausibly large (malformed / not HTTP).
+                if isComplete || buf.count > 65536 { conn.cancel(); return }
+                self.readRequestHead(conn, accumulated: buf)
+                return
+            }
+
+            let head = String(decoding: buf, as: UTF8.self)
+            if head.range(of: "upgrade: websocket", options: .caseInsensitive) != nil {
                 self.upgradeWebSocket(conn, headers: head)
             } else {
                 self.serveHtml(conn)
