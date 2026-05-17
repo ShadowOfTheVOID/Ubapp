@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.ubapp.theme.UbappTheme
 import com.example.ubapp.join.GuestContext
 import com.example.ubapp.shared.HostingChrome
 import com.example.ubapp.tutorials.GameTutorials
@@ -49,9 +50,16 @@ fun CrazyEightsScreen() {
     val e = server.engine
     @Suppress("UNUSED_EXPRESSION") tick
 
+    UbappTheme {
     if (e.phase == CrazyEightsPhase.LOBBY) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+            Modifier
+                .verticalScroll(rememberScrollState())
+                .widthIn(max = 480.dp)
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             HostingChrome(
@@ -78,6 +86,7 @@ fun CrazyEightsScreen() {
                 Text(if (e.canStart) "Start round" else "Need 2–8 players")
             }
         }
+        }
     } else {
         Column(Modifier.fillMaxSize()) {
             Box(Modifier.weight(1f)) { CrazyEightsGuestScreen(loopCtx) }
@@ -86,6 +95,7 @@ fun CrazyEightsScreen() {
                        modifier = Modifier.fillMaxWidth().padding(16.dp)) { Text("New game") }
             }
         }
+    }
     }
 }
 

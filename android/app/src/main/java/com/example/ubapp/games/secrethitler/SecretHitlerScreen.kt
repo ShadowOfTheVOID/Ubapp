@@ -5,9 +5,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.example.ubapp.theme.UbappTheme
 import com.example.ubapp.join.GuestContext
 import com.example.ubapp.shared.HostingChrome
 import com.example.ubapp.tutorials.GameTutorials
@@ -37,9 +39,16 @@ fun SecretHitlerScreen() {
     val engine = server.engine
     @Suppress("UNUSED_EXPRESSION") tick
 
+    UbappTheme {
     if (engine.phase == SecretHitlerPhase.LOBBY) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+            Modifier
+                .verticalScroll(rememberScrollState())
+                .widthIn(max = 480.dp)
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             HostingChrome(
@@ -69,7 +78,9 @@ fun SecretHitlerScreen() {
                 Text(if (engine.canStart) "Start round" else "Need 5–10 players")
             }
         }
+        }
     } else {
         SecretHitlerGuestScreen(loopCtx)
+    }
     }
 }

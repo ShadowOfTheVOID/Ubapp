@@ -8,8 +8,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.ubapp.theme.UbappTheme
 import com.example.ubapp.join.GuestContext
 import com.example.ubapp.shared.HostingChrome
 import com.example.ubapp.tutorials.GameTutorials
@@ -40,9 +42,16 @@ fun ImposterScreen() {
     val e = server.engine
     @Suppress("UNUSED_EXPRESSION") tick
 
+    UbappTheme {
     if (e.phase == ImposterPhase.LOBBY) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+            Modifier
+                .verticalScroll(rememberScrollState())
+                .widthIn(max = 480.dp)
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             HostingChrome(
@@ -119,6 +128,7 @@ fun ImposterScreen() {
                 Text(if (e.canStart) "Start round" else "Need 3+ players")
             }
         }
+        }
     } else {
         Column(Modifier.fillMaxSize()) {
             Box(Modifier.weight(1f)) { ImposterGuestScreen(loopCtx) }
@@ -132,5 +142,6 @@ fun ImposterScreen() {
                 else -> {}
             }
         }
+    }
     }
 }

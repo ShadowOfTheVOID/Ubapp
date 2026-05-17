@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.ubapp.shared.HostingChrome
 import com.example.ubapp.social.HostServer
+import com.example.ubapp.theme.UbappTheme
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.MultiplePermissionsState
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
@@ -66,8 +67,15 @@ fun TagLobbyScreen() {
 
     DisposableEffect(Unit) { onDispose { stopAll() } }
 
+    UbappTheme {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+        Modifier
+            .verticalScroll(rememberScrollState())
+            .widthIn(max = 480.dp)
+            .fillMaxWidth()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         if (!hosting) {
@@ -174,6 +182,8 @@ fun TagLobbyScreen() {
                 },
                 onBack = { stopAll() })
         }
+    }
+    }
     }
 }
 
