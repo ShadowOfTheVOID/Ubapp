@@ -18,6 +18,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.ubapp.theme.UbappTheme
 import com.example.ubapp.join.GuestContext
 import com.example.ubapp.join.GuestTutorialContent
 import com.example.ubapp.join.GuestTutorialState
@@ -37,8 +38,15 @@ fun CodenamesGuestScreen(ctx: GuestContext) {
     }
     @Suppress("UNUSED_EXPRESSION") tick
 
+    UbappTheme {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+        Modifier
+            .verticalScroll(rememberScrollState())
+            .widthIn(max = 480.dp)
+            .fillMaxWidth()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text("Playing as ${ctx.yourName}", style = MaterialTheme.typography.bodySmall)
@@ -160,6 +168,8 @@ fun CodenamesGuestScreen(ctx: GuestContext) {
             Text(s.lastEvent, style = MaterialTheme.typography.bodySmall,
                  modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
         }
+    }
+    }
     }
 }
 

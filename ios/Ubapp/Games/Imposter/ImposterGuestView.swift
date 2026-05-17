@@ -6,26 +6,38 @@ struct ImposterGuestView: View {
     @StateObject private var model = ImposterGuestModel()
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Playing as \(ctx.yourName)").font(.caption).foregroundStyle(.secondary)
-                if let err = model.error {
-                    Text(err).foregroundStyle(.white).padding().frame(maxWidth: .infinity)
-                        .background(Color.red).cornerRadius(12)
+        GeometryReader { proxy in
+            ScrollView {
+                VStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    VStack(alignment: .center, spacing: 16) {
+                        Text("Playing as \(ctx.yourName)").font(.caption).foregroundStyle(.secondary)
+                        if let err = model.error {
+                            Text(err).foregroundStyle(.white).padding().frame(maxWidth: .infinity)
+                                .background(Color.red).cornerRadius(12)
+                        }
+                        switch model.phase {
+                        case "lobby":   lobby
+                        case "playing": playing
+                        case "voting":  voting
+                        case "result":  result
+                        default:        Text("Waiting…").foregroundStyle(.secondary)
+                        }
+                    }
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 480)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding()
+                    Spacer(minLength: 0)
                 }
-                switch model.phase {
-                case "lobby":   lobby
-                case "playing": playing
-                case "voting":  voting
-                case "result":  result
-                default:        Text("Waiting…").foregroundStyle(.secondary)
-                }
+                .frame(minHeight: proxy.size.height)
+                .frame(maxWidth: .infinity)
             }
-            .padding()
+            .navigationTitle("Imposter")
+            .onAppear { model.attach(ctx: ctx) }
+            .onDisappear { ctx.client.onMessage = nil }
         }
-        .navigationTitle("Imposter")
-        .onAppear { model.attach(ctx: ctx) }
-        .onDisappear { ctx.client.onMessage = nil }
+        .ubappChrome()
     }
 
     @ViewBuilder private var lobby: some View {

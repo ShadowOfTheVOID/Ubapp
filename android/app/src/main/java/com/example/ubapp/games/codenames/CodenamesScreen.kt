@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.ubapp.theme.UbappTheme
 import com.example.ubapp.join.GuestContext
 import com.example.ubapp.shared.HostingChrome
 import com.example.ubapp.tutorials.GameTutorials
@@ -50,9 +51,16 @@ fun CodenamesScreen() {
     val hostPlayer = e.players[CodenamesServer.HOST_ID]
     val hostIsAnySpymaster = hostPlayer?.isSpymaster == true
 
+    UbappTheme {
     if (e.phase == CodenamesPhase.LOBBY) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+            Modifier
+                .verticalScroll(rememberScrollState())
+                .widthIn(max = 480.dp)
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             HostingChrome(
@@ -107,6 +115,7 @@ fun CodenamesScreen() {
                      else "Need ≥2 per team with a spymaster on each")
             }
         }
+        }
     } else {
         Column(Modifier.fillMaxSize()) {
             Box(Modifier.weight(1f)) { CodenamesGuestScreen(loopCtx) }
@@ -115,6 +124,7 @@ fun CodenamesScreen() {
                        modifier = Modifier.fillMaxWidth().padding(16.dp)) { Text("New game") }
             }
         }
+    }
     }
 }
 

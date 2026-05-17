@@ -7,25 +7,37 @@ struct MafiaGuestView: View {
     @StateObject private var model = MafiaGuestModel()
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                header
-                if model.error != nil { errorBanner }
-                switch model.phase {
-                case "lobby":     lobby
-                case "night":     night
-                case "dayReveal": dayReveal
-                case "dayVote":   dayVote
-                case "gameOver":  gameOver
-                default:          waiting
+        GeometryReader { proxy in
+            ScrollView {
+                VStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    VStack(alignment: .center, spacing: 16) {
+                        header
+                        if model.error != nil { errorBanner }
+                        switch model.phase {
+                        case "lobby":     lobby
+                        case "night":     night
+                        case "dayReveal": dayReveal
+                        case "dayVote":   dayVote
+                        case "gameOver":  gameOver
+                        default:          waiting
+                        }
+                        playersSection
+                    }
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 480)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding()
+                    Spacer(minLength: 0)
                 }
-                playersSection
+                .frame(minHeight: proxy.size.height)
+                .frame(maxWidth: .infinity)
             }
-            .padding()
+            .navigationTitle("Mafia")
+            .onAppear { model.attach(ctx: ctx) }
+            .onDisappear { ctx.client.onMessage = nil }
         }
-        .navigationTitle("Mafia")
-        .onAppear { model.attach(ctx: ctx) }
-        .onDisappear { ctx.client.onMessage = nil }
+        .ubappChrome()
     }
 
     @ViewBuilder private var header: some View {

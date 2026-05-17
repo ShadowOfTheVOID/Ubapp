@@ -12,6 +12,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ubapp.theme.UbappTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -34,8 +35,10 @@ fun TicTacToeScreen() {
     val status = model.winner?.let { "${it.symbol} wins" }
         ?: if (model.isDraw) "Draw" else "${model.current.symbol} to play"
 
+    UbappTheme {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
     Column(
-        Modifier.fillMaxSize().padding(24.dp),
+        Modifier.widthIn(max = 480.dp).fillMaxWidth().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -71,5 +74,7 @@ fun TicTacToeScreen() {
             }
         }
         Button(onClick = { model = TicTacToeModel() }) { Text("Reset") }
+    }
+    }
     }
 }

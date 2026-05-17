@@ -10,26 +10,38 @@ struct SecretHitlerView: View {
     var body: some View {
         Group {
             if model.phase == .lobby {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-                        HostingChrome(joinUrl: model.joinUrl, onStart: model.startHosting,
-                                      onStop: model.stop)
-                        Text("Lobby").font(.headline)
-                        TutorialVoteCard(
-                            state: model.tutorialState,
-                            tutorial: GameTutorials.secretHitler,
-                            onCall: model.callTutorialVote,
-                            onVote: model.tutorialVote,
-                            onDismiss: model.dismissTutorial,
-                        )
-                        lobbyView
+                GeometryReader { proxy in
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            Spacer(minLength: 0)
+                            VStack(alignment: .center, spacing: 16) {
+                                HostingChrome(joinUrl: model.joinUrl, onStart: model.startHosting,
+                                              onStop: model.stop)
+                                Text("Lobby").font(.headline)
+                                TutorialVoteCard(
+                                    state: model.tutorialState,
+                                    tutorial: GameTutorials.secretHitler,
+                                    onCall: model.callTutorialVote,
+                                    onVote: model.tutorialVote,
+                                    onDismiss: model.dismissTutorial,
+                                )
+                                lobbyView
+                            }
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: 480)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding()
+                            Spacer(minLength: 0)
+                        }
+                        .frame(minHeight: proxy.size.height)
+                        .frame(maxWidth: .infinity)
                     }
-                    .padding()
                 }
             } else if let ctx = model.loopbackCtx {
                 SecretHitlerGuestView(ctx: ctx)
             }
         }
+        .ubappChrome()
         .navigationTitle("Secret Hitler")
         .onDisappear { model.stop() }
     }

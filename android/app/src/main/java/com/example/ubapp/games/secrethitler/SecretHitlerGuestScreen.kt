@@ -9,6 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.example.ubapp.theme.UbappTheme
 import com.example.ubapp.join.GuestContext
 import com.example.ubapp.join.GuestTutorialContent
 import com.example.ubapp.join.GuestTutorialState
@@ -26,8 +27,15 @@ fun SecretHitlerGuestScreen(ctx: GuestContext) {
     }
     @Suppress("UNUSED_EXPRESSION") tick
 
+    UbappTheme {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+        Modifier
+            .verticalScroll(rememberScrollState())
+            .widthIn(max = 480.dp)
+            .fillMaxWidth()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text("Playing as ${ctx.yourName}", style = MaterialTheme.typography.bodySmall)
@@ -74,6 +82,8 @@ fun SecretHitlerGuestScreen(ctx: GuestContext) {
                 PhaseSection(s, ctx)
             }
         }
+    }
+    }
     }
 }
 

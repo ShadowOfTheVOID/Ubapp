@@ -33,6 +33,7 @@ struct RealtimeView: View {
                     .padding(12)
             }
         }
+        .ubappChrome()
         .navigationTitle("Real-time")
         .ignoresSafeArea(edges: .bottom)
     }

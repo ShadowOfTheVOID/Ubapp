@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Text
+import com.example.ubapp.theme.UbappTheme
 import kotlinx.coroutines.delay
 import kotlin.math.cos
 import kotlin.math.sin
@@ -39,6 +40,7 @@ fun RealtimeScreen() {
         }
     }
 
+    UbappTheme {
     Box(
         Modifier.fillMaxSize().background(Color.Black)
             .pointerInput(Unit) {
@@ -60,6 +62,7 @@ fun RealtimeScreen() {
         }
         Text("Drag to move. Enemies wander, then chase.",
              modifier = Modifier.padding(12.dp), color = Color.White.copy(alpha = 0.7f))
+    }
     }
 }
 

@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.example.ubapp.theme.UbappTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -39,8 +40,10 @@ fun ConnectFourScreen() {
     val status = model.winner?.let { (if (it == Disc.RED) "Red" else "Yellow") + " wins" }
         ?: if (model.isDraw) "Draw" else (if (model.current == Disc.RED) "Red" else "Yellow") + " to play"
 
+    UbappTheme {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
     Column(
-        Modifier.fillMaxSize().padding(16.dp),
+        Modifier.widthIn(max = 480.dp).fillMaxWidth().padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -79,5 +82,7 @@ fun ConnectFourScreen() {
             }
         }
         Button(onClick = { model = ConnectFourModel() }, enabled = !thinking) { Text("Reset") }
+    }
+    }
     }
 }
