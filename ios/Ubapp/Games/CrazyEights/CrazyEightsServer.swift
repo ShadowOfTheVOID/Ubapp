@@ -169,8 +169,15 @@ final class CrazyEightsServer {
         ])
     }
     private func broadcastState() {
+        let phase: String
+        switch engine.phase {
+        case .lobby: phase = "lobby"
+        case .playing: phase = "playing"
+        case .gameOver: phase = "gameOver"
+        }
         broadcast([
             "type": "state",
+            "phase": phase,
             "currentId": engine.current?.id as Any,
             "topCard": engine.topCard.map { ["suit": $0.suit.rawValue, "rank": $0.rank] } as Any,
             "activeSuit": engine.activeSuit?.rawValue as Any,

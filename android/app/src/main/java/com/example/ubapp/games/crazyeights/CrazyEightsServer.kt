@@ -130,8 +130,14 @@ class CrazyEightsServer(context: Context, val hostName: String = "Host") {
         val playersArr = JSONArray()
         for (p in engine.players.values)
             playersArr.put(JSONObject().put("id", p.id).put("name", p.name).put("handCount", p.hand.size))
+        val phase = when (engine.phase) {
+            CrazyEightsPhase.LOBBY -> "lobby"
+            CrazyEightsPhase.PLAYING -> "playing"
+            CrazyEightsPhase.GAME_OVER -> "gameOver"
+        }
         broadcast(JSONObject()
             .put("type", "state")
+            .put("phase", phase)
             .put("currentId", engine.current?.id ?: JSONObject.NULL)
             .put("topCard", top ?: JSONObject.NULL)
             .put("activeSuit", engine.activeSuit?.name?.lowercase() ?: JSONObject.NULL)
