@@ -20,18 +20,28 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.ubapp.join.GuestContext
 import com.example.ubapp.shared.HostingChrome
 import com.example.ubapp.tutorials.GameTutorials
 import com.example.ubapp.tutorials.TutorialVoteCard
 import com.example.ubapp.tutorials.snapshot
 
+/**
+ * Host screen. Lobby is host-owned (QR, options, "Start round"); once the
+ * round starts the host plays on the same [CrazyEightsGuestScreen] every
+ * guest sees, via an in-process loopback, plus a "New game" control the
+ * player screen lacks.
+ */
 @Composable
 fun CrazyEightsScreen() {
     val ctx = LocalContext.current
     val server = remember { CrazyEightsServer(ctx) }
+    val loopback = remember { server.makeLoopback() }
+    val loopCtx = remember {
+        GuestContext(loopback, "crazy_eights", CrazyEightsServer.HOST_ID, server.hostName, emptyList())
+    }
     var joinUrl by remember { mutableStateOf<String?>(null) }
     var tick by remember { mutableIntStateOf(0) }
-    var pendingEight by remember { mutableStateOf<Card?>(null) }
     DisposableEffect(Unit) {
         server.onStateChange = { tick++ }
         onDispose { server.stop() }
@@ -39,108 +49,43 @@ fun CrazyEightsScreen() {
     val e = server.engine
     @Suppress("UNUSED_EXPRESSION") tick
 
-    val hostHand = e.players[CrazyEightsServer.HOST_ID]?.hand.orEmpty()
-    val hostIsCurrent = e.current?.id == CrazyEightsServer.HOST_ID
-
-    Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        HostingChrome(
-            joinUrl = joinUrl,
-            onStart = { joinUrl = server.start() },
-            onStop = { server.stop(); joinUrl = null },
-        )
-        Text("Phase: ${e.phase}", style = MaterialTheme.typography.titleMedium)
-
-        when (e.phase) {
-            CrazyEightsPhase.LOBBY -> {
-                TutorialVoteCard(
-                    state = e.tutorialVote.snapshot(), tutorial = GameTutorials.crazyEights,
-                    onCall = server::hostCallTutorialVote, onVote = server::hostTutorialVote,
-                    onDismiss = server::hostDismissTutorial,
-                )
-                ElevatedCard(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text("Players (${e.players.size})", style = MaterialTheme.typography.titleSmall)
-                        for (p in e.players.values.sortedBy { it.id }) {
-                            Text(p.name + if (p.isHost) " (host)" else "")
-                        }
-                    }
-                }
-                CrazyEightsOptionsCard(e, server)
-                Button(onClick = { server.hostStart() }, enabled = e.canStart) {
-                    Text(if (e.canStart) "Start round" else "Need 2–8 players")
-                }
-            }
-            CrazyEightsPhase.PLAYING -> {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    e.topCard?.let { CardChip(it, faded = false) }
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("Active: ${e.activeSuit?.glyph ?: e.topCard?.suit?.glyph ?: "—"}")
-                        Text("Turn: ${e.current?.name.orEmpty()}",
-                             style = MaterialTheme.typography.bodySmall)
-                    }
-                    OutlinedButton(onClick = { server.hostDraw() }, enabled = hostIsCurrent) {
-                        Text("Draw (${e.drawPile.size})")
-                    }
-                }
-                e.lastEvent?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-                if (e.justDrew && hostIsCurrent) {
-                    OutlinedButton(onClick = { server.hostPass() }) { Text("Pass") }
-                }
-                Text("Your hand (${hostHand.size})", style = MaterialTheme.typography.titleSmall)
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(5),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.heightIn(max = 400.dp),
-                ) {
-                    itemsIndexed(hostHand) { _, c ->
-                        val playable = hostIsCurrent && e.canPlay(c)
-                        Box(Modifier.alpha(if (playable) 1f else 0.4f)
-                                    .clickable(enabled = playable) {
-                                        if (c.rank == 8) pendingEight = c
-                                        else server.hostPlay(c, null)
-                                    }) {
-                            CardChip(c, faded = !playable)
-                        }
+    if (e.phase == CrazyEightsPhase.LOBBY) {
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            HostingChrome(
+                joinUrl = joinUrl,
+                onStart = { joinUrl = server.start() },
+                onStop = { server.stop(); joinUrl = null },
+            )
+            Text("Lobby", style = MaterialTheme.typography.titleMedium)
+            TutorialVoteCard(
+                state = e.tutorialVote.snapshot(), tutorial = GameTutorials.crazyEights,
+                onCall = server::hostCallTutorialVote, onVote = server::hostTutorialVote,
+                onDismiss = server::hostDismissTutorial,
+            )
+            ElevatedCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("Players (${e.players.size})", style = MaterialTheme.typography.titleSmall)
+                    for (p in e.players.values.sortedBy { it.id }) {
+                        Text(p.name + if (p.isHost) " (host)" else "")
                     }
                 }
             }
-            CrazyEightsPhase.GAME_OVER -> {
-                val w = e.winnerId?.let { e.players[it]?.name }
-                Text(if (w != null) "$w wins" else "Game over",
-                     style = MaterialTheme.typography.headlineSmall)
-                for (p in e.players.values) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(p.name); Text("${p.hand.size} cards left")
-                    }
-                }
-                Button(onClick = { server.hostNewGame() }) { Text("New game") }
+            CrazyEightsOptionsCard(e, server)
+            Button(onClick = { server.hostStart() }, enabled = e.canStart) {
+                Text(if (e.canStart) "Start round" else "Need 2–8 players")
             }
         }
-    }
-
-    val pe = pendingEight
-    if (pe != null) {
-        AlertDialog(
-            onDismissRequest = { pendingEight = null },
-            title = { Text("Declare suit") },
-            text = {
-                Column {
-                    for (s in Suit.entries) {
-                        TextButton(onClick = {
-                            server.hostPlay(pe, s)
-                            pendingEight = null
-                        }) { Text("${s.glyph} ${s.name.lowercase().replaceFirstChar { it.uppercase() }}") }
-                    }
-                }
-            },
-            confirmButton = {},
-            dismissButton = { TextButton(onClick = { pendingEight = null }) { Text("Cancel") } },
-        )
+    } else {
+        Column(Modifier.fillMaxSize()) {
+            Box(Modifier.weight(1f)) { CrazyEightsGuestScreen(loopCtx) }
+            if (e.phase == CrazyEightsPhase.GAME_OVER) {
+                Button(onClick = { server.hostNewGame() },
+                       modifier = Modifier.fillMaxWidth().padding(16.dp)) { Text("New game") }
+            }
+        }
     }
 }
 

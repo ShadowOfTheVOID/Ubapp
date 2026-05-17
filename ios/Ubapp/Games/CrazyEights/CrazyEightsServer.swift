@@ -24,9 +24,15 @@ final class CrazyEightsServer {
     func start() throws -> URL? {
         engine.addPlayer(id: Self.hostId, name: hostName, isHost: true)
         let url = try server.start()
+        let local = server.attachLocalGuest()
+        guestToPlayer[local] = Self.hostId
+        playerToGuest[Self.hostId] = local
         emit()
         return url
     }
+
+    /// In-process pipe for the host's own player view.
+    func makeLoopback() -> LoopbackGuest { LoopbackGuest(server: server) }
     func stop() { server.stop() }
     var guestCount: Int { server.guestCount }
 

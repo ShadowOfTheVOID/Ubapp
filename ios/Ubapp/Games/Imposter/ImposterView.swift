@@ -2,30 +2,43 @@ import SwiftUI
 
 /// Host's player UI for Imposter. The category card / secret word reveal /
 /// vote phase happen here; the rich animated UI lives in the browser bundle.
+/// Host screen. Lobby is host-owned (QR, category, options, "Start round").
+/// Once the round starts the host plays on the same `ImposterGuestView` every
+/// guest sees, via an in-process loopback, plus a control bar for the
+/// host-only orchestration the player screen lacks (call vote / new round).
 struct ImposterView: View {
     @StateObject private var model = ImposterViewModel()
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                HostingChrome(joinUrl: model.joinUrl, onStart: model.startHosting,
-                              onStop: model.stop)
-
-                Text(phaseLabel).font(.headline)
-
-                switch model.phase {
-                case .lobby:
-                    TutorialVoteCard(
-                        state: model.tutorialState, tutorial: GameTutorials.imposter,
-                        onCall: model.callTutorialVote, onVote: model.tutorialVote,
-                        onDismiss: model.dismissTutorial)
-                    lobbyView
-                case .playing: playingView
-                case .voting: votingView
-                case .result, .gameOver: resultView
+        Group {
+            if model.phase == .lobby {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        HostingChrome(joinUrl: model.joinUrl, onStart: model.startHosting,
+                                      onStop: model.stop)
+                        Text("Lobby").font(.headline)
+                        TutorialVoteCard(
+                            state: model.tutorialState, tutorial: GameTutorials.imposter,
+                            onCall: model.callTutorialVote, onVote: model.tutorialVote,
+                            onDismiss: model.dismissTutorial)
+                        lobbyView
+                    }
+                    .padding()
+                }
+            } else if let ctx = model.loopbackCtx {
+                VStack(spacing: 0) {
+                    ImposterGuestView(ctx: ctx)
+                    if model.phase == .playing {
+                        Divider()
+                        Button("Call vote") { model.beginVoting() }
+                            .buttonStyle(.borderedProminent).padding()
+                    } else if model.phase == .result || model.phase == .gameOver {
+                        Divider()
+                        Button("New round") { model.newRound() }
+                            .buttonStyle(.borderedProminent).padding()
+                    }
                 }
             }
-            .padding()
         }
         .navigationTitle("Imposter")
         .onDisappear { model.stop() }
@@ -67,60 +80,6 @@ struct ImposterView: View {
         }
     }
 
-    @ViewBuilder private var playingView: some View {
-        if !(model.hostIsImposter && model.options.hideCategory) {
-            GroupBox("Category") { Text(model.category).font(.title3.bold()) }
-        }
-        if model.hostIsImposter {
-            GroupBox("Your card") {
-                Text("IMPOSTER").font(.largeTitle.bold()).foregroundStyle(.red)
-                if let decoy = model.hostDecoyWord {
-                    Text("Decoy word: \(decoy)").font(.title3.bold())
-                    Text("This isn't the real word — bluff carefully.")
-                        .font(.callout).foregroundStyle(.secondary)
-                } else {
-                    Text("Bluff your way through.")
-                        .font(.callout).foregroundStyle(.secondary)
-                }
-            }
-        } else {
-            GroupBox("Your secret word") {
-                Text(model.secretWord).font(.largeTitle.bold())
-            }
-        }
-        Button("Call vote") { model.beginVoting() }.buttonStyle(.borderedProminent)
-    }
-
-    @ViewBuilder private var votingView: some View {
-        GroupBox("Vote: who is the imposter?") {
-            ForEach(model.players.filter { $0.id != ImposterServer.hostId }, id: \.id) { p in
-                Button { model.vote(p.id) } label: {
-                    HStack { Text(p.name); Spacer() }.padding(.vertical, 6)
-                }
-            }
-            Button("Skip vote") { model.vote(nil) }
-        }
-    }
-
-    @ViewBuilder private var resultView: some View {
-        GroupBox("Result") {
-            Text(model.winnerLabel).font(.title2.bold())
-            if !model.imposterNames.isEmpty {
-                let label = model.imposterNames.count == 1 ? "imposter was" : "imposters were"
-                Text("The \(label) \(model.imposterNames.joined(separator: ", ")).")
-            }
-            Text("Word: \(model.secretWord)  ·  Category: \(model.category)")
-                .foregroundStyle(.secondary)
-        }
-        Button("New round") { model.newRound() }.buttonStyle(.borderedProminent)
-    }
-
-    private var phaseLabel: String {
-        switch model.phase {
-        case .lobby: "Lobby"; case .playing: "Playing"
-        case .voting: "Voting"; case .result, .gameOver: "Result"
-        }
-    }
 }
 
 @MainActor
@@ -132,13 +91,9 @@ final class ImposterViewModel: ObservableObject {
     @Published var canStart = false
     @Published var availableCategories: [String] = []
     @Published var selectedCategory: String?
-    @Published var category = ""
-    @Published var secretWord = ""
-    @Published var hostIsImposter = false
-    @Published var hostDecoyWord: String?
-    @Published var imposterNames: [String] = []
-    @Published var winnerLabel = ""
     @Published var options = ImposterOptions()
+    @Published var loopbackCtx: GuestContext?
+    private var loopback: LoopbackGuest?
     @Published var maxImposterCount: Int = 1
     @Published var tutorialState = TutorialVoteCard.VoteState(
         isOpen: false, yesCount: 0, noCount: 0, eligibleCount: 0,
@@ -150,7 +105,14 @@ final class ImposterViewModel: ObservableObject {
     }
 
     func startHosting() {
-        do { joinUrl = try server.start() } catch { print("HostServer failed: \(error)") }
+        do {
+            joinUrl = try server.start()
+            let lb = server.makeLoopback()
+            loopback = lb
+            loopbackCtx = GuestContext(client: lb, game: "imposter",
+                                       yourId: ImposterServer.hostId,
+                                       yourName: server.hostName, replay: [])
+        } catch { print("HostServer failed: \(error)") }
         refresh()
     }
     func applyOptions(_ o: ImposterOptions) { server.hostSetOptions(o) }
@@ -158,27 +120,20 @@ final class ImposterViewModel: ObservableObject {
         server.hostStart(category: options.mixedPool ? nil : selectedCategory)
     }
     func beginVoting() { server.hostBeginVoting() }
-    func vote(_ targetId: String?) { server.hostVote(targetId: targetId) }
     func newRound() { server.hostNewRound() }
     func callTutorialVote() { server.hostCallTutorialVote() }
     func tutorialVote(_ yes: Bool) { server.hostTutorialVote(yes) }
     func dismissTutorial() { server.hostDismissTutorial() }
-    func stop() { server.stop(); joinUrl = nil }
+    func stop() {
+        server.stop(); joinUrl = nil
+        loopback = nil; loopbackCtx = nil
+    }
 
     private func refresh() {
         let e = server.engine
         phase = e.phase
         players = Array(e.players.values).sorted { $0.id < $1.id }
         canStart = e.canStart
-        category = e.category
-        secretWord = e.secretWord
-        let host = e.players[ImposterServer.hostId]
-        hostIsImposter = host?.isImposter == true
-        hostDecoyWord = host?.decoyWord
-        imposterNames = e.imposterIds.compactMap { e.players[$0]?.name }.sorted()
-        if let w = e.winner {
-            winnerLabel = w == .town ? "Town wins" : "Imposter wins"
-        } else { winnerLabel = "" }
         if options != e.options { options = e.options }
         maxImposterCount = e.maxImposterCount
         let v = e.tutorialVote

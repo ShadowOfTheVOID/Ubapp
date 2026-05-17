@@ -1,6 +1,7 @@
 package com.example.ubapp.games.mafia
 
 import android.content.Context
+import com.example.ubapp.join.LoopbackGuest
 import com.example.ubapp.social.GuestId
 import com.example.ubapp.social.HostServer
 import com.example.ubapp.tutorials.GameTutorials
@@ -30,9 +31,17 @@ class MafiaServer(context: Context, val hostName: String = "Host") {
     fun start(): String? {
         engine.addPlayer(HOST_ID, hostName, isHost = true)
         val url = server.startServer()
+        // The host plays as a normal player on the same screen guests see.
+        val local = server.attachLocalGuest()
+        guestToPlayer[local] = HOST_ID
+        playerToGuest[HOST_ID] = local
         emit()
         return url
     }
+
+    /** In-process pipe for the host's own player screen. */
+    fun makeLoopback(): LoopbackGuest = LoopbackGuest(server)
+
     fun stop() = server.stopServer()
     val guestCount: Int get() = server.guestCount
 

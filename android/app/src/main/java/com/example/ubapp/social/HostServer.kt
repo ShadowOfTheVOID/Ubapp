@@ -37,6 +37,31 @@ class HostServer(
 
     var hostIp: String? = null; private set
 
+    /** The host plays as a normal player through an in-process pipe instead
+     *  of a TCP socket. When set, [send]/[broadcast] deliver to this sink and
+     *  [injectFromLocal] feeds frames back in as if received. */
+    var localGuestId: GuestId? = null; private set
+    var onLocalSend: ((String) -> Unit)? = null
+
+    /** Registers the in-process host guest and returns its stable id. */
+    fun attachLocalGuest(): GuestId {
+        val id = GuestId("local")
+        localGuestId = id
+        onJoin?.invoke(id)
+        return id
+    }
+
+    fun detachLocalGuest() {
+        val id = localGuestId ?: return
+        localGuestId = null
+        onLeave?.invoke(id)
+    }
+
+    /** Feeds a frame into the server as if the host guest had sent it. */
+    fun injectFromLocal(raw: String) {
+        localGuestId?.let { onMessage?.invoke(it, raw) }
+    }
+
     /** Returns the URL guests should open. null if no usable IPv4 (Wi-Fi,
      *  tethered hotspot, USB tether, or cellular) is available. */
     fun startServer(): String? {
@@ -52,6 +77,8 @@ class HostServer(
             sockets.values.forEach { runCatching { it.close(WebSocketFrame.CloseCode.NormalClosure, "stop", false) } }
             sockets.clear()
         }
+        localGuestId = null
+        onLocalSend = null
         stop()
     }
 
@@ -67,12 +94,14 @@ class HostServer(
     val guests: List<GuestId> get() = synchronized(sockets) { sockets.keys.toList() }
 
     fun send(to: GuestId, payload: String) {
+        if (to == localGuestId) { onLocalSend?.invoke(payload); return }
         val ws = synchronized(sockets) { sockets[to] } ?: return
         runCatching { ws.send(payload) }
     }
     fun broadcast(payload: String) {
         val snapshot = synchronized(sockets) { sockets.values.toList() }
         for (ws in snapshot) runCatching { ws.send(payload) }
+        localGuestId?.let { onLocalSend?.invoke(payload) }
     }
 
     private inner class GuestSocket(val id: GuestId, handshake: IHTTPSession) : WebSocket(handshake) {

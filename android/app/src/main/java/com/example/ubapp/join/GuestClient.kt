@@ -25,7 +25,7 @@ import javax.net.ssl.X509TrustManager
  * (ubapp.p12). Without it the client falls back to the system trust store,
  * which rejects self-signed certs.
  */
-class GuestClient(private val url: String, ctx: Context? = null) {
+class GuestClient(private val url: String, ctx: Context? = null) : GuestLink {
     enum class StateKind { CONNECTING, OPEN, CLOSED, FAILED }
     data class State(val kind: StateKind, val message: String? = null)
 
@@ -37,7 +37,7 @@ class GuestClient(private val url: String, ctx: Context? = null) {
 
     var onStateChange: ((State) -> Unit)? = null
     /** Each frame received from the server, parsed as a JSONObject. Fires on the main thread. */
-    var onMessage: ((JSONObject) -> Unit)? = null
+    override var onMessage: ((JSONObject) -> Unit)? = null
 
     fun connect() {
         val req = Request.Builder().url(url).build()
@@ -58,7 +58,7 @@ class GuestClient(private val url: String, ctx: Context? = null) {
         })
     }
 
-    fun send(payload: JSONObject) {
+    override fun send(payload: JSONObject) {
         ws?.send(payload.toString())
     }
 
