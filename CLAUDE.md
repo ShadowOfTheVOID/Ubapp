@@ -1,48 +1,55 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working
-with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project shape
 
 Native-app collection of small offline party games for same-room play.
-**Two platforms, no shared runtime**: iOS (SwiftUI) and Android
-(Kotlin/Compose). Two guest tiers:
+**Two platforms, no shared runtime**: iOS (SwiftUI, iOS 17+) and Android
+(Kotlin/Compose, minSdk 26 / targetSdk 35). Two guest tiers:
 
-- **App-installed peers** — needed for proximity games (BLE), e.g. tag.
-- **Browser-only guests** — connect via QR to a host phone running an in-app
-  HTTP + WebSocket server. Used for social / card / trivia games.
+- **App-installed peers** — required for proximity games (BLE), e.g. Tag.
+  App guests can *also* join any browser-tier game natively via the
+  **Join a game** menu entry (see Join flow below).
+- **Browser-only guests** — connect via QR to a host phone running an
+  in-app HTTPS + WebSocket server. Used for social / card / trivia games.
 
-This branch is mid-migration from a previous Flutter/Dart implementation;
-see README.md "Migration status" for what's ported per game.
+Originally a Flutter/Dart codebase; the migration is finished for the games
+listed in README.md "Migration status". Treat README.md's status table and
+min/max-player table as the source of truth for game inventory.
 
 ## Layout
 
 ```
 ios/
-├── Ubapp.xcodeproj/project.pbxproj     # hand-written, no xcodegen
+├── Ubapp.xcodeproj/project.pbxproj     # hand-written, filesystem-synchronized root group
 └── Ubapp/
-    ├── App/{UbappApp.swift,Info.plist}
+    ├── App/{UbappApp.swift,UbappTheme.swift,Info.plist}
     ├── Menu/MainMenuView.swift
-    ├── Games/<Name>/                   # engine + view (+ server + browser for browser-tier)
-    └── Social/HostServer.swift         # Network.framework HTTP + WebSocket
+    ├── Games/<Name>/                    # engine + view (+ server + guest view for browser-tier)
+    ├── Games/Shared/HostingChrome.swift # shared QR + app-code host card
+    ├── Join/                            # app-guest join flow (see below)
+    ├── Social/HostServer.swift          # Network.framework HTTPS + WebSocket
+    ├── Tutorials/                       # TutorialContent + TutorialVote + TutorialVoteCard
+    └── Resources/                       # *_browser.html bundles + ubapp.p12 TLS identity
 
 android/
 ├── settings.gradle.kts, build.gradle.kts, gradle.properties
-└── app/
-    ├── build.gradle.kts
-    └── src/main/
-        ├── AndroidManifest.xml
-        ├── java/com/example/ubapp/
-        │   ├── MainActivity.kt, menu/MainMenu.kt
-        │   ├── games/<name>/           # engine + screen (+ server for browser-tier)
-        │   └── social/HostServer.kt    # NanoHTTPD-WebSocket
-        └── res/values/
+└── app/src/main/
+    ├── AndroidManifest.xml
+    ├── assets/                          # *_browser.html bundles + ubapp.p12 TLS identity
+    └── java/com/example/ubapp/
+        ├── MainActivity.kt, menu/MainMenu.kt
+        ├── games/<name>/                # engine + screen (+ server + guest screen for browser-tier)
+        ├── shared/HostingChrome.kt
+        ├── join/                        # app-guest join flow
+        ├── social/HostServer.kt         # NanoHTTPD-WebSocket
+        └── tutorials/
 ```
 
 ## Common commands
 
-### iOS
+### iOS (no test target — engines are verified on the Android side)
 ```
 open ios/Ubapp.xcodeproj
 xcodebuild -project ios/Ubapp.xcodeproj -scheme Ubapp -destination 'generic/platform=iOS Simulator' build
@@ -51,97 +58,126 @@ xcodebuild -project ios/Ubapp.xcodeproj -scheme Ubapp -destination 'generic/plat
 ### Android
 ```
 cd android
-gradle wrapper --gradle-version=8.10   # one-time, if wrapper missing
+gradle wrapper --gradle-version=8.10            # one-time, if wrapper missing
 ./gradlew :app:assembleDebug
 ./gradlew :app:installDebug
-./gradlew :app:testDebugUnitTest        # runs the engine tests under src/test/
+./gradlew :app:testDebugUnitTest                # all engine unit tests (src/test/)
+./gradlew :app:testDebugUnitTest --tests "com.example.ubapp.EnginesTest"   # single test class
 ```
+
+Engine unit tests live in `android/app/src/test/java/com/example/ubapp/`
+(`EnginesTest`, `GameOptionsTest`, `MafiaEngineTest`, `SecretHitlerEngineTest`).
+Because the Swift and Kotlin engines are deliberately identical state
+machines, these tests are the practical regression net for **both**
+platforms — port engine fixes to Kotlin and add/extend a test there even
+when the bug was found in Swift.
 
 ## Architecture in one paragraph
 
 Each game lives in `<platform>/.../games/<name>/` with three layers: a
 **pure engine** (no UI, no I/O), a **session/server adapter** that connects
 the engine to a transport, and a **view/screen** that renders state and
-forwards user actions. Engines are deliberately deterministic state machines
-so any client (Swift host, Kotlin host, browser guest, future BLE peer)
-computes the same state from the same ordered events. The transport is
-hot-swappable via small interfaces — `ProximitySource` for BLE proximity,
-`HostServer` for WebSocket fan-out — so the same engine and UI work whether
-you're plumbing real Bluetooth or a manual test stream.
+forwards actions. Engines are deterministic state machines so every client
+(Swift host, Kotlin host, browser guest, BLE peer) computes the same state
+from the same ordered events. Transports are hot-swappable via small
+interfaces — `ProximitySource` for BLE, `HostServer` for WebSocket fan-out —
+so the same engine and UI work against real Bluetooth or a manual test
+stream. Local-only games (Tic-Tac-Toe, Connect Four, Real-time) skip the
+adapter layer entirely: engine + view, no server.
 
-## Per-game wiring
+## Per-game wiring (browser-tier: Mafia, Werewolf, Imposter, Codenames, Crazy Eights, Secret Hitler)
 
-Same pattern on both platforms. Mafia is the reference: see
-`ios/Ubapp/Games/Mafia/` (`MafiaEngine.swift`, `MafiaServer.swift`,
-`MafiaBrowser.swift`, `MafiaView.swift`) and
-`android/.../games/mafia/MafiaEngine.kt`.
+Mafia is the reference (`ios/Ubapp/Games/Mafia/`,
+`android/.../games/mafia/`). Four pieces per game:
 
-For browser-tier games (Mafia, Werewolf, Imposter, Codenames, Crazy Eights):
+1. **Browser bundle** — `Resources/<name>_browser.html` (iOS) /
+   `assets/<name>_browser.html` (Android), loaded verbatim and served at
+   `/`. Consumes the same JSON the server emits.
+2. **`*Server`** wrapping `HostServer` — maps inbound JSON commands to
+   engine calls, sends private (`send(to:_:)`) and broadcast
+   (`broadcast(_:)`) state.
+3. **`*GuestView` / `*GuestScreen`** — the player UI a guest sees.
+4. **`*View` / `*Screen`** (native host view) — embeds `HostingChrome`
+   (QR + app code) **and the game's own `*GuestView`**, because the host
+   plays as a real player. The host is player id `host`, driven through an
+   **in-process loopback** rather than a WebSocket — it never connects over
+   the network but goes through the same server/engine path as guests.
 
-1. Game-specific HTML/JS as a string constant — served at `/`. Same JSON the
-   server emits is consumed by the host's native view, so both clients must
-   stay in sync when message types change.
-2. A `*Server` class wrapping `HostServer`, mapping inbound JSON commands to
-   engine calls and outbound state to private/broadcast sends. The native
-   host plays as a special player with id `host` that does not connect over
-   WebSocket.
-3. A native view (SwiftUI / Compose) that displays the QR + acts as the
-   host's player UI.
+For Tag (proximity): `TagSession` owns a `TagEngine` plus a `TagTransport`
+(`HostTagTransport` wraps the host's `HostServer` for fan-out; the peer
+variant wraps a single outbound socket). Proximity events arrive via
+`ProximitySource` (`BleProximity` for real BLE); `TagProtocol` defines the
+wire `TagMessage`s. Host and every peer run engine mirrors fed the same
+ordered events.
 
-For Tag (proximity): the engine consumes `ProximitySource` events (BLE
-central scan results) and broadcasts `TagMessage`s to app peers over the
-same `HostServer` transport.
+## Join flow (app guests → browser-tier host)
 
-## HostServer
+`ios/Ubapp/Join/` and `android/.../join/`. The host's `HostingChrome` card
+shows a **7-character base-36 join code** (`JoinCode`) that encodes the
+host's IPv4 (port fixed at `7654`); a raw IP is also accepted. `GuestClient`
+(iOS, `URLSessionWebSocketTask`) / the Android equivalent opens a `wss://`
+socket to the host and speaks the **same JSON wire format as the browser
+bundle** behind the `GuestLink` interface, then renders the game's native
+`*GuestView`.
 
-- **iOS** (`Social/HostServer.swift`): `NWListener` + WebSocket protocol
-  option. Binds default port `7654` to all IPv4 interfaces. Each connection
-  gets a stable `GuestId` for its lifetime; games use `send(to:_:)` for
-  private messages and `broadcast(_:)` for everything public. The served
-  HTML is swappable per-game.
-- **Android** (`social/HostServer.kt`): NanoHTTPD-WebSocket, same API. The
-  served HTML is mutable on the instance before `startServer()`.
+## Transport & TLS
 
-Browsers connect via `new WebSocket(\`ws://${location.host}/ws\`)` — plain
-HTTP only, no TLS. Correct for LAN play but the host phone can't tunnel
-through anything that requires HTTPS.
+`HostServer` binds default port **7654** on all IPv4 interfaces.
+
+- The server runs **HTTPS / WSS** using a bundled self-signed PKCS12
+  identity: `Resources/ubapp.p12` (iOS) / `assets/ubapp.p12` (Android). If
+  the cert can't load, both platforms fall back to plain HTTP/WS.
+- Browser bundles connect with `new WebSocket(`wss://${location.host}/ws`)`.
+  Browser guests must accept the self-signed-cert warning once.
+- App guests **pin the bundled cert** (`GuestClient` trusts the bundled
+  certificate manually, since the host is reached at a dynamic LAN IP that
+  can never appear in the cert's SANs).
+- Still LAN-only — the host phone cannot tunnel through anything requiring
+  a publicly trusted chain.
+
+When you change the `.p12`, replace it in **both** `Resources/` and
+`assets/` or the two platforms will present mismatched certs.
 
 ## Conventions worth keeping
 
 - **Engines never touch I/O.** Pure Swift `struct`/`class` and Kotlin
   classes; no `Task`/`async`, no `CoroutineScope`, no system APIs inside
-  `*Engine.swift` / `*Engine.kt`. This keeps games trivially testable.
-- **JSON over the wire is line-oriented, dispatched on `type`.** When you
-  add a message type, add a `case` / `when` on both sides (native server +
-  browser bundle, or the second peer) or one side will silently drop events.
+  `*Engine.swift` / `*Engine.kt`.
+- **JSON over the wire is line-oriented, dispatched on `type`.** A new
+  message type needs a matching `case`/`when` in: the native `*Server`, the
+  `*_browser.html` bundle, the native `*GuestView`/`*GuestScreen`, and (for
+  Tag) the second peer — miss one and that side silently drops the event.
+- **Host plays via loopback.** Don't special-case the host in engine
+  logic; it's a normal player with id `host` whose transport is in-process.
 - **No platform shells are generated.** iOS uses a hand-written
-  `project.pbxproj` (filesystem-synchronized root group → adding Swift
-  files never requires editing the project). Android uses a plain Gradle
-  project; the Gradle wrapper is the user's responsibility to generate.
+  `project.pbxproj` with a `PBXFileSystemSynchronizedRootGroup` (Xcode 16) —
+  new Swift files under `ios/Ubapp/` are picked up without editing the
+  project. Android is a plain Gradle project; the Gradle wrapper is the
+  user's responsibility to generate.
+- **Keep Swift and Kotlin engines in lockstep.** A fix to one engine almost
+  always needs the same fix in the other; add the regression test on the
+  Android side.
 
 ## Pitfalls worth knowing
 
-- **Browser bundle ↔ host view are in an implicit contract.** Both consume
-  the same JSON the server emits. The bundles are loaded verbatim from
-  `Resources/<name>_browser.html` (iOS) / `assets/<name>_browser.html`
-  (Android); when adding a message type, also update the matching
-  `.html` file or one side will silently drop events.
+- **Four-way contract for browser-tier messages.** Server + browser bundle +
+  native guest view + (Tag) peer all consume the same JSON. The `.html`
+  bundles are byte-identical to the original Flutter files and loaded
+  verbatim — edit the `.html` too when adding a message type.
+- **TLS asset must be in both trees.** `ubapp.p12` lives in `Resources/`
+  (iOS) and `assets/` (Android); keep them identical.
 - **iOS BLE in background.** `CBPeripheralManager.startAdvertising` only
-  honors the local-name field while the app is foreground — peripheral
-  advertising drops to a service-UUID-only payload when backgrounded.
-  Tag rounds assume foreground.
-- **Tutorial vote** lives under `Tutorials/` (`TutorialVote` + `GameTutorials`)
-  on both platforms. Each browser-tier server emits a `tutorial_vote_state`
-  message with the title + sections payload once the vote passes; the
-  browser bundle renders the tutorial card. Every native host view drops
-  in `TutorialVoteCard` (SwiftUI) or `TutorialVoteCard` (Compose) and
-  calls `host*TutorialVote` / `hostDismissTutorial` on its server.
-- **Tag rounds keep the screen on.** iOS `TagLobbyView` sets
-  `UIApplication.isIdleTimerDisabled = true` while hosting; Android adds
-  `FLAG_KEEP_SCREEN_ON` to the activity window. `CBPeripheralManager` only
-  honors the local-name field of an advert while foreground, and the same
-  is true on Android — backgrounding drops to a service-UUID-only payload.
+  honors the local-name field while foregrounded — backgrounding drops to
+  a service-UUID-only payload. Same on Android. Tag rounds assume
+  foreground and keep the screen on (iOS `UIApplication.isIdleTimerDisabled
+  = true` in `TagLobbyView`; Android `FLAG_KEEP_SCREEN_ON`).
 - **Android Tag permission prompt** is handled by `PermissionGate` in
-  `TagLobbyScreen.kt` using Accompanist's `rememberMultiplePermissionsState`.
-  The user must accept BLUETOOTH_SCAN + BLUETOOTH_ADVERTISE + BLUETOOTH_CONNECT
+  `TagLobbyScreen.kt` (Accompanist `rememberMultiplePermissionsState`).
+  BLUETOOTH_SCAN + BLUETOOTH_ADVERTISE + BLUETOOTH_CONNECT must be granted
   before "Start hosting" is enabled.
+- **Tutorial vote.** Lives under `Tutorials/`. Copy is in `TutorialContent`
+  (`GameTutorial` / `TutorialSection`). Each browser-tier server emits a
+  `tutorial_vote_state` message once the vote passes; the browser bundle
+  and `TutorialVoteCard` (SwiftUI / Compose) render the card. New games
+  need both the `TutorialContent` entry and the vote wiring on the server.
+</content>
