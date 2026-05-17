@@ -15,8 +15,26 @@ final class GuestClient: NSObject, GuestLink, URLSessionWebSocketDelegate, URLSe
 
     var onStateChange: ((State) -> Void)?
     /// Each frame received from the server, already decoded as a JSON dict.
-    /// Called on the main actor.
-    var onMessage: (([String: Any]) -> Void)?
+    /// Called on the main actor. Frames that arrive while no consumer is
+    /// attached are buffered and flushed the moment one is — mirroring
+    /// `LoopbackGuest`. Without this, the frames the host sends right after
+    /// `welcome` (lobby/options/phase) land in the window between
+    /// `JoinFlowView` handing off and the per-game view attaching, and are
+    /// lost — leaving the guest stuck on a blank "waiting" screen.
+    var onMessage: (([String: Any]) -> Void)? {
+        didSet { if onMessage != nil { flushInbox() } }
+    }
+    private var inbox: [[String: Any]] = []
+
+    private func deliver(_ j: [String: Any]) {
+        if onMessage != nil { onMessage?(j) } else { inbox.append(j) }
+    }
+
+    private func flushInbox() {
+        let pending = inbox
+        inbox = []
+        for m in pending { onMessage?(m) }
+    }
 
     let url: URL
     init(url: URL) {
@@ -90,7 +108,7 @@ final class GuestClient: NSObject, GuestLink, URLSessionWebSocketDelegate, URLSe
                     if case .string(let s) = msg,
                        let d = s.data(using: .utf8),
                        let j = try? JSONSerialization.jsonObject(with: d) as? [String: Any] {
-                        self.onMessage?(j)
+                        self.deliver(j)
                     }
                     self.receiveLoop()
                 }

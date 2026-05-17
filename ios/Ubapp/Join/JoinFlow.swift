@@ -118,11 +118,12 @@ struct JoinFlowView: View {
                let id = msg["yourId"] as? String,
                let nm = msg["yourName"] as? String {
                 welcomedGame = g; welcomedId = id; welcomedName = nm
+                // Stop consuming here. Everything after `welcome`
+                // (lobby/options/phase) now buffers inside the client until
+                // the per-game view attaches its handler — closing the
+                // hand-off gap that previously dropped those frames.
+                c.onMessage = nil
             } else if welcomedGame == nil {
-                queuedMessages.append(msg)
-            } else {
-                // After mount, the per-game view replaces onMessage so this branch
-                // shouldn't see messages — but keep them just in case.
                 queuedMessages.append(msg)
             }
         }

@@ -125,6 +125,11 @@ fun JoinFlowScreen() {
                             welcomedGame = msg.optString("game")
                             yourId = msg.optString("yourId")
                             yourName = msg.optString("yourName")
+                            // Stop consuming here. Everything after `welcome`
+                            // now buffers inside the client until the
+                            // per-game screen attaches its handler — closing
+                            // the hand-off gap that dropped those frames.
+                            gc.onMessage = null
                         } else {
                             queued.add(msg)
                         }
