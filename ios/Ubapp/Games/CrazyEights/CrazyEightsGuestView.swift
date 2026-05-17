@@ -20,6 +20,7 @@ struct CrazyEightsGuestView: View {
         }
         .navigationTitle("Crazy Eights")
         .onAppear { model.attach(ctx: ctx) }
+        .onDisappear { ctx.client.onMessage = nil }
         .sheet(item: $suitPickFor) { card in suitPicker(card: card) }
     }
 

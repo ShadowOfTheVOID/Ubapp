@@ -25,6 +25,7 @@ struct MafiaGuestView: View {
         }
         .navigationTitle("Mafia")
         .onAppear { model.attach(ctx: ctx) }
+        .onDisappear { ctx.client.onMessage = nil }
     }
 
     @ViewBuilder private var header: some View {

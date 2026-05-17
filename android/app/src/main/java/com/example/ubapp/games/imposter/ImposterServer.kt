@@ -110,8 +110,9 @@ class ImposterServer(context: Context, val hostName: String = "Host") {
     }
     private fun sendRolesPrivately() {
         val hideCat = engine.options.hideCategory
+        // Includes the host: it plays through its own in-process loopback
+        // guest, so it must receive the same private role message.
         for (p in engine.players.values) {
-            if (p.id == HOST_ID) continue
             val guest = playerToGuest[p.id] ?: continue
             val hide = p.isImposter && hideCat
             val payload = JSONObject()

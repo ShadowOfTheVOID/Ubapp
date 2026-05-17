@@ -191,7 +191,9 @@ final class CodenamesServer {
     }
 
     private func sendRolesToAll() {
-        for p in engine.players.values where p.id != Self.hostId {
+        // Includes the host: it plays through its own in-process loopback
+        // guest, so it must receive the same private role message.
+        for p in engine.players.values {
             guard let guest = playerToGuest[p.id] else { continue }
             var payload: [String: Any] = [
                 "type": "role",

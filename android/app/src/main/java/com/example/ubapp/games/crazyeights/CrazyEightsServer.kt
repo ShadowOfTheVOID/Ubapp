@@ -141,8 +141,9 @@ class CrazyEightsServer(context: Context, val hostName: String = "Host") {
             .put("players", playersArr))
     }
     private fun sendHandsPrivately() {
+        // Includes the host: it plays through its own in-process loopback
+        // guest, so it must receive its private hand.
         for (p in engine.players.values) {
-            if (p.id == HOST_ID) continue
             val guest = playerToGuest[p.id] ?: continue
             val cards = JSONArray()
             for (c in p.hand) cards.put(JSONObject().put("suit", c.suit.name.lowercase()).put("rank", c.rank))

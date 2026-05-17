@@ -21,7 +21,7 @@ fun WerewolfGuestScreen(ctx: GuestContext) {
     DisposableEffect(ctx) {
         ctx.client.onMessage = { msg -> s.handle(msg); tick++ }
         for (m in ctx.replay) s.handle(m)
-        onDispose { }
+        onDispose { ctx.client.onMessage = null }
     }
     @Suppress("UNUSED_EXPRESSION") tick
 
