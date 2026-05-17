@@ -38,6 +38,7 @@ final class MafiaServer {
     }
 
     /// In-process pipe for the host's own player view.
+    @MainActor
     func makeLoopback() -> LoopbackGuest { LoopbackGuest(server: server) }
 
     func stop() { server.stop() }

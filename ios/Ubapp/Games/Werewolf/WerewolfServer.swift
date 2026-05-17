@@ -32,6 +32,7 @@ final class WerewolfServer {
     }
 
     /// In-process pipe for the host's own player view.
+    @MainActor
     func makeLoopback() -> LoopbackGuest { LoopbackGuest(server: server) }
     func stop() { server.stop() }
     var guestCount: Int { server.guestCount }
