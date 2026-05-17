@@ -54,6 +54,10 @@ class CrazyEightsEngine(private val rng: Random = Random.Default) {
     private var direction: Int = 1
     var winnerId: String? = null
     var lastEvent: String? = null
+    /** Consecutive turns where the draw pile is exhausted and can't be
+     *  replenished and the player can't act. A full lap of these ends the
+     *  game so a blocked board doesn't loop forever. */
+    private var stalePasses = 0
 
     val current: CrazyEightsPlayer? get() = if (order.isEmpty()) null else players[order[currentIndex]]
     val topCard: Card? get() = discardPile.lastOrNull()
@@ -75,6 +79,7 @@ class CrazyEightsEngine(private val rng: Random = Random.Default) {
         drawPile.clear(); discardPile.clear(); activeSuit = null; direction = 1
         drawPile.addAll(standardDeck().shuffled(rng))
         val dealCount = options.startingHandSize ?: (if (players.size == 2) 7 else 5)
+        stalePasses = 0
         order.clear(); order.addAll(players.keys.shuffled(rng))
         repeat(dealCount) {
             for (pid in order) players[pid]!!.hand.add(drawPile.removeAt(drawPile.size - 1))
@@ -107,6 +112,7 @@ class CrazyEightsEngine(private val rng: Random = Random.Default) {
         if (card.rank == 8 && declaredSuit == null) return "must declare a suit"
         p.hand.remove(card)
         discardPile.add(card)
+        stalePasses = 0
         activeSuit = if (card.rank == 8) declaredSuit else null
         justDrew = false
         if (options.queenReverses && card.rank == 12 && order.size > 2) direction = -direction
@@ -126,15 +132,28 @@ class CrazyEightsEngine(private val rng: Random = Random.Default) {
         val p = players[playerId] ?: return null
         if (p.id != current!!.id) return null
         if (drawPile.isEmpty()) reshuffle()
-        if (drawPile.isEmpty()) { advanceTurn(); return null }
+        if (drawPile.isEmpty()) {
+            stalePasses += 1
+            if (stalePasses >= order.size) {
+                phase = CrazyEightsPhase.GAME_OVER
+                var best = order[0]
+                for (pid in order) if (players[pid]!!.hand.size < players[best]!!.hand.size) best = pid
+                winnerId = best
+                lastEvent = "Stalemate — ${players[best]!!.name} wins with the fewest cards"
+                return null
+            }
+            advanceTurn(); return null
+        }
         val c = drawPile.removeAt(drawPile.size - 1)
         p.hand.add(c)
+        stalePasses = 0
         lastEvent = "${p.name} drew a card"
         if (canPlay(c)) { justDrew = true; return c }
         justDrew = false; advanceTurn(); return c
     }
 
     fun passAfterDraw(playerId: String) {
+        if (phase != CrazyEightsPhase.PLAYING) return
         val p = players[playerId] ?: return
         if (p.id != current!!.id || !justDrew) return
         justDrew = false
@@ -159,6 +178,7 @@ class CrazyEightsEngine(private val rng: Random = Random.Default) {
         phase = CrazyEightsPhase.LOBBY
         drawPile.clear(); discardPile.clear()
         activeSuit = null; currentIndex = 0; justDrew = false; direction = 1
+        stalePasses = 0
         winnerId = null; lastEvent = null
         for (p in players.values) p.hand.clear()
     }

@@ -47,6 +47,10 @@ final class MafiaEngine {
     private var rng: any RandomNumberGenerator
 
     private(set) var players: [String: MafiaPlayer] = [:]
+    /// Insertion order of player ids, mirroring Android's linkedMapOf so the
+    /// seeded role assignment is identical across platforms (an unordered
+    /// Swift Dictionary would otherwise shuffle a hash-randomized sequence).
+    private var playerOrder: [String] = []
     var phase: MafiaPhase = .lobby
     var day: Int = 0
     var winner: MafiaWinner?
@@ -70,6 +74,7 @@ final class MafiaEngine {
     @discardableResult
     func addPlayer(id: String, name: String, isHost: Bool = false) -> MafiaPlayer {
         let p = MafiaPlayer(id: id, name: name, isHost: isHost)
+        if players[id] == nil { playerOrder.append(id) }
         players[id] = p
         return p
     }
@@ -77,6 +82,7 @@ final class MafiaEngine {
     func removePlayer(_ id: String) {
         guard phase == .lobby else { return }
         players[id] = nil
+        playerOrder.removeAll { $0 == id }
     }
 
     var canStart: Bool { phase == .lobby && players.count >= 4 }
@@ -96,7 +102,7 @@ final class MafiaEngine {
 
     func start() {
         guard canStart else { return }
-        let ids = Array(players.keys).shuffled(using: &rng)
+        let ids = playerOrder.shuffled(using: &rng)
         let formulaCount = max(1, min(ids.count - 2, ids.count / 4))
         let mafiaCount = max(1, min(options.mafiaCount ?? formulaCount, ids.count - 1))
         var i = 0

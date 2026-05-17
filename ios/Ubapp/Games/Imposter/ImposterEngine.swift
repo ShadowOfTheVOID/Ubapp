@@ -28,6 +28,10 @@ final class ImposterPlayer {
 final class ImposterEngine {
     private var rng: any RandomNumberGenerator
     private(set) var players: [String: ImposterPlayer] = [:]
+    /// Insertion order of player ids, mirroring Android's linkedMapOf so the
+    /// seeded imposter assignment is identical across platforms (an unordered
+    /// Swift Dictionary would otherwise shuffle a hash-randomized sequence).
+    private var playerOrder: [String] = []
     var phase: ImposterPhase = .lobby
     var options = ImposterOptions()
 
@@ -47,12 +51,15 @@ final class ImposterEngine {
     @discardableResult
     func addPlayer(id: String, name: String, isHost: Bool = false) -> ImposterPlayer {
         let p = ImposterPlayer(id: id, name: name, isHost: isHost)
+        if players[id] == nil { playerOrder.append(id) }
         players[id] = p
         return p
     }
-    func removePlayer(_ id: String) { if phase == .lobby { players[id] = nil } }
+    func removePlayer(_ id: String) {
+        if phase == .lobby { players[id] = nil; playerOrder.removeAll { $0 == id } }
+    }
     var canStart: Bool { phase == .lobby && players.count >= 3 }
-    var availableCategories: [String] { Array(ImposterWords.categories.keys) }
+    var availableCategories: [String] { ImposterWords.categoryNames }
 
     /// Max imposters the current lobby supports. At least one non-imposter
     /// must remain or there's no game.
@@ -67,10 +74,10 @@ final class ImposterEngine {
 
     func start(categoryName: String? = nil) {
         guard canStart else { return }
-        let cats = Array(ImposterWords.categories.keys)
+        let cats = ImposterWords.categoryNames
         if options.mixedPool {
             category = "Mixed"
-            let pool = ImposterWords.categories.values.flatMap { $0 }
+            let pool = ImposterWords.allWords
             secretWord = pool[Int.random(in: 0..<pool.count, using: &rng)]
         } else {
             category = (categoryName.flatMap { ImposterWords.categories[$0] != nil ? $0 : nil })
@@ -78,7 +85,7 @@ final class ImposterEngine {
             let words = ImposterWords.categories[category]!
             secretWord = words[Int.random(in: 0..<words.count, using: &rng)]
         }
-        let ids = Array(players.keys).shuffled(using: &rng)
+        let ids = playerOrder.shuffled(using: &rng)
         let count = min(max(1, options.imposterCount), max(1, ids.count - 1))
         imposterIds = Set(ids.prefix(count))
         for p in players.values {
@@ -86,7 +93,7 @@ final class ImposterEngine {
             p.decoyWord = nil
             if p.isImposter && options.decoyWord {
                 let pool = options.mixedPool
-                    ? ImposterWords.categories.values.flatMap { $0 }
+                    ? ImposterWords.allWords
                     : (ImposterWords.categories[category] ?? [])
                 let alternatives = pool.filter { $0 != secretWord }
                 if !alternatives.isEmpty {
@@ -134,35 +141,42 @@ final class ImposterEngine {
 }
 
 enum ImposterWords {
-    /// Built-in word categories. Each category gets a list of secret words
-    /// that all townspeople see; the imposter sees only the category name.
-    static let categories: [String: [String]] = [
-        "Food": [
+    /// Built-in word categories in a fixed order. An unordered Swift
+    /// Dictionary would hash-randomize iteration, so category/word selection
+    /// is driven by this list to stay deterministic and match Android's
+    /// insertion-ordered map.
+    static let ordered: [(name: String, words: [String])] = [
+        ("Food", [
             "pizza", "sushi", "taco", "burger", "ramen", "cake", "ice cream",
             "pasta", "pancake", "sandwich", "curry", "salad", "soup", "bagel",
             "doughnut", "fries", "omelette", "lasagna", "kebab", "risotto",
-        ],
-        "Animal": [
+        ]),
+        ("Animal", [
             "dog", "cat", "elephant", "dolphin", "eagle", "snake", "panda",
             "lion", "tiger", "rabbit", "shark", "octopus", "penguin", "horse",
             "kangaroo", "sloth", "owl", "wolf", "fox", "bear",
-        ],
-        "Place": [
+        ]),
+        ("Place", [
             "beach", "forest", "desert", "mountain", "city", "farm", "school",
             "hospital", "airport", "library", "museum", "theater", "park",
             "subway", "castle", "casino", "restaurant", "gym", "church", "bridge",
-        ],
-        "Movie": [
+        ]),
+        ("Movie", [
             "Star Wars", "Titanic", "Inception", "Avatar", "The Matrix", "Frozen",
             "Avengers", "Toy Story", "Jaws", "Up", "Coco", "Shrek", "Rocky",
             "Gladiator", "Interstellar", "Pulp Fiction", "The Godfather", "Joker",
             "La La Land", "Parasite",
-        ],
-        "Sport": [
+        ]),
+        ("Sport", [
             "soccer", "basketball", "tennis", "baseball", "hockey", "cricket",
             "golf", "rugby", "volleyball", "swimming", "cycling", "boxing",
             "fencing", "archery", "skiing", "surfing", "climbing", "judo",
             "rowing", "badminton",
-        ],
+        ]),
     ]
+
+    static let categories: [String: [String]] =
+        Dictionary(uniqueKeysWithValues: ordered.map { ($0.name, $0.words) })
+    static var categoryNames: [String] { ordered.map { $0.name } }
+    static var allWords: [String] { ordered.flatMap { $0.words } }
 }

@@ -48,7 +48,15 @@ final class CrazyEightsPlayer {
 final class CrazyEightsEngine {
     private var rng: any RandomNumberGenerator
     private(set) var players: [String: CrazyEightsPlayer] = [:]
+    /// Insertion order of player ids, mirroring Android's linkedMapOf so the
+    /// seeded deal/turn order is identical across platforms (an unordered
+    /// Swift Dictionary would otherwise shuffle a hash-randomized sequence).
+    private var playerOrder: [String] = []
     private var order: [String] = []
+    /// Consecutive turns where the draw pile is exhausted and can't be
+    /// replenished and the player can't act. A full lap of these ends the
+    /// game so a blocked board doesn't loop forever.
+    private var stalePasses = 0
     var phase: CrazyEightsPhase = .lobby
     private(set) var options = CrazyEightsOptions()
 
@@ -74,10 +82,13 @@ final class CrazyEightsEngine {
     @discardableResult
     func addPlayer(id: String, name: String, isHost: Bool = false) -> CrazyEightsPlayer {
         let p = CrazyEightsPlayer(id: id, name: name, isHost: isHost)
+        if players[id] == nil { playerOrder.append(id) }
         players[id] = p
         return p
     }
-    func removePlayer(_ id: String) { if phase == .lobby { players[id] = nil } }
+    func removePlayer(_ id: String) {
+        if phase == .lobby { players[id] = nil; playerOrder.removeAll { $0 == id } }
+    }
     var canStart: Bool { phase == .lobby && (2...8).contains(players.count) }
 
     func setOptions(_ o: CrazyEightsOptions) {
@@ -94,7 +105,8 @@ final class CrazyEightsEngine {
         activeSuit = nil
         direction = 1
         let dealCount = options.startingHandSize ?? (players.count == 2 ? 7 : 5)
-        order = Array(players.keys).shuffled(using: &rng)
+        stalePasses = 0
+        order = playerOrder.shuffled(using: &rng)
         for _ in 0..<dealCount {
             for pid in order { players[pid]!.hand.append(drawPile.removeLast()) }
         }
@@ -126,6 +138,7 @@ final class CrazyEightsEngine {
         if card.rank == 8 && declaredSuit == nil { return "must declare a suit" }
         p.hand.remove(at: idx)
         discardPile.append(card)
+        stalePasses = 0
         activeSuit = card.rank == 8 ? declaredSuit : nil
         justDrew = false
         // House-rule effects evaluated before turn advance.
@@ -148,9 +161,22 @@ final class CrazyEightsEngine {
     func drawOne(playerId: String) -> Card? {
         guard phase == .playing, let p = players[playerId], p.id == current!.id else { return nil }
         if drawPile.isEmpty { reshuffle() }
-        if drawPile.isEmpty { advanceTurn(); return nil }
+        if drawPile.isEmpty {
+            stalePasses += 1
+            if stalePasses >= order.count {
+                phase = .gameOver
+                var best = order[0]
+                for pid in order where players[pid]!.hand.count < players[best]!.hand.count { best = pid }
+                winnerId = best
+                lastEvent = "Stalemate — \(players[best]!.name) wins with the fewest cards"
+                return nil
+            }
+            advanceTurn()
+            return nil
+        }
         let c = drawPile.removeLast()
         p.hand.append(c)
+        stalePasses = 0
         lastEvent = "\(p.name) drew a card"
         if canPlay(c) {
             justDrew = true
@@ -162,7 +188,7 @@ final class CrazyEightsEngine {
     }
 
     func passAfterDraw(playerId: String) {
-        guard let p = players[playerId], p.id == current!.id, justDrew else { return }
+        guard phase == .playing, let p = players[playerId], p.id == current!.id, justDrew else { return }
         justDrew = false
         lastEvent = "\(p.name) passed"
         advanceTurn()
@@ -185,6 +211,7 @@ final class CrazyEightsEngine {
         phase = .lobby
         drawPile.removeAll(); discardPile.removeAll()
         activeSuit = nil; currentIndex = 0; justDrew = false; direction = 1
+        stalePasses = 0
         winnerId = nil; lastEvent = nil
         for p in players.values { p.hand.removeAll() }
     }
