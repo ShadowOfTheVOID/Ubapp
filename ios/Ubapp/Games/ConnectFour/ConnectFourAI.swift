@@ -4,13 +4,16 @@ import Foundation
 /// heuristic at horizon. Depth 6 plays a reasonable medium-strength opponent.
 enum ConnectFourAI {
     static func bestMove(_ model: ConnectFourModel, ai: Disc, depth: Int = 6) -> Int? {
-        var bestScore = Int.min
+        var bestScore = Int.min / 2
         var bestCol: Int?
         for col in ordered(model.legalMoves()) {
             var copy = model
             copy.apply(col)
-            let s = negamax(copy, toMove: ai.opponent, depth: depth - 1,
-                            alpha: Int.min / 2, beta: Int.max / 2, ai: ai)
+            // After the AI moves it's the opponent's turn; negamax returns the
+            // value from the opponent's perspective, so the AI wants the move
+            // that minimizes it (= maximizes its negation).
+            let s = -negamax(copy, toMove: ai.opponent, depth: depth - 1,
+                             alpha: Int.min / 2, beta: Int.max / 2)
             if s > bestScore { bestScore = s; bestCol = col }
         }
         return bestCol
@@ -20,23 +23,26 @@ enum ConnectFourAI {
         moves.sorted { abs($0 - kCols / 2) < abs($1 - kCols / 2) }
     }
 
+    /// Standard negamax: returns the score from `toMove`'s perspective.
     private static func negamax(_ m: ConnectFourModel, toMove: Disc, depth: Int,
-                                 alpha alphaIn: Int, beta: Int, ai: Disc) -> Int {
-        if let w = m.winner { return w == ai ? 100_000 - depth : -100_000 + depth }
+                                 alpha alphaIn: Int, beta: Int) -> Int {
+        // A decided board at a node where `toMove` is on the move means the
+        // opponent just made the winning move — a loss for `toMove`.
+        if m.winner != nil { return -(100_000 - depth) }
         if m.isDraw { return 0 }
-        if depth == 0 { return heuristic(m, ai: ai) }
+        if depth == 0 { return heuristic(m, ai: toMove) }
         var alpha = alphaIn
         var best = Int.min / 2
         for col in ordered(m.legalMoves()) {
             var copy = m
             copy.apply(col)
             let s = -negamax(copy, toMove: toMove.opponent, depth: depth - 1,
-                             alpha: -beta, beta: -alpha, ai: ai)
+                             alpha: -beta, beta: -alpha)
             if s > best { best = s }
             if best > alpha { alpha = best }
             if alpha >= beta { break }
         }
-        return toMove == ai ? best : -best
+        return best
     }
 
     /// Score every length-4 window: heavy positive if the AI has a near-complete

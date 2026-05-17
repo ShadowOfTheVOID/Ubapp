@@ -153,6 +153,7 @@ class CrazyEightsEngine(private val rng: Random = Random.Default) {
     }
 
     fun passAfterDraw(playerId: String) {
+        if (phase != CrazyEightsPhase.PLAYING) return
         val p = players[playerId] ?: return
         if (p.id != current!!.id || !justDrew) return
         justDrew = false

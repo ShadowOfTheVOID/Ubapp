@@ -188,7 +188,7 @@ final class CrazyEightsEngine {
     }
 
     func passAfterDraw(playerId: String) {
-        guard let p = players[playerId], p.id == current!.id, justDrew else { return }
+        guard phase == .playing, let p = players[playerId], p.id == current!.id, justDrew else { return }
         justDrew = false
         lastEvent = "\(p.name) passed"
         advanceTurn()

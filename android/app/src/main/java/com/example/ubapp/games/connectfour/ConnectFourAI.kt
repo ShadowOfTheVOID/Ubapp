@@ -10,8 +10,11 @@ object ConnectFourAI {
         var bestCol: Int? = null
         for (col in ordered(model.legalMoves())) {
             val copy = copyOf(model).apply { apply(col) }
-            val s = negamax(copy, ai.opponent, depth - 1,
-                            Int.MIN_VALUE / 2, Int.MAX_VALUE / 2, ai)
+            // After the AI moves it's the opponent's turn; negamax returns the
+            // value from the opponent's perspective, so the AI wants the move
+            // that minimizes it (= maximizes its negation).
+            val s = -negamax(copy, ai.opponent, depth - 1,
+                             Int.MIN_VALUE / 2, Int.MAX_VALUE / 2)
             if (s > bestScore) { bestScore = s; bestCol = col }
         }
         return bestCol
@@ -27,21 +30,24 @@ object ConnectFourAI {
     private fun ordered(moves: List<Int>): List<Int> =
         moves.sortedBy { kotlin.math.abs(it - COLS / 2) }
 
+    /** Standard negamax: returns the score from [toMove]'s perspective. */
     private fun negamax(m: ConnectFourModel, toMove: Disc, depth: Int,
-                        alphaIn: Int, beta: Int, ai: Disc): Int {
-        m.winner?.let { return if (it == ai) 100_000 - depth else -100_000 + depth }
+                        alphaIn: Int, beta: Int): Int {
+        // A decided board at a node where [toMove] is on the move means the
+        // opponent just made the winning move — a loss for [toMove].
+        if (m.winner != null) return -(100_000 - depth)
         if (m.isDraw) return 0
-        if (depth == 0) return heuristic(m, ai)
+        if (depth == 0) return heuristic(m, toMove)
         var alpha = alphaIn
         var best = Int.MIN_VALUE / 2
         for (col in ordered(m.legalMoves())) {
             val copy = copyOf(m).apply { apply(col) }
-            val s = -negamax(copy, toMove.opponent, depth - 1, -beta, -alpha, ai)
+            val s = -negamax(copy, toMove.opponent, depth - 1, -beta, -alpha)
             if (s > best) best = s
             if (best > alpha) alpha = best
             if (alpha >= beta) break
         }
-        return if (toMove == ai) best else -best
+        return best
     }
 
     private fun heuristic(m: ConnectFourModel, ai: Disc): Int {
