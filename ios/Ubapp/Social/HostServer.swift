@@ -25,9 +25,19 @@ final class HostServer {
     var html: String
 
     private var listener: NWListener?
+    /// Guarded by `connectionsLock`: read/written from the listener queue
+    /// (accept/readFrames) and from arbitrary caller threads (broadcast,
+    /// send, guests, stop). Swift Dictionary is not thread-safe.
     private var connections: [GuestId: NWConnection] = [:]
+    private let connectionsLock = NSLock()
     private var nextId = 0
     private let queue = DispatchQueue(label: "ubapp.host.server")
+
+    private func withConnections<T>(_ body: (inout [GuestId: NWConnection]) -> T) -> T {
+        connectionsLock.lock()
+        defer { connectionsLock.unlock() }
+        return body(&connections)
+    }
 
     var onJoin: ((GuestId) -> Void)?
     var onLeave: ((GuestId) -> Void)?
@@ -173,7 +183,7 @@ final class HostServer {
             guard let self, error == nil else { conn.cancel(); return }
             let id = GuestId(value: "g\(self.nextId)")
             self.nextId += 1
-            self.connections[id] = conn
+            self.withConnections { $0[id] = conn }
             self.onJoin?(id)
             self.readFrames(id: id, conn: conn, pending: Data())
         })
@@ -186,7 +196,7 @@ final class HostServer {
             guard let self else { return }
             if let error {
                 _ = error
-                if self.connections.removeValue(forKey: id) != nil { self.onLeave?(id) }
+                if self.withConnections({ $0.removeValue(forKey: id) }) != nil { self.onLeave?(id) }
                 return
             }
             var buf = pending
@@ -199,8 +209,8 @@ final class HostServer {
             }
 
             if isComplete {
-                if self.connections.removeValue(forKey: id) != nil { self.onLeave?(id) }
-            } else if self.connections[id] != nil {
+                if self.withConnections({ $0.removeValue(forKey: id) }) != nil { self.onLeave?(id) }
+            } else if self.withConnections({ $0[id] != nil }) {
                 self.readFrames(id: id, conn: conn, pending: buf)
             }
         }
@@ -245,7 +255,7 @@ final class HostServer {
 
     func send(to: GuestId, _ payload: String) {
         if to == localGuestId { onLocalSend?(payload); return }
-        guard let conn = connections[to],
+        guard let conn = withConnections({ $0[to] }),
               let data = payload.data(using: .utf8) else { return }
         conn.send(content: encodeFrame(data), completion: .contentProcessed { _ in })
     }
@@ -290,16 +300,20 @@ final class HostServer {
     // MARK: - Public API
 
     func broadcast(_ payload: String) {
-        for id in connections.keys { send(to: id, payload) }
+        for id in withConnections({ Array($0.keys) }) { send(to: id, payload) }
         if let local = localGuestId { send(to: local, payload) }
     }
 
-    var guestCount: Int { connections.count }
-    var guests: [GuestId] { Array(connections.keys) }
+    var guestCount: Int { withConnections { $0.count } }
+    var guests: [GuestId] { withConnections { Array($0.keys) } }
 
     func stop() {
-        for conn in connections.values { conn.cancel() }
-        connections.removeAll()
+        let conns = withConnections { conns -> [NWConnection] in
+            let values = Array(conns.values)
+            conns.removeAll()
+            return values
+        }
+        for conn in conns { conn.cancel() }
         localGuestId = nil
         onLocalSend = nil
         listener?.cancel()
