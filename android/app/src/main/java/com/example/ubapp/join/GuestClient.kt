@@ -36,8 +36,33 @@ class GuestClient(private val url: String, ctx: Context? = null) : GuestLink {
     @Volatile var state: State = State(StateKind.CONNECTING); private set
 
     var onStateChange: ((State) -> Unit)? = null
-    /** Each frame received from the server, parsed as a JSONObject. Fires on the main thread. */
+
+    private val inbox = ArrayList<JSONObject>()
+
+    /**
+     * Each frame received from the server, parsed as a JSONObject. Fires on
+     * the main thread. Frames that arrive while no consumer is attached are
+     * buffered and flushed the moment one is — mirroring [LoopbackGuest].
+     * Without this, the lobby/options/phase frames the host sends right
+     * after `welcome` land in the window between `JoinFlowScreen` handing
+     * off and the per-game screen attaching, and are lost.
+     */
     override var onMessage: ((JSONObject) -> Unit)? = null
+        set(value) {
+            field = value
+            if (value != null) flushInbox()
+        }
+
+    private fun deliver(obj: JSONObject) {
+        val cb = onMessage
+        if (cb != null) cb(obj) else inbox.add(obj)
+    }
+
+    private fun flushInbox() {
+        val pending = ArrayList(inbox)
+        inbox.clear()
+        for (m in pending) onMessage?.invoke(m)
+    }
 
     fun connect() {
         val req = Request.Builder().url(url).build()
@@ -47,7 +72,7 @@ class GuestClient(private val url: String, ctx: Context? = null) : GuestLink {
             }
             override fun onMessage(webSocket: WebSocket, text: String) {
                 val obj = runCatching { JSONObject(text) }.getOrNull() ?: return
-                post { onMessage?.invoke(obj) }
+                post { deliver(obj) }
             }
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                 post { update(State(StateKind.CLOSED, reason)) }
