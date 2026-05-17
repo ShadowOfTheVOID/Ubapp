@@ -6,12 +6,21 @@ struct ConnectFourView: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            Text(statusText).font(.headline)
-            board
-            Button("Reset") { model = ConnectFourModel() }
-                .disabled(thinking)
+            Spacer(minLength: 0)
+            VStack(spacing: 16) {
+                Text(statusText).font(.headline)
+                board
+                Button("Reset") { model = ConnectFourModel() }
+                    .disabled(thinking)
+            }
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: 480)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding()
+            Spacer(minLength: 0)
         }
-        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ubappChrome()
         .navigationTitle("Connect Four")
     }
 
@@ -40,7 +49,7 @@ struct ConnectFourView: View {
             }
         }
         .padding(8)
-        .background(Color.blue.opacity(0.2))
+        .background(Color.white.opacity(0.04))
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 

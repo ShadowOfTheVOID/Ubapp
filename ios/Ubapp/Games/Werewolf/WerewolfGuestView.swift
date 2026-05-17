@@ -6,36 +6,48 @@ struct WerewolfGuestView: View {
     @StateObject private var model = WerewolfGuestModel()
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack {
-                    Text("Playing as \(ctx.yourName)").font(.caption).foregroundStyle(.secondary)
-                    Spacer()
-                    if model.phase != "lobby" {
-                        Text("Day \(model.day)").font(.caption).foregroundStyle(.secondary)
+        GeometryReader { proxy in
+            ScrollView {
+                VStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    VStack(alignment: .center, spacing: 16) {
+                        HStack {
+                            Text("Playing as \(ctx.yourName)").font(.caption).foregroundStyle(.secondary)
+                            Spacer()
+                            if model.phase != "lobby" {
+                                Text("Day \(model.day)").font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                        if let err = model.error {
+                            Text(err).foregroundStyle(.white).padding().frame(maxWidth: .infinity)
+                                .background(Color.red).cornerRadius(12)
+                        }
+                        switch model.phase {
+                        case "lobby":      lobby
+                        case "night":      night
+                        case "dayReveal":  dayReveal
+                        case "dayVote":    dayVote
+                        case "hunterShot": hunterShot
+                        case "gameOver":   gameOver
+                        default:           Text("Waiting…").foregroundStyle(.secondary)
+                        }
+                        seerFindings
+                        playersSection
                     }
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 480)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding()
+                    Spacer(minLength: 0)
                 }
-                if let err = model.error {
-                    Text(err).foregroundStyle(.white).padding().frame(maxWidth: .infinity)
-                        .background(Color.red).cornerRadius(12)
-                }
-                switch model.phase {
-                case "lobby":      lobby
-                case "night":      night
-                case "dayReveal":  dayReveal
-                case "dayVote":    dayVote
-                case "hunterShot": hunterShot
-                case "gameOver":   gameOver
-                default:           Text("Waiting…").foregroundStyle(.secondary)
-                }
-                seerFindings
-                playersSection
+                .frame(minHeight: proxy.size.height)
+                .frame(maxWidth: .infinity)
             }
-            .padding()
+            .navigationTitle("Werewolf")
+            .onAppear { model.attach(ctx: ctx) }
+            .onDisappear { ctx.client.onMessage = nil }
         }
-        .navigationTitle("Werewolf")
-        .onAppear { model.attach(ctx: ctx) }
-        .onDisappear { ctx.client.onMessage = nil }
+        .ubappChrome()
     }
 
     @ViewBuilder private var lobby: some View {

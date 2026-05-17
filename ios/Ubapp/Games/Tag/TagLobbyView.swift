@@ -14,56 +14,68 @@ struct TagLobbyView: View {
     @StateObject private var model = TagLobbyViewModel()
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                if !model.hosting {
-                    Text("Tag — BLE proximity").font(.headline)
-                    Text("Each phone advertises a BLE beacon and scans for others. Stay within a few metres of another player to tag.")
-                        .font(.callout).foregroundStyle(.secondary)
-                    Picker("Variant", selection: $model.variant) {
-                        ForEach(TagVariant.allCases, id: \.self) { v in
-                            Text(v.displayName).tag(v)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    Text(model.variant.tagline).font(.caption).foregroundStyle(.secondary)
-                    GroupBox("Options") {
-                        Toggle("Custom round length", isOn: $model.customDuration)
-                        if model.customDuration {
-                            Stepper(value: $model.durationSecValue, in: 30...1800, step: 30) {
-                                let m = model.durationSecValue / 60
-                                let s = model.durationSecValue % 60
-                                Text("Round: \(m)m \(s)s")
+        GeometryReader { proxy in
+            ScrollView {
+                VStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    VStack(alignment: .center, spacing: 16) {
+                        if !model.hosting {
+                            Text("Tag — BLE proximity").font(.headline)
+                            Text("Each phone advertises a BLE beacon and scans for others. Stay within a few metres of another player to tag.")
+                                .font(.callout).foregroundStyle(.secondary)
+                            Picker("Variant", selection: $model.variant) {
+                                ForEach(TagVariant.allCases, id: \.self) { v in
+                                    Text(v.displayName).tag(v)
+                                }
                             }
-                            Text(model.variant == .hotPotato
-                                 ? "For Hot Potato this sets the per-tag countdown."
-                                 : "Replaces the default round length for the selected variant.")
-                                .font(.caption).foregroundStyle(.secondary)
+                            .pickerStyle(.segmented)
+                            Text(model.variant.tagline).font(.caption).foregroundStyle(.secondary)
+                            GroupBox("Options") {
+                                Toggle("Custom round length", isOn: $model.customDuration)
+                                if model.customDuration {
+                                    Stepper(value: $model.durationSecValue, in: 30...1800, step: 30) {
+                                        let m = model.durationSecValue / 60
+                                        let s = model.durationSecValue % 60
+                                        Text("Round: \(m)m \(s)s")
+                                    }
+                                    Text(model.variant == .hotPotato
+                                         ? "For Hot Potato this sets the per-tag countdown."
+                                         : "Replaces the default round length for the selected variant.")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                            Button("Start hosting") { model.startHosting() }
+                                .buttonStyle(.borderedProminent)
+                        } else if model.state == nil {
+                            HostingChrome(joinUrl: model.joinUrl, onStart: model.startHosting,
+                                          onStop: model.stop)
+                            GroupBox("Connected peers (\(model.peers.count + 1))") {
+                                HStack { Text("You (host)"); Spacer(); Text("ready").foregroundStyle(.green) }
+                                ForEach(model.peers, id: \.self) { name in
+                                    HStack { Text(name); Spacer() }
+                                }
+                            }
+                            Text(model.advertiseStatus).font(.caption).foregroundStyle(.secondary)
+                            Button("Begin round") { model.beginRound() }
+                                .buttonStyle(.borderedProminent)
+                                .disabled(model.peers.isEmpty)
+                        } else if let s = model.state {
+                            roundView(s)
                         }
                     }
-                    Button("Start hosting") { model.startHosting() }
-                        .buttonStyle(.borderedProminent)
-                } else if model.state == nil {
-                    HostingChrome(joinUrl: model.joinUrl, onStart: model.startHosting,
-                                  onStop: model.stop)
-                    GroupBox("Connected peers (\(model.peers.count + 1))") {
-                        HStack { Text("You (host)"); Spacer(); Text("ready").foregroundStyle(.green) }
-                        ForEach(model.peers, id: \.self) { name in
-                            HStack { Text(name); Spacer() }
-                        }
-                    }
-                    Text(model.advertiseStatus).font(.caption).foregroundStyle(.secondary)
-                    Button("Begin round") { model.beginRound() }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(model.peers.isEmpty)
-                } else if let s = model.state {
-                    roundView(s)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 480)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding()
+                    Spacer(minLength: 0)
                 }
+                .frame(minHeight: proxy.size.height)
+                .frame(maxWidth: .infinity)
             }
-            .padding()
+            .navigationTitle("Tag")
+            .onDisappear { model.stop() }
         }
-        .navigationTitle("Tag")
-        .onDisappear { model.stop() }
+        .ubappChrome()
     }
 
     @ViewBuilder

@@ -7,21 +7,33 @@ struct CrazyEightsGuestView: View {
     @State private var suitPickFor: CrazyEightsGuestModel.Card?
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Playing as \(ctx.yourName)").font(.caption).foregroundStyle(.secondary)
-                switch model.phase {
-                case "lobby":    lobby
-                case "gameOver": gameOver
-                default:         table
+        GeometryReader { proxy in
+            ScrollView {
+                VStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    VStack(alignment: .center, spacing: 12) {
+                        Text("Playing as \(ctx.yourName)").font(.caption).foregroundStyle(.secondary)
+                        switch model.phase {
+                        case "lobby":    lobby
+                        case "gameOver": gameOver
+                        default:         table
+                        }
+                    }
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 480)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding()
+                    Spacer(minLength: 0)
                 }
+                .frame(minHeight: proxy.size.height)
+                .frame(maxWidth: .infinity)
             }
-            .padding()
+            .navigationTitle("Crazy Eights")
+            .onAppear { model.attach(ctx: ctx) }
+            .onDisappear { ctx.client.onMessage = nil }
+            .sheet(item: $suitPickFor) { card in suitPicker(card: card) }
         }
-        .navigationTitle("Crazy Eights")
-        .onAppear { model.attach(ctx: ctx) }
-        .onDisappear { ctx.client.onMessage = nil }
-        .sheet(item: $suitPickFor) { card in suitPicker(card: card) }
+        .ubappChrome()
     }
 
     @ViewBuilder private var lobby: some View {
@@ -71,7 +83,7 @@ struct CrazyEightsGuestView: View {
                         Text("\(p.handCount) cards").font(.caption2)
                     }
                     .padding(8).frame(minWidth: 80)
-                    .background(model.currentId == p.id ? Color.accentColor : Color(.systemGray5))
+                    .background(model.currentId == p.id ? Color.accentColor : Color.white.opacity(0.04))
                     .foregroundStyle(model.currentId == p.id ? .white : .primary)
                     .cornerRadius(8)
                 }
@@ -88,7 +100,7 @@ struct CrazyEightsGuestView: View {
                         Text("draw").font(.caption2).foregroundStyle(.secondary)
                     }
                     .frame(width: 80, height: 110)
-                    .background(Color(.systemGray6))
+                    .background(Color.white.opacity(0.04))
                     .cornerRadius(10)
 
                     if let top = model.topCard {
@@ -154,7 +166,7 @@ struct CrazyEightsGuestView: View {
                     } label: {
                         Text(suitGlyph(s)).font(.system(size: 40))
                             .frame(maxWidth: .infinity, minHeight: 80)
-                            .background(Color(.systemGray6))
+                            .background(Color.white.opacity(0.04))
                             .foregroundStyle(s == "diamonds" || s == "hearts" ? .red : .primary)
                             .cornerRadius(10)
                     }

@@ -6,25 +6,37 @@ struct SecretHitlerGuestView: View {
     @StateObject private var model = SecretHitlerGuestModel()
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Playing as \(ctx.yourName)").font(.caption).foregroundStyle(.secondary)
-                if model.phase == "gameOver" {
-                    gameOver
-                } else if model.phase == "lobby" {
-                    lobby
-                } else {
-                    roleCard
-                    tracks
-                    government
-                    phaseSection
+        GeometryReader { proxy in
+            ScrollView {
+                VStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    VStack(alignment: .center, spacing: 12) {
+                        Text("Playing as \(ctx.yourName)").font(.caption).foregroundStyle(.secondary)
+                        if model.phase == "gameOver" {
+                            gameOver
+                        } else if model.phase == "lobby" {
+                            lobby
+                        } else {
+                            roleCard
+                            tracks
+                            government
+                            phaseSection
+                        }
+                    }
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 480)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding()
+                    Spacer(minLength: 0)
                 }
+                .frame(minHeight: proxy.size.height)
+                .frame(maxWidth: .infinity)
             }
-            .padding()
+            .navigationTitle("Secret Hitler")
+            .onAppear { model.attach(ctx: ctx) }
+            .onDisappear { ctx.client.onMessage = nil }
         }
-        .navigationTitle("Secret Hitler")
-        .onAppear { model.attach(ctx: ctx) }
-        .onDisappear { ctx.client.onMessage = nil }
+        .ubappChrome()
     }
 
     @ViewBuilder private var lobby: some View {

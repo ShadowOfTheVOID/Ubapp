@@ -8,28 +8,37 @@ struct TicTacToeView: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            Text(statusText).font(.headline)
-            ForEach(0..<3) { row in
-                HStack(spacing: 8) {
-                    ForEach(0..<3) { col in
-                        let idx = row * 3 + col
-                        Button {
-                            tap(idx)
-                        } label: {
-                            Text(model.board[idx].symbol)
-                                .font(.system(size: 48, weight: .bold))
-                                .frame(width: 80, height: 80)
-                                .background(.quaternary)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
+            Spacer(minLength: 0)
+            VStack(spacing: 16) {
+                Text(statusText).font(.headline)
+                ForEach(0..<3) { row in
+                    HStack(spacing: 8) {
+                        ForEach(0..<3) { col in
+                            let idx = row * 3 + col
+                            Button {
+                                tap(idx)
+                            } label: {
+                                Text(model.board[idx].symbol)
+                                    .font(.system(size: 48, weight: .bold))
+                                    .frame(width: 80, height: 80)
+                                    .background(.quaternary)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(model.board[idx] != .empty || model.isOver || aiThinking)
                         }
-                        .buttonStyle(.plain)
-                        .disabled(model.board[idx] != .empty || model.isOver || aiThinking)
                     }
                 }
+                Button("Reset") { model.reset() }
             }
-            Button("Reset") { model.reset() }
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: 480)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding()
+            Spacer(minLength: 0)
         }
-        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ubappChrome()
         .navigationTitle("Tic-Tac-Toe")
     }
 
