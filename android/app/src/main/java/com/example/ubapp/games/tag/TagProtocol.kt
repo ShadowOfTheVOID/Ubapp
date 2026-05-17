@@ -53,6 +53,24 @@ sealed class TagMessage {
         override fun toJson() = JSONObject().put("type", "end").put("reason", reason)
             .put("winnerId", winnerId ?: JSONObject.NULL)
     }
+    object TutorialCall : TagMessage() {
+        override fun toJson() = JSONObject().put("type", "tutorial_call")
+    }
+    data class TutorialVote(val voterId: String, val yes: Boolean) : TagMessage() {
+        override fun toJson() = JSONObject()
+            .put("type", "tutorial_vote").put("voterId", voterId).put("yes", yes)
+    }
+    data class TutorialState(
+        val isOpen: Boolean, val yesCount: Int, val noCount: Int,
+        val eligibleCount: Int, val result: Boolean?, val tutorialShown: Boolean,
+    ) : TagMessage() {
+        override fun toJson() = JSONObject()
+            .put("type", "tutorial_state").put("isOpen", isOpen)
+            .put("yesCount", yesCount).put("noCount", noCount)
+            .put("eligibleCount", eligibleCount)
+            .put("result", result ?: JSONObject.NULL)
+            .put("tutorialShown", tutorialShown)
+    }
 
     companion object {
         fun decode(raw: String): TagMessage {
@@ -77,6 +95,15 @@ sealed class TagMessage {
                 "tag" -> Tag(j.getString("taggerId"), j.getString("victimId"), j.getLong("timeMs"))
                 "unfreeze" -> Unfreeze(j.getString("unfreezerId"), j.getString("victimId"), j.getLong("timeMs"))
                 "end" -> End(j.getString("reason"), if (j.isNull("winnerId")) null else j.getString("winnerId"))
+                "tutorial_call" -> TutorialCall
+                "tutorial_vote" -> TutorialVote(j.getString("voterId"), j.getBoolean("yes"))
+                "tutorial_state" -> TutorialState(
+                    isOpen = j.getBoolean("isOpen"),
+                    yesCount = j.getInt("yesCount"), noCount = j.getInt("noCount"),
+                    eligibleCount = j.getInt("eligibleCount"),
+                    result = if (j.isNull("result")) null else j.getBoolean("result"),
+                    tutorialShown = j.getBoolean("tutorialShown"),
+                )
                 else -> throw IllegalArgumentException("Unknown TagMessage: ${j.getString("type")}")
             }
         }

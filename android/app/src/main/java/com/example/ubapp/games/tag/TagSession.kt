@@ -50,6 +50,9 @@ class TagSession(
                 engine.applyEnd(msg.reason, msg.winnerId); emit(); shutdownRound()
             }
             is TagMessage.Hello -> { /* lobby */ }
+            is TagMessage.TutorialCall,
+            is TagMessage.TutorialVote,
+            is TagMessage.TutorialState -> { /* tutorial vote is not used by Tag */ }
         }
     }
 

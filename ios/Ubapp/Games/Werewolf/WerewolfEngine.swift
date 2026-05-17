@@ -46,6 +46,10 @@ struct HunterShot { let hunterId: String; let targetId: String }
 final class WerewolfEngine {
     private var rng: any RandomNumberGenerator
     private(set) var players: [String: WerewolfPlayer] = [:]
+    /// Insertion order of player ids, mirroring Android's linkedMapOf so the
+    /// seeded role assignment is identical across platforms (an unordered
+    /// Swift Dictionary would otherwise shuffle a hash-randomized sequence).
+    private var playerOrder: [String] = []
     var phase: WerewolfPhase = .lobby
     var day = 0
     var winner: WerewolfWinner?
@@ -70,10 +74,13 @@ final class WerewolfEngine {
     @discardableResult
     func addPlayer(id: String, name: String, isHost: Bool = false) -> WerewolfPlayer {
         let p = WerewolfPlayer(id: id, name: name, isHost: isHost)
+        if players[id] == nil { playerOrder.append(id) }
         players[id] = p
         return p
     }
-    func removePlayer(_ id: String) { if phase == .lobby { players[id] = nil } }
+    func removePlayer(_ id: String) {
+        if phase == .lobby { players[id] = nil; playerOrder.removeAll { $0 == id } }
+    }
     var canStart: Bool { phase == .lobby && players.count >= 5 }
 
     /// Max wolves the current lobby supports (at least one villager remains).
@@ -90,7 +97,7 @@ final class WerewolfEngine {
 
     func start() {
         guard canStart else { return }
-        let ids = Array(players.keys).shuffled(using: &rng)
+        let ids = playerOrder.shuffled(using: &rng)
         let formulaCount = max(1, min(ids.count - 3, ids.count / 5))
         let wolfCount = max(1, min(options.wolfCount ?? formulaCount, ids.count - 1))
         let includeHunter = options.hunterEnabled && ids.count >= 6

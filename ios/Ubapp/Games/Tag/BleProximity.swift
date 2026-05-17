@@ -5,8 +5,11 @@ import Foundation
 /// Your phone sees other Ubapp peers AND advertises so others see you.
 ///
 /// Peer id is carried in the advertisement's local name (kCBAdvDataLocalName)
-/// and verified against [kUbappTagServiceUuid] on the scan side. iOS limits
-/// advertising in the background; this works fine while the app is foreground.
+/// because CBPeripheralManager only honors the local-name and service-UUID
+/// fields when advertising. The scan side reads it from either the
+/// advertisement's service data (how Android peers publish it) or the local
+/// name (how iOS peers publish it), so both platforms can see each other.
+/// iOS limits advertising in the background; this works fine while foreground.
 final class BleProximityRuntime: NSObject, ProximitySource {
     enum AdvertiseStatus { case idle, starting, advertising, stopped, error, unavailable }
 
@@ -75,10 +78,14 @@ extension BleProximityRuntime: CBCentralManagerDelegate {
     func centralManager(_ central: CBCentralManager,
                         didDiscover peripheral: CBPeripheral,
                         advertisementData: [String: Any], rssi RSSI: NSNumber) {
-        // Peer id: prefer the advertisement's kCBAdvDataLocalName, fall back
-        // to the peripheral's name.
+        // Peer id: prefer the advertisement's service data (Android peers
+        // publish it there since they set includeDeviceName=false), then the
+        // local name (how iOS peers publish it), then the peripheral name.
+        let serviceData = advertisementData[CBAdvertisementDataServiceDataKey] as? [CBUUID: Data]
+        let fromServiceData = serviceData?[serviceUuid].flatMap { String(data: $0, encoding: .utf8) }
         let advertisedName = advertisementData[CBAdvertisementDataLocalNameKey] as? String
-        let peerId = (advertisedName ?? peripheral.name ?? "").trimmingCharacters(in: .whitespaces)
+        let peerId = (fromServiceData ?? advertisedName ?? peripheral.name ?? "")
+            .trimmingCharacters(in: .whitespaces)
         guard !peerId.isEmpty else { return }
         onEvent?(ProximityEvent(
             peerId: peerId, rssi: RSSI.intValue,
