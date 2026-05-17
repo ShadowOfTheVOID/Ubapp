@@ -330,15 +330,27 @@ final class HostServer {
     var guestCount: Int { withConnections { $0.count } }
     var guests: [GuestId] { withConnections { Array($0.keys) } }
 
+    /// A WebSocket Close control frame (opcode 0x8) carrying status 1001
+    /// ("going away"). Sent to every guest on `stop()` so the kick is a
+    /// clean handshake — the browser's `onclose` and the app guest's
+    /// `didCloseWith` fire promptly instead of waiting out an abrupt
+    /// TCP teardown.
+    private func closeFrame() -> Data { Data([0x88, 0x02, 0x03, 0xE9]) }
+
     func stop() {
-        let conns = withConnections { conns -> [NWConnection] in
-            let values = Array(conns.values)
+        let entries = withConnections { conns -> [(GuestId, NWConnection)] in
+            let all = Array(conns)
             conns.removeAll()
-            return values
+            return all
         }
-        for conn in conns { conn.cancel() }
         localGuestId = nil
         onLocalSend = nil
+        for (id, conn) in entries {
+            conn.send(content: closeFrame(), completion: .contentProcessed { _ in
+                conn.cancel()
+            })
+            onLeave?(id)
+        }
         listener?.cancel()
         listener = nil
     }

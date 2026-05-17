@@ -73,12 +73,19 @@ class HostServer(
     }
 
     fun stopServer() {
-        synchronized(sockets) {
-            sockets.values.forEach { runCatching { it.close(WebSocketFrame.CloseCode.NormalClosure, "stop", false) } }
+        val kicked = synchronized(sockets) {
+            val snapshot = sockets.keys.toList()
+            sockets.values.forEach { runCatching { it.close(WebSocketFrame.CloseCode.GoingAway, "stop", false) } }
             sockets.clear()
+            snapshot
         }
         localGuestId = null
         onLocalSend = null
+        // Fire onLeave deterministically. NanoWSD's onClose is async and
+        // racy during shutdown, so games can't rely on it to drop the
+        // kicked guests from the lobby/engine. onLeave handlers are
+        // idempotent, so a late onClose is a harmless no-op.
+        kicked.forEach { onLeave?.invoke(it) }
         stop()
     }
 
