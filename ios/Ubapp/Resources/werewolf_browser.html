@@ -121,6 +121,15 @@
   .tutorial-card .t-sec { margin-top: 6px; }
   .tutorial-card .menu-label { color: #6ee7a8; font-size: 16px; margin: 18px 0 6px; font-weight: 700; }
   .tutorial-card .wait { color: #9da7b3; font-size: 13px; margin-top: 14px; }
+  /* ===== unified ubapp chrome: shared palette + centered layout ===== */
+  :root{
+    --bg:#000000; --card:#141414; --card2:#1f1f1f;
+    --line:#2c2c2e; --text:#ffffff; --muted:#9da7b3; --accent:#ff2e88;
+  }
+  html,body{ height:100%; }
+  body{ display:flex; flex-direction:column; min-height:100%; }
+  .wrap{ width:100%; margin:auto; padding:24px 16px; text-align:center; }
+  .target{ text-align:center; }
 </style>
 </head>
 <body>
