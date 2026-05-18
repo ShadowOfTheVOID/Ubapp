@@ -32,7 +32,15 @@ final class HostTagTransport: TagTransport {
         }
         server.onMessage = { [weak self] g, raw in
             guard let self else { return }
-            guard let msg = try? TagMessage.decode(raw) else { return }
+            guard let msg = try? TagMessage.decode(raw) else {
+                // Not a Tag peer — almost certainly the browser-tier
+                // "Join a game" flow ({"type":"join"}). Tag is BLE-proximity
+                // and has no code-join path, so reject it immediately rather
+                // than leaving the guest stuck on "Connecting…".
+                let err = #"{"type":"error","message":"This host is running Tag. Tag uses Bluetooth proximity and can’t be joined with a code."}"#
+                self.server.disconnect(g, sending: err)
+                return
+            }
             if case let .hello(peerId, _) = msg { self.guestToPeer[g] = peerId }
             self.onInbound?(msg)
             // Echo non-hello traffic back so other peers see it. Host's

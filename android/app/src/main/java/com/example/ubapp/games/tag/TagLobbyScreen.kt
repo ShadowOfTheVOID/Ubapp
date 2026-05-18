@@ -136,6 +136,12 @@ fun TagLobbyScreen() {
                 joinUrl = joinUrl,
                 onStart = { /* already started */ },
                 onStop = { stopAll() },
+                showJoinCard = false,
+            )
+            Text(
+                "Other players join over Bluetooth — open Tag on their phones nearby. There's no code to type for Tag.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             ElevatedCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp)) {

@@ -26,9 +26,20 @@ import com.example.ubapp.join.JoinCode
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
 
-/** Reusable lobby chrome — start CTA + QR card guests scan. */
+/**
+ * Reusable lobby chrome — start CTA + QR card guests scan.
+ *
+ * [showJoinCard] is true for browser-tier games. Tag is BLE-proximity /
+ * app-peers-only with no working code-join path, so it passes false and
+ * shows its own guidance, while still getting the Start/Stop control.
+ */
 @Composable
-fun HostingChrome(joinUrl: String?, onStart: () -> Unit, onStop: (() -> Unit)? = null) {
+fun HostingChrome(
+    joinUrl: String?,
+    onStart: () -> Unit,
+    onStop: (() -> Unit)? = null,
+    showJoinCard: Boolean = true,
+) {
     if (joinUrl == null) {
         Button(
             onClick = onStart,
@@ -42,6 +53,7 @@ fun HostingChrome(joinUrl: String?, onStart: () -> Unit, onStop: (() -> Unit)? =
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            if (showJoinCard) {
             ElevatedCard(Modifier.fillMaxWidth()) {
                 Column(
                     Modifier.fillMaxWidth().padding(16.dp),
@@ -86,6 +98,7 @@ fun HostingChrome(joinUrl: String?, onStart: () -> Unit, onStop: (() -> Unit)? =
                         textAlign = TextAlign.Center,
                     )
                 }
+            }
             }
             if (onStop != null) {
                 OutlinedButton(

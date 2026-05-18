@@ -33,8 +33,15 @@ class HostTagTransport(private val server: HostServer) : TagTransport {
             guestToPeer.remove(g)?.let { onPeerDisconnected?.invoke(it) }
         }
         server.onMessage = { g, raw ->
-            runCatching {
-                val msg = TagMessage.decode(raw)
+            val msg = runCatching { TagMessage.decode(raw) }.getOrNull()
+            if (msg == null) {
+                // Not a Tag peer — almost certainly the browser-tier
+                // "Join a game" flow ({"type":"join"}). Tag is BLE-proximity
+                // and has no code-join path, so reject it immediately rather
+                // than leaving the guest stuck on "Connecting…".
+                val err = """{"type":"error","message":"This host is running Tag. Tag uses Bluetooth proximity and can’t be joined with a code."}"""
+                server.disconnect(g, err)
+            } else {
                 if (msg is TagMessage.Hello) guestToPeer[g] = msg.peerId
                 onInbound?.invoke(msg)
                 // Echo non-hello traffic back so other peers see it.

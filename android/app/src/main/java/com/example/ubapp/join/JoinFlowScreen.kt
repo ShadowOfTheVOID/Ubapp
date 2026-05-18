@@ -121,7 +121,8 @@ fun JoinFlowScreen() {
                         }
                     }
                     gc.onMessage = { msg ->
-                        if (msg.optString("type") == "welcome" && msg.has("game")) {
+                        val type = msg.optString("type")
+                        if (type == "welcome" && msg.has("game")) {
                             welcomedGame = msg.optString("game")
                             yourId = msg.optString("yourId")
                             yourName = msg.optString("yourName")
@@ -130,6 +131,12 @@ fun JoinFlowScreen() {
                             // per-game screen attaches its handler — closing
                             // the hand-off gap that dropped those frames.
                             gc.onMessage = null
+                        } else if (welcomedGame == null && type == "error") {
+                            // A host that rejects this client before any
+                            // welcome (e.g. Tag, which speaks its own
+                            // proximity protocol) sends an `error`. Surface
+                            // it instead of hanging on the spinner.
+                            failBack(msg.optString("message", "Host refused the connection."))
                         } else {
                             queued.add(msg)
                         }

@@ -104,6 +104,18 @@ class HostServer(
         localGuestId?.let { onLocalSend?.invoke(payload) }
     }
 
+    /** Sends a final payload to one guest, then drops the connection. Used to
+     *  reject a client speaking the wrong protocol (e.g. the browser-tier
+     *  join handshake hitting Tag) so it fails fast instead of hanging. */
+    fun disconnect(to: GuestId, farewell: String? = null) {
+        val ws = synchronized(sockets) { sockets.remove(to) } ?: return
+        runCatching {
+            if (farewell != null) ws.send(farewell)
+            ws.close(WebSocketFrame.CloseCode.NormalClosure, "wrong protocol", false)
+        }
+        onLeave?.invoke(to)
+    }
+
     private inner class GuestSocket(val id: GuestId, handshake: IHTTPSession) : WebSocket(handshake) {
         override fun onOpen() {
             synchronized(sockets) { sockets[id] = this }

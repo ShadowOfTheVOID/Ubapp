@@ -48,7 +48,9 @@ struct TagLobbyView: View {
                                 .buttonStyle(.borderedProminent)
                         } else if model.state == nil {
                             HostingChrome(joinUrl: model.joinUrl, onStart: model.startHosting,
-                                          onStop: model.stop)
+                                          onStop: model.stop, showJoinCard: false)
+                            Text("Other players join over Bluetooth — open Tag on their phones nearby. There's no code to type for Tag.")
+                                .font(.caption).foregroundStyle(.secondary)
                             GroupBox("Connected peers (\(model.peers.count + 1))") {
                                 HStack { Text("You (host)"); Spacer(); Text("ready").foregroundStyle(.green) }
                                 ForEach(model.peers, id: \.self) { name in
