@@ -27,9 +27,12 @@ class HostServer(
     ctx: Context? = null,
 ) : NanoWSD(port) {
 
+    private val appCtx = ctx?.applicationContext
     private val sockets = HashMap<GuestId, GuestSocket>()
     private val nextId = AtomicInteger(0)
     private val sslFactory = ctx?.let { buildSslSocketFactory(it) }
+
+    private fun dlog(s: String) = HostDiagnostics.log(s)
 
     var onJoin: ((GuestId) -> Unit)? = null
     var onLeave: ((GuestId) -> Unit)? = null
@@ -65,10 +68,12 @@ class HostServer(
     /** Returns the URL guests should open. null if no usable IPv4 (Wi-Fi,
      *  tethered hotspot, USB tether, or cellular) is available. */
     fun startServer(): String? {
+        appCtx?.let { com.example.ubapp.settings.AppSettings.diagnosticsEnabled(it) }
         if (sslFactory != null) makeSecure(sslFactory, null)
         start(SOCKET_READ_TIMEOUT, false)
         hostIp = localIPv4()
         val scheme = if (sslFactory != null) "https" else "http"
+        dlog("startServer: tls=${sslFactory != null} ip=$hostIp")
         return hostIp?.let { "$scheme://$it:$port/" }
     }
 
@@ -89,11 +94,14 @@ class HostServer(
         stop()
     }
 
-    override fun serveHttp(session: IHTTPSession): Response =
-        newFixedLengthResponse(Response.Status.OK, "text/html; charset=utf-8", html)
+    override fun serveHttp(session: IHTTPSession): Response {
+        dlog("serveHttp: ${session.method} ${session.uri}")
+        return newFixedLengthResponse(Response.Status.OK, "text/html; charset=utf-8", html)
+    }
 
     override fun openWebSocket(handshake: IHTTPSession): WebSocket {
         val id = GuestId("g${nextId.getAndIncrement()}")
+        dlog("openWebSocket ${id.value}")
         return GuestSocket(id, handshake)
     }
 
@@ -102,7 +110,12 @@ class HostServer(
 
     fun send(to: GuestId, payload: String) {
         if (to == localGuestId) { onLocalSend?.invoke(payload); return }
-        val ws = synchronized(sockets) { sockets[to] } ?: return
+        val ws = synchronized(sockets) { sockets[to] }
+        if (ws == null) {
+            dlog("send ${to.value}: NO connection (lost) — ${payload.take(60)}")
+            return
+        }
+        dlog("send ${to.value}: ${payload.length}B → ${payload.take(60)}")
         runCatching { ws.send(payload) }
     }
     fun broadcast(payload: String) {
@@ -126,18 +139,23 @@ class HostServer(
     private inner class GuestSocket(val id: GuestId, handshake: IHTTPSession) : WebSocket(handshake) {
         override fun onOpen() {
             synchronized(sockets) { sockets[id] = this }
+            dlog("${id.value} onOpen → joined")
             onJoin?.invoke(id)
         }
         override fun onClose(code: WebSocketFrame.CloseCode?, reason: String?, initiatedByRemote: Boolean) {
             synchronized(sockets) { sockets.remove(id) }
+            dlog("${id.value} onClose code=$code remote=$initiatedByRemote → leave")
             onLeave?.invoke(id)
         }
         override fun onMessage(message: WebSocketFrame) {
-            onMessage?.invoke(id, message.textPayload)
+            val text = message.textPayload
+            dlog("${id.value} rx ${text.length}B → ${text.take(80)}")
+            onMessage?.invoke(id, text)
         }
         override fun onPong(pong: WebSocketFrame?) {}
         override fun onException(exception: java.io.IOException?) {
             synchronized(sockets) { sockets.remove(id) }
+            dlog("${id.value} onException $exception → leave")
             onLeave?.invoke(id)
         }
     }

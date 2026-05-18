@@ -6,6 +6,8 @@ struct HostingChrome: View {
     let joinUrl: URL?
     let onStart: () -> Void
     var onStop: (() -> Void)? = nil
+    @ObservedObject private var settings = AppSettings.shared
+    @ObservedObject private var diag = HostDiagnostics.shared
 
     var body: some View {
         if let url = joinUrl {
@@ -46,6 +48,17 @@ struct HostingChrome: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .frame(maxWidth: .infinity)
+                }
+                if settings.diagnosticsEnabled && !diag.lines.isEmpty {
+                    GroupBox {
+                        ScrollView {
+                            Text(diag.lines.joined(separator: "\n"))
+                                .font(.system(.caption2, design: .monospaced))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .textSelection(.enabled)
+                        }
+                        .frame(maxHeight: 240)
+                    }
                 }
                 if let onStop {
                     Button(role: .destructive, action: onStop) {

@@ -28,6 +28,7 @@ import com.example.ubapp.games.tag.TagLobbyScreen
 import com.example.ubapp.games.tictactoe.TicTacToeScreen
 import com.example.ubapp.games.werewolf.WerewolfScreen
 import com.example.ubapp.join.JoinFlowScreen
+import com.example.ubapp.settings.SettingsScreen
 import com.example.ubapp.social.SocialScreen
 import com.example.ubapp.theme.UbappTheme
 
@@ -77,7 +78,16 @@ fun MainMenu() {
     NavHost(navController = nav, startDestination = "menu") {
         composable("menu") {
             UbappTheme {
-                Scaffold(topBar = { TopAppBar(title = { Text("Ubapp") }) }) { pad ->
+                Scaffold(topBar = {
+                    TopAppBar(
+                        title = { Text("Ubapp") },
+                        actions = {
+                            TextButton(onClick = { nav.navigate("settings") }) {
+                                Text("Settings")
+                            }
+                        },
+                    )
+                }) { pad ->
                     Column(
                         Modifier
                             .padding(pad)
@@ -103,6 +113,7 @@ fun MainMenu() {
         composable("connect_four") { ConnectFourScreen() }
         composable("social") { UbappTheme { SocialScreen() } }
         composable("join") { JoinFlowScreen() }
+        composable("settings") { SettingsScreen(onBack = { nav.popBackStack() }) }
     }
 }
 

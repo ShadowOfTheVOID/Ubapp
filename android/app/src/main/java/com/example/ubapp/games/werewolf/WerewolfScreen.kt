@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import com.example.ubapp.theme.UbappTheme
 import com.example.ubapp.join.GuestContext
 import com.example.ubapp.shared.HostingChrome
+import com.example.ubapp.settings.AppSettings
 import com.example.ubapp.tutorials.GameTutorials
 import com.example.ubapp.tutorials.TutorialVoteCard
 import com.example.ubapp.tutorials.snapshot
@@ -25,7 +26,7 @@ import com.example.ubapp.tutorials.snapshot
 @Composable
 fun WerewolfScreen() {
     val ctx = LocalContext.current
-    val server = remember { WerewolfServer(ctx) }
+    val server = remember { WerewolfServer(ctx, AppSettings.hostName(ctx)) }
     val loopback = remember { server.makeLoopback() }
     val loopCtx = remember {
         GuestContext(loopback, "werewolf", WerewolfServer.HOST_ID, server.hostName, emptyList())
