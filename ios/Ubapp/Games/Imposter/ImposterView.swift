@@ -96,7 +96,7 @@ struct ImposterView: View {
 
 @MainActor
 final class ImposterViewModel: ObservableObject {
-    private let server = ImposterServer(hostName: "Host")
+    private let server = ImposterServer(hostName: AppSettings.currentHostName)
     @Published var joinUrl: URL?
     @Published var phase: ImposterPhase = .lobby
     @Published var players: [ImposterPlayer] = []

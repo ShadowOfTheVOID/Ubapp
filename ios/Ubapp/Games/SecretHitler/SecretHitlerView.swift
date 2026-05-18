@@ -66,7 +66,7 @@ struct SecretHitlerView: View {
 
 @MainActor
 final class SecretHitlerViewModel: ObservableObject {
-    private let server = SecretHitlerServer(hostName: "Host")
+    private let server = SecretHitlerServer(hostName: AppSettings.currentHostName)
     @Published var joinUrl: URL?
     @Published var phase: SecretHitlerPhase = .lobby
     @Published var players: [SecretHitlerPlayer] = []

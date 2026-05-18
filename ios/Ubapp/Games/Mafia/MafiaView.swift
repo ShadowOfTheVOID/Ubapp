@@ -100,7 +100,7 @@ struct MafiaView: View {
 
 @MainActor
 final class MafiaViewModel: ObservableObject {
-    private let server = MafiaServer(hostName: "Host")
+    private let server = MafiaServer(hostName: AppSettings.currentHostName)
     @Published var joinUrl: URL?
     @Published var phase: MafiaPhase = .lobby
     @Published var players: [MafiaPlayer] = []

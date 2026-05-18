@@ -105,7 +105,7 @@ struct CrazyEightsView: View {
 
 @MainActor
 final class CrazyEightsViewModel: ObservableObject {
-    private let server = CrazyEightsServer(hostName: "Host")
+    private let server = CrazyEightsServer(hostName: AppSettings.currentHostName)
     @Published var joinUrl: URL?
     @Published var phase: CrazyEightsPhase = .lobby
     @Published var players: [CrazyEightsPlayer] = []

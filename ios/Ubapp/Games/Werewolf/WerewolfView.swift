@@ -107,7 +107,7 @@ struct WerewolfView: View {
 
 @MainActor
 final class WerewolfViewModel: ObservableObject {
-    private let server = WerewolfServer(hostName: "Host")
+    private let server = WerewolfServer(hostName: AppSettings.currentHostName)
     @Published var joinUrl: URL?
     @Published var phase: WerewolfPhase = .lobby
     @Published var players: [WerewolfPlayer] = []

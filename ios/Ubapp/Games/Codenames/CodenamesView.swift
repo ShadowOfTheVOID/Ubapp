@@ -101,7 +101,7 @@ struct CodenamesView: View {
 
 @MainActor
 final class CodenamesViewModel: ObservableObject {
-    private let server = CodenamesServer(hostName: "Host")
+    private let server = CodenamesServer(hostName: AppSettings.currentHostName)
     @Published var joinUrl: URL?
     @Published var phase: CodenamesPhase = .lobby
     @Published var players: [CodenamesPlayer] = []
