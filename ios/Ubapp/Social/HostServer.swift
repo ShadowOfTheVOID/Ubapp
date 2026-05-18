@@ -143,7 +143,10 @@ final class HostServer {
         return params
     }
 
+    private func dlog(_ s: String) { HostDiagnostics.shared.log(s) }
+
     private func accept(_ conn: NWConnection) {
+        dlog("accept: new connection")
         conn.start(queue: queue)
         readRequestHead(conn, accumulated: Data())
     }
@@ -171,7 +174,10 @@ final class HostServer {
             }
 
             let head = String(decoding: buf, as: UTF8.self)
-            if head.range(of: "upgrade: websocket", options: .caseInsensitive) != nil {
+            let isUpgrade = head.range(of: "upgrade: websocket", options: .caseInsensitive) != nil
+            let firstLine = head.split(separator: "\r\n", maxSplits: 1).first.map(String.init) ?? ""
+            self.dlog("head complete \(buf.count)B upgrade=\(isUpgrade) — \(firstLine)")
+            if isUpgrade {
                 self.upgradeWebSocket(conn, headers: head)
             } else {
                 self.serveHtml(conn)
@@ -199,14 +205,17 @@ final class HostServer {
     private func upgradeWebSocket(_ conn: NWConnection, headers: String) {
         guard let key = extractWebSocketKey(from: headers),
               let accept = webSocketAccept(for: key) else {
+            dlog("upgrade: missing/invalid Sec-WebSocket-Key → cancel")
             conn.cancel(); return
         }
         let response = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: \(accept)\r\n\r\n"
         conn.send(content: response.data(using: .utf8), completion: .contentProcessed { [weak self] error in
-            guard let self, error == nil else { conn.cancel(); return }
+            guard let self else { return }
+            if let error { self.dlog("upgrade: 101 send error \(error) → cancel"); conn.cancel(); return }
             let id = GuestId(value: "g\(self.nextId)")
             self.nextId += 1
             self.withConnections { $0[id] = conn }
+            self.dlog("upgrade: 101 sent, \(id.value) joined")
             self.onJoin?(id)
             self.readFrames(id: id, conn: conn, pending: Data())
         })
@@ -218,17 +227,26 @@ final class HostServer {
         conn.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, isComplete, error in
             guard let self else { return }
             if let error {
-                _ = error
+                self.dlog("readFrames \(id.value): rx error \(error) → leave")
                 if self.withConnections({ $0.removeValue(forKey: id) }) != nil { self.onLeave?(id) }
                 return
             }
             var buf = pending
             if let data { buf.append(data) }
+            self.dlog("readFrames \(id.value): rx \(data?.count ?? 0)B (buf \(buf.count)B) isComplete=\(isComplete)")
 
             while buf.count >= 2 {
-                guard let (text, consumed) = self.parseFrame(buf) else { break }
+                guard let (text, consumed) = self.parseFrame(buf) else {
+                    self.dlog("readFrames \(id.value): partial/short frame, wait for more")
+                    break
+                }
                 buf = Data(buf.dropFirst(consumed))
-                if let text { self.onMessage?(id, text) }
+                if let text {
+                    self.dlog("readFrames \(id.value): text \(text.count)B → \(text.prefix(80))")
+                    self.onMessage?(id, text)
+                } else {
+                    self.dlog("readFrames \(id.value): non-text frame consumed \(consumed)B")
+                }
             }
 
             if isComplete {
@@ -278,8 +296,12 @@ final class HostServer {
 
     func send(to: GuestId, _ payload: String) {
         if to == localGuestId { onLocalSend?(payload); return }
-        guard let conn = withConnections({ $0[to] }),
-              let data = payload.data(using: .utf8) else { return }
+        guard let conn = withConnections({ $0[to] }) else {
+            dlog("send \(to.value): NO connection for id (lost) — \(payload.prefix(60))")
+            return
+        }
+        guard let data = payload.data(using: .utf8) else { return }
+        dlog("send \(to.value): \(payload.count)B → \(payload.prefix(60))")
         conn.send(content: encodeFrame(data), completion: .contentProcessed { _ in })
     }
 

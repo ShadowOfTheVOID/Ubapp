@@ -14,6 +14,9 @@ final class GuestClient: NSObject, GuestLink, URLSessionWebSocketDelegate, URLSe
     private var session: URLSession!
 
     var onStateChange: ((State) -> Void)?
+    /// Temporary instrumentation sink for the "stuck on Connecting…" report.
+    var onLog: ((String) -> Void)?
+    private func report(_ s: String) { onLog?(s) }
     /// Each frame received from the server, already decoded as a JSON dict.
     /// Called on the main actor. Frames that arrive while no consumer is
     /// attached are buffered and flushed the moment one is — mirroring
@@ -54,9 +57,12 @@ final class GuestClient: NSObject, GuestLink, URLSessionWebSocketDelegate, URLSe
 
     nonisolated func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge,
                                 completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
-        guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
+        let method = challenge.protectionSpace.authenticationMethod
+        Task { @MainActor in self.report("tls challenge method=\(method) pinned=\(Self.bundledCert != nil)") }
+        guard method == NSURLAuthenticationMethodServerTrust,
               let serverTrust = challenge.protectionSpace.serverTrust,
               let pinned = Self.bundledCert else {
+            Task { @MainActor in self.report("tls → performDefaultHandling") }
             completionHandler(.performDefaultHandling, nil)
             return
         }
@@ -67,15 +73,18 @@ final class GuestClient: NSObject, GuestLink, URLSessionWebSocketDelegate, URLSe
         // certificate bytes instead — identity, not hostname, is the trust.
         guard let leaf = (SecTrustCopyCertificateChain(serverTrust) as? [SecCertificate])?.first,
               (SecCertificateCopyData(leaf) as Data) == (SecCertificateCopyData(pinned) as Data) else {
+            Task { @MainActor in self.report("tls → cancel (cert mismatch / no leaf)") }
             completionHandler(.cancelAuthenticationChallenge, nil)
             return
         }
+        Task { @MainActor in self.report("tls → useCredential (pin matched)") }
         completionHandler(.useCredential, URLCredential(trust: serverTrust))
     }
 
     private nonisolated static var bundledCert: SecCertificate? { HostServer.bundledCert }
 
     func connect() {
+        report("connect: task created → resume")
         task = session.webSocketTask(with: url)
         task?.resume()
         receiveLoop()
@@ -103,6 +112,7 @@ final class GuestClient: NSObject, GuestLink, URLSessionWebSocketDelegate, URLSe
             Task { @MainActor in
                 switch result {
                 case .failure(let err):
+                    self.report("receive error: \(err.localizedDescription)")
                     self.update(.failed(err.localizedDescription))
                 case .success(let msg):
                     if case .string(let s) = msg,
@@ -118,13 +128,32 @@ final class GuestClient: NSObject, GuestLink, URLSessionWebSocketDelegate, URLSe
 
     nonisolated func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask,
                                 didOpenWithProtocol protocol: String?) {
-        Task { @MainActor in self.update(.open) }
+        Task { @MainActor in
+            self.report("didOpenWithProtocol=\(`protocol` ?? "nil")")
+            self.update(.open)
+        }
     }
 
     nonisolated func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask,
                                 didCloseWith closeCode: URLSessionWebSocketTask.CloseCode,
                                 reason: Data?) {
-        Task { @MainActor in self.update(.closed) }
+        let r = reason.flatMap { String(data: $0, encoding: .utf8) } ?? ""
+        Task { @MainActor in
+            self.report("didClose code=\(closeCode.rawValue) reason=\(r)")
+            self.update(.closed)
+        }
+    }
+
+    nonisolated func urlSession(_ session: URLSession, task: URLSessionTask,
+                                didCompleteWithError error: Error?) {
+        Task { @MainActor in
+            if let error {
+                self.report("task didComplete error: \(error.localizedDescription)")
+                self.update(.failed(error.localizedDescription))
+            } else {
+                self.report("task didComplete (no error)")
+            }
+        }
     }
 
     private func update(_ s: State) { state = s; onStateChange?(s) }

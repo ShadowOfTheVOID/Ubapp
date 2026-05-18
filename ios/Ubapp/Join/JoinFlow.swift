@@ -14,6 +14,16 @@ struct JoinFlowView: View {
     @State private var welcomedName: String?
     @State private var status: String = ""
     @State private var queuedMessages: [[String: Any]] = []
+    // Temporary on-screen instrumentation for the "stuck on Connecting…"
+    // report — no remote logs available on the test device.
+    @State private var debugLog: [String] = []
+    @State private var connectStarted: Date?
+
+    private func log(_ s: String) {
+        let t = connectStarted.map { String(format: "%.1fs", Date().timeIntervalSince($0)) } ?? "—"
+        debugLog.append("[\(t)] \(s)")
+        if debugLog.count > 40 { debugLog.removeFirst(debugLog.count - 40) }
+    }
 
     var body: some View {
         Group {
@@ -64,6 +74,16 @@ struct JoinFlowView: View {
             ProgressView()
             Text("Connecting to \(pendingHost ?? "host")…").foregroundStyle(.secondary)
             if !status.isEmpty { Text(status).foregroundStyle(.red).font(.caption) }
+            ScrollView {
+                Text(debugLog.joined(separator: "\n"))
+                    .font(.system(.caption2, design: .monospaced))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .textSelection(.enabled)
+            }
+            .frame(maxHeight: 260)
+            .padding(8)
+            .background(Color.black.opacity(0.06))
+            .cornerRadius(8)
             Button("Cancel") { reset() }.buttonStyle(.bordered)
         }
         .padding()
@@ -90,33 +110,45 @@ struct JoinFlowView: View {
     }
 
     private func tryConnect() {
+        connectStarted = Date()
+        debugLog = []
         let trimmed = rawCode.trimmingCharacters(in: .whitespaces)
         guard let ip = JoinCode.decode(trimmed) else {
             status = "Couldn't read that — enter the 7-character code or the IP."
             return
         }
+        log("decode '\(trimmed)' → \(ip)")
         pendingHost = ip
         let urlString = "wss://\(ip):\(JoinCode.defaultPort)/ws"
         guard let url = URL(string: urlString) else {
             status = "Bad URL: \(urlString)"; return
         }
+        log("url \(urlString)")
         let c = GuestClient(url: url)
+        c.onLog = { m in log("gc: \(m)") }
         let trimmedName = name.trimmingCharacters(in: .whitespaces)
         c.onStateChange = { s in
             switch s {
-            case .open: c.send(["type": "join", "name": trimmedName])
-            case .failed(let m): failBack("Connection failed: \(m)")
-            case .closed: if welcomedGame == nil { failBack("Connection closed before joining.") }
-            default: break
+            case .connecting: log("state .connecting")
+            case .open:
+                log(".open — sending join name='\(trimmedName)'")
+                c.send(["type": "join", "name": trimmedName])
+            case .failed(let m): log(".failed: \(m)"); failBack("Connection failed: \(m)")
+            case .closed:
+                log(".closed (welcomed=\(welcomedGame != nil))")
+                if welcomedGame == nil { failBack("Connection closed before joining.") }
             }
         }
         c.onMessage = { msg in
+            let type = (msg["type"] as? String) ?? "?"
+            log("recv type=\(type)")
             // Welcome carries the game key; everything else is queued for the
             // per-game view to replay on first appearance.
-            if (msg["type"] as? String) == "welcome",
+            if type == "welcome",
                let g = msg["game"] as? String,
                let id = msg["yourId"] as? String,
                let nm = msg["yourName"] as? String {
+                log("welcome game=\(g) id=\(id)")
                 welcomedGame = g; welcomedId = id; welcomedName = nm
                 // Stop consuming here. Everything after `welcome`
                 // (lobby/options/phase) now buffers inside the client until
@@ -127,6 +159,7 @@ struct JoinFlowView: View {
                 queuedMessages.append(msg)
             }
         }
+        log("connect() resume")
         c.connect()
         status = ""
         client = c
