@@ -49,6 +49,8 @@ struct TagLobbyView: View {
                         } else if model.state == nil {
                             HostingChrome(joinUrl: model.joinUrl, onStart: model.startHosting,
                                           onStop: model.stop)
+                            Text("App players join from \"Join a game\" using the code above. Everyone needs Bluetooth on and the app foregrounded.")
+                                .font(.caption).foregroundStyle(.secondary)
                             GroupBox("Connected peers (\(model.peers.count + 1))") {
                                 HStack { Text("You (host)"); Spacer(); Text("ready").foregroundStyle(.green) }
                                 ForEach(model.peers, id: \.self) { name in
@@ -175,7 +177,7 @@ final class TagLobbyViewModel: ObservableObject {
                               proximity: runtime, transport: t)
         sess.onStateChange = { [weak self] s in self?.state = s }
         var names: [String: String] = [selfId: "Host"]
-        for p in peers { names[p] = p }
+        for p in peers { names[p] = transport?.displayName(for: p) ?? p }
         sess.startHosting(variant: variant, peerNames: names,
                           durationOverrideSec: customDuration ? durationSecValue : nil)
         session = sess

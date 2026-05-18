@@ -137,6 +137,11 @@ fun TagLobbyScreen() {
                 onStart = { /* already started */ },
                 onStop = { stopAll() },
             )
+            Text(
+                "App players join from \"Join a game\" using the code above. Everyone needs Bluetooth on and the app foregrounded.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             ElevatedCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp)) {
                     Text("Connected peers (${peers.size + 1})",
@@ -158,7 +163,7 @@ fun TagLobbyScreen() {
                     val sess = TagSession(selfId, "Host", rt, t)
                     sess.onStateChange = { s -> state = s }
                     val names = mutableMapOf(selfId to "Host")
-                    for (p in peers) names[p] = p
+                    for (p in peers) names[p] = t.displayName(p)
                     sess.startHosting(variant, names,
                                        durationOverrideSec = if (customDuration) durationSec else null)
                     session.value = sess
@@ -189,7 +194,7 @@ fun TagLobbyScreen() {
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
-private fun PermissionGate(perms: MultiplePermissionsState, content: @Composable () -> Unit) {
+fun PermissionGate(perms: MultiplePermissionsState, content: @Composable () -> Unit) {
     if (perms.allPermissionsGranted) content()
     else Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Tag needs Bluetooth scan + advertise permissions to detect nearby players.",
@@ -201,7 +206,7 @@ private fun PermissionGate(perms: MultiplePermissionsState, content: @Composable
 }
 
 @Composable
-private fun RoundView(
+fun RoundView(
     s: TagState, selfId: String,
     onTag: (String) -> Unit, onUnfreeze: (String) -> Unit, onBack: () -> Unit,
 ) {
