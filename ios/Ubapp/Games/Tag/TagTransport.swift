@@ -17,6 +17,9 @@ protocol TagTransport: AnyObject {
 final class HostTagTransport: TagTransport {
     private let server: HostServer
     private var guestToPeer: [GuestId: String] = [:]
+    /// peerId → chosen display name, learned from the join handshake and the
+    /// peer's `hello`. The lobby uses this so peers show their real name.
+    private(set) var peerDisplayNames: [String: String] = [:]
 
     var onInbound: ((TagMessage) -> Void)?
     var onPeerConnected: ((String) -> Void)?
@@ -26,28 +29,50 @@ final class HostTagTransport: TagTransport {
         self.server = server
         server.onJoin = { [weak self] g in self?.onPeerConnected?(g.value) }
         server.onLeave = { [weak self] g in
-            if let pid = self?.guestToPeer.removeValue(forKey: g) {
-                self?.onPeerDisconnected?(pid)
+            guard let self else { return }
+            if let pid = self.guestToPeer.removeValue(forKey: g) {
+                self.peerDisplayNames[pid] = nil
+                self.onPeerDisconnected?(pid)
             }
         }
         server.onMessage = { [weak self] g, raw in
             guard let self else { return }
-            guard let msg = try? TagMessage.decode(raw) else {
-                // Not a Tag peer — almost certainly the browser-tier
-                // "Join a game" flow ({"type":"join"}). Tag is BLE-proximity
-                // and has no code-join path, so reject it immediately rather
-                // than leaving the guest stuck on "Connecting…".
-                let err = #"{"type":"error","message":"This host is running Tag. Tag uses Bluetooth proximity and can’t be joined with a code."}"#
+            if let msg = try? TagMessage.decode(raw) {
+                if case let .hello(peerId, displayName) = msg {
+                    self.guestToPeer[g] = peerId
+                    self.peerDisplayNames[peerId] = displayName
+                }
+                self.onInbound?(msg)
+                // Echo non-hello traffic back so other peers see it. Host's
+                // own TagSession already applied any state change locally.
+                if case .hello = msg { /* don't echo hello */ } else { self.server.broadcast(raw) }
+                return
+            }
+            // Not a TagMessage — the browser-tier "Join a game" handshake.
+            // App peers join Tag by code: complete the handshake so the
+            // generic flow can mount the native Tag peer view, then the
+            // peer speaks TagMessages over this same socket.
+            guard let data = raw.data(using: .utf8),
+                  let j = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  (j["type"] as? String) == "join" else {
+                let err = #"{"type":"error","message":"This host is running Tag — open it in the app to join."}"#
                 self.server.disconnect(g, sending: err)
                 return
             }
-            if case let .hello(peerId, _) = msg { self.guestToPeer[g] = peerId }
-            self.onInbound?(msg)
-            // Echo non-hello traffic back so other peers see it. Host's
-            // own TagSession already applied any state change locally.
-            if case .hello = msg { /* don't echo hello */ } else { self.server.broadcast(raw) }
+            let name = (j["name"] as? String)?.trimmingCharacters(in: .whitespaces) ?? ""
+            let peerId = g.value
+            self.guestToPeer[g] = peerId
+            self.peerDisplayNames[peerId] = name.isEmpty ? peerId : name
+            let welcome: [String: Any] = ["type": "welcome", "game": "tag",
+                                          "yourId": peerId, "yourName": name]
+            if let d = try? JSONSerialization.data(withJSONObject: welcome),
+               let s = String(data: d, encoding: .utf8) {
+                self.server.send(to: g, s)
+            }
         }
     }
+
+    func displayName(for peerId: String) -> String { peerDisplayNames[peerId] ?? peerId }
 
     func send(_ msg: TagMessage) { server.broadcast(msg.encode()) }
     func dispose() { server.stop() }
@@ -122,6 +147,38 @@ final class PeerTagTransport: NSObject, TagTransport, URLSessionWebSocketDelegat
             completionHandler(.cancelAuthenticationChallenge, nil)
         }
     }
+}
+
+/// App-peer transport that rides the browser-tier `GuestLink` socket the
+/// generic "Join a game" flow already opened (TLS-pinned, cert handled),
+/// rather than dialing a second raw WebSocket. Tag messages travel as the
+/// same JSON dicts every other game uses.
+final class GuestLinkTagTransport: TagTransport {
+    var onInbound: ((TagMessage) -> Void)?
+    var onPeerConnected: ((String) -> Void)?
+    var onPeerDisconnected: ((String) -> Void)?
+    private let client: any GuestLink
+
+    init(client: any GuestLink) { self.client = client }
+
+    /// Subscribe to the socket. Call this *after* the owning `TagSession`
+    /// has set `onInbound`, because assigning `GuestClient.onMessage`
+    /// synchronously flushes any frames buffered since `welcome` — if we
+    /// subscribed in `init` those would arrive before the session is wired.
+    @MainActor
+    func start() {
+        client.onMessage = { [weak self] j in
+            guard let self, let m = try? TagMessage.decode(j) else { return }
+            self.onInbound?(m)
+        }
+    }
+
+    func send(_ msg: TagMessage) {
+        let payload = msg.jsonObject()
+        Task { @MainActor in self.client.send(payload) }
+    }
+
+    func dispose() { Task { @MainActor in self.client.onMessage = nil } }
 }
 
 /// Local-only transport. Single-device dev mode — messages echo back into

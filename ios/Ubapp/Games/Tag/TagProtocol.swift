@@ -45,11 +45,14 @@ enum TagMessage {
                        eligibleCount: Int, result: Bool?, tutorialShown: Bool)
 
     func encode() -> String {
-        let obj = toJSON()
+        let obj = jsonObject()
         return String(data: try! JSONSerialization.data(withJSONObject: obj), encoding: .utf8)!
     }
 
-    private func toJSON() -> [String: Any] {
+    /// The wire dict — used directly by the app-peer join path, which carries
+    /// Tag messages over the same `GuestLink` JSON channel browser-tier games
+    /// use rather than a second raw socket.
+    func jsonObject() -> [String: Any] {
         switch self {
         case let .hello(peerId, displayName):
             return ["type": "hello", "peerId": peerId, "displayName": displayName]
@@ -78,8 +81,13 @@ enum TagMessage {
 
     static func decode(_ raw: String) throws -> TagMessage {
         guard let data = raw.data(using: .utf8),
-              let j = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let type = j["type"] as? String
+              let j = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { throw NSError(domain: "TagMessage", code: 0) }
+        return try decode(j)
+    }
+
+    static func decode(_ j: [String: Any]) throws -> TagMessage {
+        guard let type = j["type"] as? String
         else { throw NSError(domain: "TagMessage", code: 0) }
         switch type {
         case "hello":

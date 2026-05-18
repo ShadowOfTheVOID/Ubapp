@@ -56,6 +56,7 @@ fun JoinFlowScreen() {
             "codenames" -> CodenamesGuestScreen(ctx)
             "crazy_eights" -> CrazyEightsGuestScreen(ctx)
             "secret_hitler" -> SecretHitlerGuestScreen(ctx)
+            "tag" -> com.example.ubapp.games.tag.TagGuestScreen(ctx)
             else -> Text("Unknown game: $game")
         }
         return

@@ -81,6 +81,7 @@ struct JoinFlowView: View {
         case "codenames":     CodenamesGuestView(ctx: ctx)
         case "crazy_eights":  CrazyEightsGuestView(ctx: ctx)
         case "secret_hitler": SecretHitlerGuestView(ctx: ctx)
+        case "tag":           TagGuestView(ctx: ctx)
         default:
             VStack {
                 Text("Unknown game: \(game)").foregroundStyle(.red)

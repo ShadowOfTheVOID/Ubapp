@@ -73,8 +73,12 @@ sealed class TagMessage {
     }
 
     companion object {
-        fun decode(raw: String): TagMessage {
-            val j = JSONObject(raw)
+        fun decode(raw: String): TagMessage = decode(JSONObject(raw))
+
+        /** Decode from an already-parsed object — used by the app-peer join
+         *  path, which carries Tag messages over the same `GuestLink` JSON
+         *  channel browser-tier games use. */
+        fun decode(j: JSONObject): TagMessage {
             return when (j.getString("type")) {
                 "hello" -> Hello(j.getString("peerId"), j.getString("displayName"))
                 "start" -> {
