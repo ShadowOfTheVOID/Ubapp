@@ -11,8 +11,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Text
+import com.example.ubapp.stats.StatsStore
 import com.example.ubapp.theme.UbappTheme
 import kotlinx.coroutines.delay
 import kotlin.math.cos
@@ -27,6 +29,11 @@ import kotlin.random.Random
 fun RealtimeScreen() {
     val world = remember { RealtimeWorld() }
     var tick by remember { mutableLongStateOf(0L) }
+    val ctx = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        StatsStore.recordCountOnly(ctx.applicationContext, "realtime", emptyList())
+    }
 
     LaunchedEffect(Unit) {
         var last = System.nanoTime()

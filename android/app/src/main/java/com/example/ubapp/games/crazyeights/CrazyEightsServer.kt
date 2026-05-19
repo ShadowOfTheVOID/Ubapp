@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.ubapp.join.LoopbackGuest
 import com.example.ubapp.social.GuestId
 import com.example.ubapp.social.HostServer
+import com.example.ubapp.stats.StatsStore
 import com.example.ubapp.tutorials.GameTutorials
 import org.json.JSONArray
 import org.json.JSONObject
@@ -12,9 +13,11 @@ import org.json.JSONObject
 class CrazyEightsServer(context: Context, val hostName: String = "Host") {
     val engine = CrazyEightsEngine()
     private val server = HostServer(html = HostServer.htmlAsset(context, "crazy_eights_browser.html"), ctx = context)
+    private val appCtx = context.applicationContext
     private val guestToPlayer = HashMap<GuestId, String>()
     private val playerToGuest = HashMap<String, GuestId>()
     var onStateChange: (() -> Unit)? = null
+    private var statRecorded = false
 
     init { server.onMessage = ::onMessage; server.onLeave = ::onLeave }
     companion object { const val HOST_ID = "host" }
@@ -51,7 +54,8 @@ class CrazyEightsServer(context: Context, val hostName: String = "Host") {
     fun hostDraw() { engine.drawOne(HOST_ID); broadcastState(); sendHandsPrivately(); emit() }
     fun hostPass() { engine.passAfterDraw(HOST_ID); broadcastState(); emit() }
     fun hostNewGame() {
-        engine.reset(); broadcast(JSONObject().put("type", "reset")); broadcastLobby(); emit()
+        engine.reset(); statRecorded = false
+        broadcast(JSONObject().put("type", "reset")); broadcastLobby(); emit()
     }
     fun hostCallTutorialVote() = openTutorialVote()
     fun hostTutorialVote(yes: Boolean) = submitTutorialVote(HOST_ID, yes)
@@ -157,6 +161,13 @@ class CrazyEightsServer(context: Context, val hostName: String = "Host") {
         }
     }
     private fun broadcastOver() {
+        if (!statRecorded) {
+            statRecorded = true
+            val names = ArrayList<String>()
+            engine.winnerId?.let { wid -> engine.players[wid]?.let { names.add(it.name) } }
+            for (p in engine.players.values) if (p.id != engine.winnerId) names.add(p.name)
+            StatsStore.record(appCtx, "crazy_eights", names, "win")
+        }
         val arr = JSONArray()
         for (p in engine.players.values) arr.put(JSONObject().put("id", p.id).put("name", p.name).put("handCount", p.hand.size))
         broadcast(JSONObject().put("type", "over").put("winnerId", engine.winnerId ?: JSONObject.NULL).put("players", arr))

@@ -30,6 +30,7 @@ import com.example.ubapp.games.werewolf.WerewolfScreen
 import com.example.ubapp.join.JoinFlowScreen
 import com.example.ubapp.settings.SettingsScreen
 import com.example.ubapp.social.SocialScreen
+import com.example.ubapp.stats.StatBoardScreen
 import com.example.ubapp.theme.UbappTheme
 
 private data class MenuItem(val route: String, val title: String, val subtitle: String)
@@ -67,7 +68,10 @@ private val groups = listOf(
     MenuGroup(
         "More",
         null,
-        listOf(MenuItem("social", "Social", "Friends, chat, presence demo.")),
+        listOf(
+            MenuItem("social", "Social", "Friends, chat, presence demo."),
+            MenuItem("statboard", "Stat board", "Play counts and recent games."),
+        ),
     ),
 )
 
@@ -112,6 +116,7 @@ fun MainMenu() {
         composable("tictactoe") { TicTacToeScreen() }
         composable("connect_four") { ConnectFourScreen() }
         composable("social") { UbappTheme { SocialScreen() } }
+        composable("statboard") { StatBoardScreen(onBack = { nav.popBackStack() }) }
         composable("join") { JoinFlowScreen() }
         composable("settings") { SettingsScreen(onBack = { nav.popBackStack() }) }
     }

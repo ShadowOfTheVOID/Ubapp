@@ -12,6 +12,7 @@ final class ImposterServer {
     private var playerToGuest: [String: GuestId] = [:]
 
     var onStateChange: (() -> Void)?
+    private var statRecorded = false
 
     init(server: HostServer? = nil, hostName: String = "Host") {
         self.server = server ?? HostServer(html: HostServer.htmlResource(named: "imposter_browser"))
@@ -56,6 +57,7 @@ final class ImposterServer {
     func hostVote(targetId: String?) { applyVote(voterId: Self.hostId, targetId: targetId) }
     func hostNewRound() {
         engine.reset()
+        statRecorded = false
         broadcast(["type": "reset"])
         broadcastLobby()
         emit()
@@ -199,6 +201,14 @@ final class ImposterServer {
     }
 
     private func broadcastResult() {
+        if !statRecorded {
+            statRecorded = true
+            StatsStore.record(
+                gameId: "imposter",
+                players: engine.players.values.map(\.name),
+                outcome: engine.winner == .town ? "town" : "imposter",
+            )
+        }
         broadcast([
             "type": "result",
             "winner": engine.winner == .town ? "town" : "imposter",

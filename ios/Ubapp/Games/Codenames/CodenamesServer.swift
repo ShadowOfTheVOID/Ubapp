@@ -12,6 +12,7 @@ final class CodenamesServer {
     private var playerToGuest: [String: GuestId] = [:]
 
     var onStateChange: (() -> Void)?
+    private var statRecorded = false
 
     init(server: HostServer? = nil, hostName: String = "Host") {
         self.server = server ?? HostServer(html: HostServer.htmlResource(named: "codenames_browser"))
@@ -68,6 +69,7 @@ final class CodenamesServer {
     }
     func hostNewGame() {
         engine.reset()
+        statRecorded = false
         broadcast(["type": "reset"])
         broadcastLobby(); emit()
     }
@@ -170,6 +172,14 @@ final class CodenamesServer {
     }
 
     private func broadcastState() {
+        if engine.phase == .gameOver && !statRecorded {
+            statRecorded = true
+            StatsStore.record(
+                gameId: "codenames",
+                players: engine.players.values.map(\.name),
+                outcome: engine.winner?.rawValue ?? "unknown",
+            )
+        }
         let boardPublic: [[String: Any]] = engine.board.map { c in
             var d: [String: Any] = ["word": c.word, "revealed": c.revealed]
             if c.revealed { d["kind"] = c.kind.rawValue }

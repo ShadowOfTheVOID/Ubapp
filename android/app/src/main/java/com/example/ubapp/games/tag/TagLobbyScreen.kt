@@ -160,7 +160,7 @@ fun TagLobbyScreen() {
                     val rt = BleProximityRuntime(ctx, selfId)
                     rt.onAdvertiseStatus = { s, err -> advertiseStatus = "BLE: $s ${err ?: ""}" }
                     ble.value = rt
-                    val sess = TagSession(selfId, "Host", rt, t)
+                    val sess = TagSession(selfId, "Host", rt, t, ctx.applicationContext)
                     sess.onStateChange = { s -> state = s }
                     val names = mutableMapOf(selfId to "Host")
                     for (p in peers) names[p] = t.displayName(p)

@@ -12,6 +12,7 @@ final class WerewolfServer {
     private var playerToGuest: [String: GuestId] = [:]
 
     var onStateChange: (() -> Void)?
+    private var statRecorded = false
 
     init(server: HostServer? = nil, hostName: String = "Host") {
         self.server = server ?? HostServer(html: HostServer.htmlResource(named: "werewolf_browser"))
@@ -285,6 +286,14 @@ final class WerewolfServer {
         ])
     }
     private func broadcastGameOver() {
+        if !statRecorded {
+            statRecorded = true
+            StatsStore.record(
+                gameId: "werewolf",
+                players: engine.players.values.map(\.name),
+                outcome: engine.winner == .town ? "town" : "werewolves",
+            )
+        }
         var roles: [String: String] = [:]
         for p in engine.players.values { roles[p.id] = p.role!.rawValue }
         broadcast([

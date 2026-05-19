@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.ubapp.join.LoopbackGuest
 import com.example.ubapp.social.GuestId
 import com.example.ubapp.social.HostServer
+import com.example.ubapp.stats.StatsStore
 import com.example.ubapp.tutorials.GameTutorials
 import org.json.JSONArray
 import org.json.JSONObject
@@ -12,9 +13,11 @@ import org.json.JSONObject
 class CodenamesServer(context: Context, val hostName: String = "Host") {
     val engine = CodenamesEngine()
     private val server = HostServer(html = HostServer.htmlAsset(context, "codenames_browser.html"), ctx = context)
+    private val appCtx = context.applicationContext
     private val guestToPlayer = HashMap<GuestId, String>()
     private val playerToGuest = HashMap<String, GuestId>()
     var onStateChange: (() -> Unit)? = null
+    private var statRecorded = false
 
     init { server.onMessage = ::onMessage; server.onLeave = ::onLeave }
     companion object { const val HOST_ID = "host" }
@@ -45,7 +48,8 @@ class CodenamesServer(context: Context, val hostName: String = "Host") {
     fun hostGuess(index: Int) { engine.guess(HOST_ID, index); broadcastState(); emit() }
     fun hostEndTurn() { engine.endTurn(HOST_ID); broadcastState(); emit() }
     fun hostNewGame() {
-        engine.reset(); broadcast(JSONObject().put("type", "reset")); broadcastLobby(); emit()
+        engine.reset(); statRecorded = false
+        broadcast(JSONObject().put("type", "reset")); broadcastLobby(); emit()
     }
     fun hostCallTutorialVote() = openTutorialVote()
     fun hostTutorialVote(yes: Boolean) = submitTutorialVote(HOST_ID, yes)
@@ -119,6 +123,14 @@ class CodenamesServer(context: Context, val hostName: String = "Host") {
     }
 
     private fun broadcastState() {
+        if (engine.phase == CodenamesPhase.GAME_OVER && !statRecorded) {
+            statRecorded = true
+            StatsStore.record(
+                appCtx, "codenames",
+                engine.players.values.map { it.name },
+                engine.winner?.name?.lowercase() ?: "unknown",
+            )
+        }
         val arr = JSONArray()
         for (c in engine.board) {
             val o = JSONObject().put("word", c.word).put("revealed", c.revealed)

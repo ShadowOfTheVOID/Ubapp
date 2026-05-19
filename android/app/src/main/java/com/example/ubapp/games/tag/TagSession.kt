@@ -1,7 +1,9 @@
 package com.example.ubapp.games.tag
 
+import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import com.example.ubapp.stats.StatsStore
 
 /**
  * Glue between proximity detection, the engine, and the network. Owns a
@@ -13,12 +15,15 @@ class TagSession(
     val selfDisplayName: String,
     val proximity: ProximitySource,
     val transport: TagTransport,
+    private val appContext: Context? = null,
 ) {
     val engine = TagEngine(selfId)
     private var peerNames: Map<String, String> = emptyMap()
     private var detector: ProximityDetector? = null
     private val handler = Handler(Looper.getMainLooper())
     private var hotPotatoRunnable: Runnable? = null
+    private var isHost = false
+    private var statRecorded = false
 
     var onStateChange: ((TagState) -> Unit)? = null
 
@@ -26,6 +31,7 @@ class TagSession(
 
     fun startHosting(variant: TagVariant, peerNames: Map<String, String>,
                      durationOverrideSec: Int? = null) {
+        isHost = true
         this.peerNames = peerNames
         val ids = peerNames.keys.shuffled()
         val first = ids.firstOrNull() ?: return
@@ -94,13 +100,35 @@ class TagSession(
         val r = Runnable {
             val end = engine.hotPotatoTimeout() ?: return@Runnable
             transport.send(TagMessage.End(end.first, end.second))
+            recordTagResult(end.first)
             emit()
         }
         hotPotatoRunnable = r
         handler.postDelayed(r, durationMs)
     }
 
-    private fun emit() { engine.state?.let { onStateChange?.invoke(it) } }
+    private fun emit() {
+        engine.state?.let { s ->
+            if (s.isOver) recordTagResult(s.endReason)
+            onStateChange?.invoke(s)
+        }
+    }
+
+    /** Records the finished round once, host-only. Tag is app-peer only; the
+     *  host is the device that called [startHosting]. */
+    private fun recordTagResult(reason: String?) {
+        if (!isHost || statRecorded) return
+        val ctx = appContext ?: return
+        val s = engine.state ?: return
+        statRecorded = true
+        StatsStore.record(ctx, "tag", s.players.values.map { it.displayName }, tagOutcome(reason))
+    }
+
+    private fun tagOutcome(reason: String?): String = when (reason) {
+        "all_frozen" -> "it"
+        "last_survivor", "hot_potato_timeout" -> "runners"
+        else -> "timeout"
+    }
 
     private fun shutdownRound() {
         hotPotatoRunnable?.let { handler.removeCallbacks(it) }
