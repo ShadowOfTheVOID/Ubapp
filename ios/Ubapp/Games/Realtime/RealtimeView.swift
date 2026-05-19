@@ -5,6 +5,7 @@ import SwiftUI
 /// Pure SwiftUI Canvas + TimelineView — no game engine dependency.
 struct RealtimeView: View {
     @State private var world = RealtimeWorld()
+    @State private var recorded = false
 
     var body: some View {
         TimelineView(.animation) { context in
@@ -36,6 +37,12 @@ struct RealtimeView: View {
         .ubappChrome()
         .navigationTitle("Real-time")
         .ignoresSafeArea(edges: .bottom)
+        .onAppear {
+            if !recorded {
+                recorded = true
+                StatsStore.recordCountOnly(gameId: "realtime", players: [])
+            }
+        }
     }
 }
 

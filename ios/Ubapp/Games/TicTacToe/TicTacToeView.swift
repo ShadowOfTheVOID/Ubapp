@@ -40,6 +40,19 @@ struct TicTacToeView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ubappChrome()
         .navigationTitle("Tic-Tac-Toe")
+        .onChange(of: model.isOver) { _, over in
+            if over { recordResult() }
+        }
+    }
+
+    private func recordResult() {
+        let outcome: String
+        switch model.winner {
+        case .x: outcome = "x"
+        case .o: outcome = "o"
+        default: outcome = "draw"
+        }
+        StatsStore.record(gameId: "tic_tac_toe", players: ["You", "CPU"], outcome: outcome)
     }
 
     private var statusText: String {

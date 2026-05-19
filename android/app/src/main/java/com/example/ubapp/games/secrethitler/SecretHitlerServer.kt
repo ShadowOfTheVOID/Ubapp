@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.ubapp.join.LoopbackGuest
 import com.example.ubapp.social.GuestId
 import com.example.ubapp.social.HostServer
+import com.example.ubapp.stats.StatsStore
 import com.example.ubapp.tutorials.GameTutorials
 import org.json.JSONArray
 import org.json.JSONObject
@@ -17,10 +18,12 @@ import org.json.JSONObject
 class SecretHitlerServer(context: Context, val hostName: String = "Host") {
     val engine = SecretHitlerEngine()
     private val server = HostServer(html = HostServer.htmlAsset(context, "secret_hitler_browser.html"), ctx = context)
+    private val appCtx = context.applicationContext
     private val guestToPlayer = HashMap<GuestId, String>()
     private val playerToGuest = HashMap<String, GuestId>()
 
     var onStateChange: (() -> Unit)? = null
+    private var statRecorded = false
 
     init {
         server.onMessage = ::onMessage
@@ -288,6 +291,14 @@ class SecretHitlerServer(context: Context, val hostName: String = "Host") {
     }
 
     private fun broadcastGameOver() {
+        if (!statRecorded) {
+            statRecorded = true
+            StatsStore.record(
+                appCtx, "secret_hitler",
+                engine.players.values.map { it.name },
+                engine.winner?.wire ?: "unknown",
+            )
+        }
         val roles = JSONObject()
         for (p in engine.players.values) p.role?.let { roles.put(p.id, it.wire) }
         broadcast(JSONObject()

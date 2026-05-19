@@ -22,6 +22,19 @@ struct ConnectFourView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ubappChrome()
         .navigationTitle("Connect Four")
+        .onChange(of: model.isOver) { _, over in
+            if over { recordResult() }
+        }
+    }
+
+    private func recordResult() {
+        let outcome: String
+        switch model.winner {
+        case .red: outcome = "red"
+        case .yellow: outcome = "yellow"
+        default: outcome = "draw"
+        }
+        StatsStore.record(gameId: "connect_four", players: ["You", "CPU"], outcome: outcome)
     }
 
     private var statusText: String {

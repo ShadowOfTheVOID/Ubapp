@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.ubapp.join.LoopbackGuest
 import com.example.ubapp.social.GuestId
 import com.example.ubapp.social.HostServer
+import com.example.ubapp.stats.StatsStore
 import com.example.ubapp.tutorials.GameTutorials
 import org.json.JSONArray
 import org.json.JSONObject
@@ -12,9 +13,11 @@ import org.json.JSONObject
 class ImposterServer(context: Context, val hostName: String = "Host") {
     val engine = ImposterEngine()
     private val server = HostServer(html = HostServer.htmlAsset(context, "imposter_browser.html"), ctx = context)
+    private val appCtx = context.applicationContext
     private val guestToPlayer = HashMap<GuestId, String>()
     private val playerToGuest = HashMap<String, GuestId>()
     var onStateChange: (() -> Unit)? = null
+    private var statRecorded = false
 
     init {
         server.onMessage = ::onMessage
@@ -52,7 +55,8 @@ class ImposterServer(context: Context, val hostName: String = "Host") {
     }
     fun hostVote(targetId: String?) = applyVote(HOST_ID, targetId)
     fun hostNewRound() {
-        engine.reset(); broadcast(JSONObject().put("type", "reset")); broadcastLobby(); emit()
+        engine.reset(); statRecorded = false
+        broadcast(JSONObject().put("type", "reset")); broadcastLobby(); emit()
     }
     fun hostCallTutorialVote() = openTutorialVote()
     fun hostTutorialVote(yes: Boolean) = submitTutorialVote(HOST_ID, yes)
@@ -139,6 +143,14 @@ class ImposterServer(context: Context, val hostName: String = "Host") {
             .put("maxImposterCount", engine.maxImposterCount))
     }
     private fun broadcastResult() {
+        if (!statRecorded) {
+            statRecorded = true
+            StatsStore.record(
+                appCtx, "imposter",
+                engine.players.values.map { it.name },
+                if (engine.winner == ImposterWinner.TOWN) "town" else "imposter",
+            )
+        }
         val arr = JSONArray()
         for (p in engine.players.values) {
             arr.put(JSONObject().put("id", p.id).put("name", p.name).put("isImposter", p.isImposter))

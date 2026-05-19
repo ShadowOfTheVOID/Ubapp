@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.ubapp.join.LoopbackGuest
 import com.example.ubapp.social.GuestId
 import com.example.ubapp.social.HostServer
+import com.example.ubapp.stats.StatsStore
 import com.example.ubapp.tutorials.GameTutorials
 import org.json.JSONArray
 import org.json.JSONObject
@@ -16,10 +17,12 @@ import org.json.JSONObject
 class MafiaServer(context: Context, val hostName: String = "Host") {
     val engine = MafiaEngine()
     private val server = HostServer(html = HostServer.htmlAsset(context, "mafia_browser.html"), ctx = context)
+    private val appCtx = context.applicationContext
     private val guestToPlayer = HashMap<GuestId, String>()
     private val playerToGuest = HashMap<String, GuestId>()
 
     var onStateChange: (() -> Unit)? = null
+    private var statRecorded = false
 
     init {
         server.onMessage = ::onMessage
@@ -189,6 +192,14 @@ class MafiaServer(context: Context, val hostName: String = "Host") {
         })
     }
     private fun broadcastGameOver() {
+        if (!statRecorded) {
+            statRecorded = true
+            StatsStore.record(
+                appCtx, "mafia",
+                engine.players.values.map { it.name },
+                if (engine.winner == MafiaWinner.TOWN) "town" else "mafia",
+            )
+        }
         val roles = JSONObject()
         for (p in engine.players.values) roles.put(p.id, p.role!!.name.lowercase())
         broadcast(JSONObject()

@@ -12,6 +12,7 @@ final class CrazyEightsServer {
     private var playerToGuest: [String: GuestId] = [:]
 
     var onStateChange: (() -> Void)?
+    private var statRecorded = false
 
     init(server: HostServer? = nil, hostName: String = "Host") {
         self.server = server ?? HostServer(html: HostServer.htmlResource(named: "crazy_eights_browser"))
@@ -66,6 +67,7 @@ final class CrazyEightsServer {
     }
     func hostNewGame() {
         engine.reset()
+        statRecorded = false
         broadcast(["type": "reset"])
         broadcastLobby(); emit()
     }
@@ -202,6 +204,13 @@ final class CrazyEightsServer {
         }
     }
     private func broadcastOver() {
+        if !statRecorded {
+            statRecorded = true
+            var names: [String] = []
+            if let wid = engine.winnerId, let w = engine.players[wid] { names.append(w.name) }
+            for p in engine.players.values where p.id != engine.winnerId { names.append(p.name) }
+            StatsStore.record(gameId: "crazy_eights", players: names, outcome: "win")
+        }
         broadcast([
             "type": "over",
             "winnerId": engine.winnerId as Any,

@@ -9,9 +9,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ubapp.stats.StatsStore
 import com.example.ubapp.theme.UbappTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -22,6 +24,18 @@ fun TicTacToeScreen() {
     var model by remember { mutableStateOf(TicTacToeModel()) }
     var thinking by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val ctx = LocalContext.current
+
+    LaunchedEffect(model.isOver) {
+        if (model.isOver) {
+            val outcome = when (model.winner) {
+                Mark.X -> "x"
+                Mark.O -> "o"
+                else -> "draw"
+            }
+            StatsStore.record(ctx.applicationContext, "tic_tac_toe", listOf("You", "CPU"), outcome)
+        }
+    }
 
     fun snapshot() = model.copy().also { it.current = model.current }
     fun mutate(block: TicTacToeModel.() -> Unit) {

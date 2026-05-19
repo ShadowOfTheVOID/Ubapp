@@ -14,6 +14,7 @@ final class SecretHitlerServer {
     private var playerToGuest: [String: GuestId] = [:]
 
     var onStateChange: (() -> Void)?
+    private var statRecorded = false
 
     init(server: HostServer? = nil, hostName: String = "Host") {
         self.server = server ?? HostServer(html: HostServer.htmlResource(named: "secret_hitler_browser"))
@@ -331,6 +332,14 @@ final class SecretHitlerServer {
     }
 
     private func broadcastGameOver() {
+        if !statRecorded {
+            statRecorded = true
+            StatsStore.record(
+                gameId: "secret_hitler",
+                players: engine.players.values.map(\.name),
+                outcome: engine.winner?.rawValue ?? "unknown",
+            )
+        }
         var roles: [String: String] = [:]
         for p in engine.players.values { if let r = p.role { roles[p.id] = r.rawValue } }
         broadcast([

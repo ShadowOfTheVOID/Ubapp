@@ -13,6 +13,8 @@ final class TagSession {
     private var peerNames: [String: String] = [:]
     private var detector: ProximityDetector?
     private var hotPotatoTimer: DispatchSourceTimer?
+    private var isHost = false
+    private var statRecorded = false
 
     var onStateChange: ((TagState) -> Void)?
 
@@ -29,6 +31,7 @@ final class TagSession {
     /// Host: pick the starting "it", broadcast Start, kick off the round.
     func startHosting(variant: TagVariant, peerNames: [String: String],
                       durationOverrideSec: Int? = nil) {
+        self.isHost = true
         self.peerNames = peerNames
         let ids = Array(peerNames.keys).shuffled()
         guard let first = ids.first else { return }
@@ -117,6 +120,7 @@ final class TagSession {
             guard let self else { return }
             if let end = self.engine.hotPotatoTimeout() {
                 self.transport.send(.end(reason: end.reason, winnerId: end.winnerId))
+                self.recordTagResult(reason: end.reason)
                 self.emit()
             }
         }
@@ -124,7 +128,32 @@ final class TagSession {
         hotPotatoTimer = t
     }
 
-    private func emit() { if let s = engine.state { onStateChange?(s) } }
+    private func emit() {
+        if let s = engine.state {
+            if s.isOver { recordTagResult(reason: s.endReason) }
+            onStateChange?(s)
+        }
+    }
+
+    /// Records the finished round once, host-only. Tag is app-peer only; the
+    /// host is the device that called `startHosting`.
+    private func recordTagResult(reason: String?) {
+        guard isHost, !statRecorded, let s = engine.state else { return }
+        statRecorded = true
+        StatsStore.record(
+            gameId: "tag",
+            players: s.players.values.map(\.displayName),
+            outcome: Self.tagOutcome(reason),
+        )
+    }
+
+    private static func tagOutcome(_ reason: String?) -> String {
+        switch reason {
+        case "all_frozen": return "it"
+        case "last_survivor", "hot_potato_timeout": return "runners"
+        default: return "timeout"
+        }
+    }
 
     private func shutdownRound() {
         hotPotatoTimer?.cancel(); hotPotatoTimer = nil

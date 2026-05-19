@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.ubapp.join.LoopbackGuest
 import com.example.ubapp.social.GuestId
 import com.example.ubapp.social.HostServer
+import com.example.ubapp.stats.StatsStore
 import com.example.ubapp.tutorials.GameTutorials
 import org.json.JSONArray
 import org.json.JSONObject
@@ -12,9 +13,11 @@ import org.json.JSONObject
 class WerewolfServer(context: Context, val hostName: String = "Host") {
     val engine = WerewolfEngine()
     private val server = HostServer(html = HostServer.htmlAsset(context, "werewolf_browser.html"), ctx = context)
+    private val appCtx = context.applicationContext
     private val guestToPlayer = HashMap<GuestId, String>()
     private val playerToGuest = HashMap<String, GuestId>()
     var onStateChange: (() -> Unit)? = null
+    private var statRecorded = false
 
     init { server.onMessage = ::onMessage; server.onLeave = ::onLeave }
     companion object { const val HOST_ID = "host" }
@@ -194,6 +197,14 @@ class WerewolfServer(context: Context, val hostName: String = "Host") {
             .put("alive", publicArr(engine.alive)).put("dead", publicArr(engine.dead)))
     }
     private fun broadcastGameOver() {
+        if (!statRecorded) {
+            statRecorded = true
+            StatsStore.record(
+                appCtx, "werewolf",
+                engine.players.values.map { it.name },
+                if (engine.winner == WerewolfWinner.TOWN) "town" else "werewolves",
+            )
+        }
         val roles = JSONObject()
         for (p in engine.players.values) roles.put(p.id, roleName(p.role!!))
         broadcast(JSONObject().put("type", "game_over")

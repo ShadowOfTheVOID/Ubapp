@@ -28,6 +28,7 @@ struct MainMenuView: View {
 
                     MenuSection(title: "More", subtitle: nil) {
                         gameTile("Social", "Friends, chat, presence demo.", systemImage: "person.2.fill") { SocialView() }
+                        gameTile("Stat board", "Play counts and recent games.", systemImage: "chart.bar.fill") { StatBoardView() }
                     }
                 }
                 .padding(20)

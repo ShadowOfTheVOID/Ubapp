@@ -13,7 +13,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.example.ubapp.stats.StatsStore
 import com.example.ubapp.theme.UbappTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -24,6 +26,18 @@ fun ConnectFourScreen() {
     var model by remember { mutableStateOf(ConnectFourModel()) }
     var thinking by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val ctx = LocalContext.current
+
+    LaunchedEffect(model.isOver) {
+        if (model.isOver) {
+            val outcome = when (model.winner) {
+                Disc.RED -> "red"
+                Disc.YELLOW -> "yellow"
+                else -> "draw"
+            }
+            StatsStore.record(ctx.applicationContext, "connect_four", listOf("You", "CPU"), outcome)
+        }
+    }
 
     fun snapshot(): ConnectFourModel {
         val m = ConnectFourModel()
