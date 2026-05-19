@@ -2,6 +2,7 @@ import Foundation
 import Network
 import CryptoKit
 import Security
+import UIKit
 
 /// Identifies one connected guest (browser tab or app instance) for the
 /// duration of the connection. Stable across messages from the same socket.
@@ -45,6 +46,13 @@ final class HostServer {
 
     private(set) var hostIp: String?
     private(set) var boundPort: UInt16?
+
+    /// How long the host app may stay backgrounded before hosting is torn
+    /// down. Guests connected over a real socket would otherwise sit in a
+    /// dead game while the host is away.
+    private let backgroundGrace: TimeInterval = 300
+    private var backgroundStopWork: DispatchWorkItem?
+    private var lifecycleObservers: [NSObjectProtocol] = []
 
     /// The host plays as a normal player through an in-process pipe instead
     /// of a TCP socket. When set, `send(to:)`/`broadcast` deliver to this
@@ -98,6 +106,7 @@ final class HostServer {
         self.listener = listener
         self.hostIp = LocalNetwork.localIPv4()
         self.boundPort = port.rawValue
+        observeAppLifecycle()
 
         guard let ip = hostIp else { return nil }
         let scheme = tls != nil ? "https" : "http"
@@ -144,6 +153,45 @@ final class HostServer {
     }
 
     private func dlog(_ s: String) { HostDiagnostics.shared.log(s) }
+
+    // MARK: - App lifecycle
+
+    /// Tears hosting down if the host app stays backgrounded past
+    /// `backgroundGrace`. A brief background (notification, glance) is fine —
+    /// the timer is cancelled the moment the app returns to the foreground.
+    private func observeAppLifecycle() {
+        let nc = NotificationCenter.default
+        let bg = nc.addObserver(forName: UIApplication.didEnterBackgroundNotification,
+                                object: nil, queue: .main) { [weak self] _ in
+            self?.scheduleBackgroundStop()
+        }
+        let fg = nc.addObserver(forName: UIApplication.willEnterForegroundNotification,
+                                object: nil, queue: .main) { [weak self] _ in
+            self?.cancelBackgroundStop()
+        }
+        lifecycleObservers = [bg, fg]
+    }
+
+    private func scheduleBackgroundStop() {
+        cancelBackgroundStop()
+        dlog("app backgrounded — will stop hosting in \(Int(backgroundGrace))s if still away")
+        let work = DispatchWorkItem { [weak self] in
+            self?.dlog("background grace elapsed — stopping hosting")
+            self?.stop()
+        }
+        backgroundStopWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + backgroundGrace, execute: work)
+    }
+
+    private func cancelBackgroundStop() {
+        backgroundStopWork?.cancel()
+        backgroundStopWork = nil
+    }
+
+    private func removeLifecycleObservers() {
+        lifecycleObservers.forEach { NotificationCenter.default.removeObserver($0) }
+        lifecycleObservers.removeAll()
+    }
 
     private func accept(_ conn: NWConnection) {
         dlog("accept: new connection")
@@ -375,6 +423,8 @@ final class HostServer {
     private func closeFrame() -> Data { Data([0x88, 0x02, 0x03, 0xE9]) }
 
     func stop() {
+        cancelBackgroundStop()
+        removeLifecycleObservers()
         let entries = withConnections { conns -> [(GuestId, NWConnection)] in
             let all = Array(conns)
             conns.removeAll()
