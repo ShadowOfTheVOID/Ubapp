@@ -1,6 +1,11 @@
 package com.example.ubapp.social
 
+import android.app.Activity
+import android.app.Application
 import android.content.Context
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import fi.iki.elonen.NanoHTTPD
 import fi.iki.elonen.NanoWSD
 import java.net.NetworkInterface
@@ -40,6 +45,16 @@ class HostServer(
 
     var hostIp: String? = null; private set
 
+    /** Tears hosting down if the host app stays backgrounded this long, so
+     *  socket guests don't sit in a dead game while the host is away. A
+     *  brief background is fine — the timer is cancelled on return. */
+    private val backgroundGraceMs = 300_000L
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var startedActivities = 0
+    private var backgroundStop: Runnable? = null
+    private var lifecycleCallbacks: Application.ActivityLifecycleCallbacks? = null
+    @Volatile private var running = false
+
     /** The host plays as a normal player through an in-process pipe instead
      *  of a TCP socket. When set, [send]/[broadcast] deliver to this sink and
      *  [injectFromLocal] feeds frames back in as if received. */
@@ -71,6 +86,8 @@ class HostServer(
         appCtx?.let { com.example.ubapp.settings.AppSettings.diagnosticsEnabled(it) }
         if (sslFactory != null) makeSecure(sslFactory, null)
         start(SOCKET_READ_TIMEOUT, false)
+        running = true
+        observeAppLifecycle()
         hostIp = localIPv4()
         val scheme = if (sslFactory != null) "https" else "http"
         dlog("startServer: tls=${sslFactory != null} ip=$hostIp")
@@ -78,6 +95,10 @@ class HostServer(
     }
 
     fun stopServer() {
+        if (!running) return
+        running = false
+        cancelBackgroundStop()
+        removeLifecycleObserver()
         val kicked = synchronized(sockets) {
             val snapshot = sockets.keys.toList()
             sockets.values.forEach { runCatching { it.close(WebSocketFrame.CloseCode.GoingAway, "stop", false) } }
@@ -92,6 +113,48 @@ class HostServer(
         // idempotent, so a late onClose is a harmless no-op.
         kicked.forEach { onLeave?.invoke(it) }
         stop()
+    }
+
+    private fun observeAppLifecycle() {
+        val app = appCtx as? Application ?: return
+        val cb = object : Application.ActivityLifecycleCallbacks {
+            override fun onActivityStarted(activity: Activity) {
+                startedActivities++
+                cancelBackgroundStop()
+            }
+            override fun onActivityStopped(activity: Activity) {
+                startedActivities--
+                if (startedActivities <= 0) scheduleBackgroundStop()
+            }
+            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
+            override fun onActivityResumed(activity: Activity) {}
+            override fun onActivityPaused(activity: Activity) {}
+            override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
+            override fun onActivityDestroyed(activity: Activity) {}
+        }
+        lifecycleCallbacks = cb
+        app.registerActivityLifecycleCallbacks(cb)
+    }
+
+    private fun scheduleBackgroundStop() {
+        cancelBackgroundStop()
+        dlog("app backgrounded — will stop hosting in ${backgroundGraceMs / 1000}s if still away")
+        val r = Runnable {
+            dlog("background grace elapsed — stopping hosting")
+            stopServer()
+        }
+        backgroundStop = r
+        mainHandler.postDelayed(r, backgroundGraceMs)
+    }
+
+    private fun cancelBackgroundStop() {
+        backgroundStop?.let { mainHandler.removeCallbacks(it) }
+        backgroundStop = null
+    }
+
+    private fun removeLifecycleObserver() {
+        lifecycleCallbacks?.let { (appCtx as? Application)?.unregisterActivityLifecycleCallbacks(it) }
+        lifecycleCallbacks = null
     }
 
     override fun serveHttp(session: IHTTPSession): Response {

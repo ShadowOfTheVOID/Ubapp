@@ -65,6 +65,19 @@
 (() => {
   const root = document.getElementById('root');
   const ws = new WebSocket(`wss://${location.host}/ws`);
+
+  // Keep the screen awake while connected so the device's inactivity
+  // timeout can't sleep the screen, drop this socket and kick the player.
+  let wakeLock = null;
+  async function requestWakeLock() {
+    try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+  }
+  if ('wakeLock' in navigator) {
+    requestWakeLock();
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') requestWakeLock();
+    });
+  }
   const state = { me:null, phase:'lobby', players:[], category:'', word:null, isImposter:false, hideCategory:false, isDecoy:false, picked:null, voted:false, result:null,
     options:{imposterCount:1, decoyWord:false, hideCategory:false, mixedPool:false, maxImposterCount:1},
     tutorial:{isOpen:false,yesCount:0,noCount:0,eligibleCount:0,result:null,tutorialShown:false}, tutorialContent:null, myTutorialVote:null };

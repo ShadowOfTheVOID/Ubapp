@@ -140,6 +140,19 @@
   const root = document.getElementById('root');
   const ws = new WebSocket(`wss://${location.host}/ws`);
 
+  // Keep the screen awake while connected so the device's inactivity
+  // timeout can't sleep the screen, drop this socket and kick the player.
+  let wakeLock = null;
+  async function requestWakeLock() {
+    try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+  }
+  if ('wakeLock' in navigator) {
+    requestWakeLock();
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') requestWakeLock();
+    });
+  }
+
   let state = {
     connected: false,
     me: null,                 // {id, name}

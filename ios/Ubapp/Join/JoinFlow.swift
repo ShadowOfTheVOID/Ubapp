@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Top-level entry for "Join a game" — the app-installed peer flow. Takes a
 /// host address (join code or raw IP), opens a `GuestClient`, waits for the
@@ -27,7 +28,11 @@ struct JoinFlowView: View {
             }
         }
         .navigationTitle("Join a game")
-        .onDisappear { client?.close() }
+        .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
+        .onDisappear {
+            UIApplication.shared.isIdleTimerDisabled = false
+            client?.close()
+        }
     }
 
     @ViewBuilder private var joinForm: some View {

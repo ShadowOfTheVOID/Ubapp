@@ -1,5 +1,7 @@
 package com.example.ubapp.join
 
+import android.app.Activity
+import android.view.WindowManager
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -41,7 +43,13 @@ fun JoinFlowScreen() {
     val queued = remember { mutableStateListOf<JSONObject>() }
 
     DisposableEffect(Unit) {
-        onDispose { client?.close() }
+        // Keep the screen awake while joined so the device's inactivity
+        // timeout can't sleep the screen, drop the socket and kick us.
+        (ctx as? Activity)?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        onDispose {
+            (ctx as? Activity)?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            client?.close()
+        }
     }
 
     val game = welcomedGame; val yid = yourId; val yn = yourName; val c = client
