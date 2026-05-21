@@ -16,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -90,6 +91,19 @@ fun CheatGuestScreen(ctx: GuestContext) {
                         ElevatedCard(Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(12.dp),
                                    horizontalAlignment = Alignment.CenterHorizontally) {
+                                if (s.pileSize > 0) {
+                                    Box(modifier = Modifier.size(80.dp, 90.dp),
+                                        contentAlignment = Alignment.Center) {
+                                        // Jittered stack of card backs.
+                                        for (i in 0 until minOf(s.pileSize, 4)) {
+                                            Box(modifier = Modifier
+                                                .offset(x = (i * 1.5f).dp, y = (i * 1.5f).dp)
+                                                .rotate(if (i % 2 == 0) -(i + 1).toFloat() else (i + 1).toFloat())) {
+                                                com.example.ubapp.games.cards.GridCardBack(width = 56.dp)
+                                            }
+                                        }
+                                    }
+                                }
                                 Text("Pile: ${s.pileSize} card${if (s.pileSize == 1) "" else "s"}",
                                      style = MaterialTheme.typography.bodyMedium)
                                 val lp = s.lastPlay

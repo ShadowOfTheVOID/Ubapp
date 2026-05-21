@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -102,6 +103,16 @@ private fun TablePhase(
     }
     ElevatedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            if (s.marketSize > 0) {
+                Box(modifier = Modifier.size(96.dp, 108.dp),
+                    contentAlignment = Alignment.Center) {
+                    for (i in 0 until minOf(s.marketSize, 4)) {
+                        Box(modifier = Modifier.offset(x = (i * 1.5f).dp, y = (i * 1.5f).dp)) {
+                            com.example.ubapp.games.cards.GridCardBack(width = 70.dp)
+                        }
+                    }
+                }
+            }
             Text("Market: ${s.marketSize} card${if (s.marketSize == 1) "" else "s"} face down",
                  style = MaterialTheme.typography.bodyMedium)
             Text(if (isMyTurn) "Your turn — Trade, Buy, or Sell"
@@ -226,6 +237,24 @@ private fun TradeCard(
                     }
                 }
             } else {
+                // Pre-reveal: face-down placeholders so the table can see
+                // who's committed without revealing the cards.
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(proposerName, style = MaterialTheme.typography.bodySmall)
+                        Box(modifier = Modifier.alpha(if (t.proposerCommitted) 1f else 0.3f)) {
+                            com.example.ubapp.games.cards.GridCardBack(width = 70.dp)
+                        }
+                    }
+                    Text("?", style = MaterialTheme.typography.headlineMedium)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(targetName, style = MaterialTheme.typography.bodySmall)
+                        Box(modifier = Modifier.alpha(if (t.targetCommitted) 1f else 0.3f)) {
+                            com.example.ubapp.games.cards.GridCardBack(width = 70.dp)
+                        }
+                    }
+                }
                 if (imTarget) {
                     Text("$proposerName is proposing a trade. Commit a card to counter.",
                          style = MaterialTheme.typography.bodySmall)

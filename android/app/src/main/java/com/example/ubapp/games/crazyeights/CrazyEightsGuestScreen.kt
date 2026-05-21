@@ -92,20 +92,19 @@ fun CrazyEightsGuestScreen(ctx: GuestContext) {
                            horizontalAlignment = Alignment.CenterHorizontally) {
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier
-                                .background(Color(0xFF0D2A1F), RoundedCornerShape(8.dp))
-                                .size(70.dp, 100.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center) {
-                                Text("${s.drawCount}",
-                                     style = MaterialTheme.typography.titleLarge,
-                                     color = Color(0xFF9DA7B3))
-                                Text("draw", style = MaterialTheme.typography.labelSmall,
-                                     color = Color(0xFF9DA7B3))
+                            Box(contentAlignment = Alignment.Center) {
+                                com.example.ubapp.games.cards.GridCardBack(width = 64.dp)
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("${s.drawCount}",
+                                         style = MaterialTheme.typography.titleLarge,
+                                         color = Color.White)
+                                    Text("draw", style = MaterialTheme.typography.labelSmall,
+                                         color = Color.White.copy(alpha = 0.7f))
+                                }
                             }
                             val top = s.topCard
                             if (top != null) CardFace(top)
-                            else Spacer(Modifier.size(70.dp, 100.dp))
+                            else Spacer(Modifier.size(64.dp, 90.dp))
                         }
                         Text("Active suit: ${suitGlyph(s.activeSuit ?: s.topCard?.suit ?: "")}",
                              style = MaterialTheme.typography.bodyMedium)

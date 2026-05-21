@@ -92,6 +92,17 @@ struct BluffMarketGuestView: View {
     @ViewBuilder private var marketCard: some View {
         GroupBox {
             VStack(spacing: 4) {
+                ZStack {
+                    if model.marketSize > 0 {
+                        ForEach(0..<min(model.marketSize, 4), id: \.self) { i in
+                            GridCardBack(width: 70)
+                                .offset(x: CGFloat(i) * 1.5, y: CGFloat(i) * 1.5)
+                        }
+                    } else {
+                        Color.clear.frame(width: 70, height: 98)
+                    }
+                }
+                .frame(height: 104)
                 Text("Market: \(model.marketSize) card\(model.marketSize == 1 ? "" : "s") face down")
                     .font(.subheadline)
                 Text(isMyTurn ? "Your turn — Trade, Buy, or Sell" : "\(currentName)'s turn")
@@ -207,6 +218,21 @@ struct BluffMarketGuestView: View {
                         }
                     }
                 } else {
+                    // Pre-reveal: show face-down placeholders so players can
+                    // see who's committed without revealing the cards.
+                    HStack(spacing: 16) {
+                        VStack(spacing: 4) {
+                            Text(proposerName).font(.caption)
+                            GridCardBack(width: 70)
+                                .opacity(t.proposerCommitted ? 1.0 : 0.3)
+                        }
+                        Text("?").font(.title)
+                        VStack(spacing: 4) {
+                            Text(targetName).font(.caption)
+                            GridCardBack(width: 70)
+                                .opacity(t.targetCommitted ? 1.0 : 0.3)
+                        }
+                    }
                     if imTarget && t.targetCardId == nil {
                         Text("\(proposerName) is proposing a trade. Commit a card to counter.")
                             .font(.caption)

@@ -24,12 +24,17 @@
 
   .table { background:var(--table); border-radius:18px; padding:18px; text-align:center; margin-bottom:12px; box-shadow: inset 0 0 60px rgba(0,0,0,.3); }
   .top { display:flex; justify-content:center; align-items:center; gap:18px; margin-bottom:6px; }
-  .pile { width:88px; height:128px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:36px; }
-  .pile.draw { background:#0d2a1f; border:2px dashed rgba(255,255,255,.25); color:rgba(255,255,255,.4); cursor:pointer; }
+  .pile { width:88px; height:124px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:32px; position:relative; }
+  .pile.draw { background:#000; border:1px solid rgba(255,255,255,0.10); color:#fff; cursor:pointer;
+    background-image: radial-gradient(circle at center, transparent 0, transparent 1px, transparent 2px),
+      radial-gradient(circle, rgba(255,255,255,0.45) 1px, transparent 1.5px);
+    background-size: auto, 9px 9px;
+    background-position: center, 6px 6px; }
   .pile.draw.disabled { cursor:not-allowed; opacity:.5; }
-  .pile.discard { background:#fff; color:#000; }
-  .pile.discard.red { color:#c62828; }
-  .pile small { display:block; font-size:11px; color:var(--muted); font-weight:500; margin-top:4px; }
+  .pile.draw small { color:rgba(255,255,255,0.75); }
+  .pile.discard { background:#101013; color:#F4F4F6; border:1px solid rgba(255,255,255,0.10); }
+  .pile.discard.red { color:#FF3D5A; }
+  .pile small { display:block; font-size:11px; font-weight:500; margin-top:4px; }
   .turn-info { font-size:14px; color:rgba(255,255,255,.85); margin-top:8px; }
   .active-suit { font-size:18px; }
 

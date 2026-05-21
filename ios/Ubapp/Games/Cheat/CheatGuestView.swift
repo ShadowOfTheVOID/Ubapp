@@ -87,6 +87,18 @@ struct CheatGuestView: View {
     @ViewBuilder private var pileCard: some View {
         GroupBox {
             VStack(spacing: 6) {
+                ZStack {
+                    if model.pileSize > 0 {
+                        ForEach(0..<min(model.pileSize, 4), id: \.self) { i in
+                            GridCardBack(width: 56)
+                                .rotationEffect(.degrees(Double(i % 2 == 0 ? -1 : 1) * Double(i + 1)))
+                                .offset(x: CGFloat(i) * 1.5, y: CGFloat(i) * 1.5)
+                        }
+                    } else {
+                        Color.clear.frame(width: 56, height: 78)
+                    }
+                }
+                .frame(height: 84)
                 Text("Pile: \(model.pileSize) card\(model.pileSize == 1 ? "" : "s")")
                     .font(.subheadline)
                 if let lp = model.lastPlay {

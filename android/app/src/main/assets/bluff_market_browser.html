@@ -54,6 +54,17 @@
   .card.selected { transform:translateY(-10px); box-shadow:0 8px 16px rgba(0,0,0,.5); outline:3px solid var(--accent); }
 
   .trade { background:rgba(255,255,255,.06); border:1px solid var(--line); padding:12px; border-radius:12px; margin:12px 0; }
+  .market-stack { position:relative; height:108px; margin:8px auto; width:80px; }
+  .market-stack .back { position:absolute; width:76px; height:104px; border-radius:6px;
+    background:#000; border:1px solid rgba(255,255,255,0.10);
+    background-image: radial-gradient(circle, rgba(255,255,255,0.45) 1px, transparent 1.5px);
+    background-size: 9px 9px; background-position: 6px 6px;
+    box-shadow:0 8px 24px -8px rgba(0,0,0,0.35); }
+  .commit-back { width:64px; height:90px; border-radius:6px;
+    background:#000; border:1px solid rgba(255,255,255,0.10);
+    background-image: radial-gradient(circle, rgba(255,255,255,0.45) 1px, transparent 1.5px);
+    background-size: 8px 8px; background-position: 5px 5px;
+    box-shadow:0 8px 24px -8px rgba(0,0,0,0.35); }
 
   .tutorial-card { background:linear-gradient(160deg, #1d4a36, #0d2a1f); color:#e6edf3; padding:20px; border-radius:14px; margin-bottom:12px; }
   .tutorial-card h2 { color:#6ee7a8; font-size:18px; margin:0 0 8px; letter-spacing:0; text-transform:none; }
@@ -234,6 +245,7 @@
     root.innerHTML = `
       <div class="players">${playersBar}</div>
       <div class="table">
+        ${state.marketSize > 0 ? `<div class="market-stack">${Array.from({length: Math.min(state.marketSize, 4)}, (_, i) => `<div class="back" style="transform: translate(${i*1.5}px, ${i*1.5}px)"></div>`).join('')}</div>` : ''}
         <div>Market: ${state.marketSize} card${state.marketSize===1?'':'s'} face down</div>
         <div class="turn">${isMyTurn ? 'Your turn — Trade, Buy, or Sell' : esc(nameOf(state.currentId))+'’s turn'}</div>
         ${state.lastEvent ? `<div style="opacity:.7;font-size:13px;margin-top:8px">${esc(state.lastEvent)}</div>` : ''}
@@ -266,6 +278,13 @@
         }
       }
     } else {
+      // Pre-reveal: show face-down placeholders so everyone can see who's
+      // committed without revealing the cards.
+      body += `<div class="row" style="align-items:center;justify-content:center;gap:16px;margin-bottom:8px">
+        <div style="text-align:center"><div style="font-size:11px;opacity:.7;margin-bottom:4px">${esc(nameOf(t.proposerId))}</div><div class="commit-back" style="opacity:${t.proposerCommitted ? 1 : 0.3}"></div></div>
+        <div style="font-size:24px;font-weight:700">?</div>
+        <div style="text-align:center"><div style="font-size:11px;opacity:.7;margin-bottom:4px">${esc(nameOf(t.targetId))}</div><div class="commit-back" style="opacity:${t.targetCommitted ? 1 : 0.3}"></div></div>
+      </div>`;
       if (imTarget) {
         body += `<p>${esc(nameOf(t.proposerId))} is proposing a trade. Commit a card from your hand below to counter.</p>`;
         body += `<div class="row"><button id="counter" ${state.selectedId?'':'disabled'}>Commit selected</button><button id="decline" class="danger">Decline</button></div>`;

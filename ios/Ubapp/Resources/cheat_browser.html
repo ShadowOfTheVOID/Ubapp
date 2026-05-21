@@ -32,6 +32,12 @@
   .pile-info { font-size:14px; color:rgba(255,255,255,.85); margin:4px 0; }
   .claim { font-size:18px; font-weight:700; margin:4px 0; }
   .expect { font-size:13px; color:rgba(255,255,255,.7); }
+  .pile-stack { position:relative; height:84px; margin:8px auto 4px; width:60px; }
+  .pile-stack .back { position:absolute; width:56px; height:78px; border-radius:6px;
+    background:#000; border:1px solid rgba(255,255,255,0.10);
+    background-image: radial-gradient(circle, rgba(255,255,255,0.45) 1px, transparent 1.5px);
+    background-size: 9px 9px; background-position: 6px 6px;
+    box-shadow:0 8px 24px -8px rgba(0,0,0,0.35); }
 
   .players { display:flex; gap:8px; overflow-x:auto; padding:8px 0; }
   .pchip { background:#21262d; padding:8px 12px; border-radius:10px; min-width:90px; flex:0 0 auto; }
@@ -232,6 +238,7 @@
     root.innerHTML = `
       <div class="players">${playersBar}</div>
       <div class="table">
+        ${state.pileSize > 0 ? `<div class="pile-stack">${Array.from({length: Math.min(state.pileSize, 4)}, (_, i) => `<div class="back" style="transform: translate(${i*1.5}px, ${i*1.5}px) rotate(${i % 2 === 0 ? -(i+1) : (i+1)}deg)"></div>`).join('')}</div>` : ''}
         <div class="pile-info">Pile: ${state.pileSize} card${state.pileSize===1?'':'s'}</div>
         ${claimLine}
         <div class="expect">Next expected: ${rankName(state.expectedRank)}</div>

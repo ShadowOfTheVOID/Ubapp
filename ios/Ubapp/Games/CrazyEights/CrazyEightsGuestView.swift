@@ -95,18 +95,22 @@ struct CrazyEightsGuestView: View {
         GroupBox {
             VStack {
                 HStack(spacing: 24) {
-                    VStack {
-                        Text("\(model.drawCount)").font(.title2.bold())
-                        Text("draw").font(.caption2).foregroundStyle(.secondary)
+                    ZStack {
+                        GridCardBack(width: 64)
+                        VStack(spacing: 0) {
+                            Text("\(model.drawCount)")
+                                .font(.title2.bold())
+                                .foregroundStyle(.white)
+                            Text("draw")
+                                .font(.caption2)
+                                .foregroundStyle(Color.white.opacity(0.7))
+                        }
                     }
-                    .frame(width: 80, height: 110)
-                    .background(Color.white.opacity(0.04))
-                    .cornerRadius(10)
 
                     if let top = model.topCard {
-                        cardView(top, faceUp: true).frame(width: 80, height: 110)
+                        cardView(top, faceUp: true)
                     } else {
-                        Color.clear.frame(width: 80, height: 110)
+                        Color.clear.frame(width: 64, height: 90)
                     }
                 }
                 Text("Active suit: \(suitGlyph(model.activeSuit ?? model.topCard?.suit ?? ""))")
