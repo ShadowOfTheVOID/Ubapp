@@ -39,14 +39,19 @@
 
   .hand { display:flex; flex-wrap:wrap; gap:6px; padding:8px; background:rgba(0,0,0,.2); border-radius:14px;
     justify-content:center; }
-  .card { width:80px; height:96px; background:#fff; color:#000; border-radius:10px; padding:6px; cursor:pointer; user-select:none;
+  .card { width:80px; height:112px; background:#101013; color:#F4F4F6; border-radius:6px; padding:6px; cursor:pointer; user-select:none;
+    border:1px solid rgba(255,255,255,0.10);
     display:flex; flex-direction:column; justify-content:center; align-items:center;
-    box-shadow:0 2px 4px rgba(0,0,0,.3); transition:transform .12s; font-weight:700; }
-  .card.bomb { background:var(--danger); color:#fff; }
-  .card.wild { background:var(--wild); color:#fff; }
+    box-shadow:0 8px 24px -8px rgba(0,0,0,0.35); transition:transform .12s;
+    font-family:-apple-system, system-ui, sans-serif; font-weight:800; letter-spacing:-0.04em; }
+  .card .val { font-size:36px; letter-spacing:-0.07em; line-height:1; }
+  .card .sub { font-size:8px; opacity:.55; letter-spacing:0.10em; margin-top:4px; font-weight:500;
+               font-family:'SF Mono','Roboto Mono',ui-monospace,monospace; text-transform:uppercase; }
+  .card.bomb { border:1px solid rgba(255,46,136,0.55); color:#FF3D5A; }
+  .card.bomb .val { color:#F4F4F6; }
+  .card.bomb .sub { color:rgba(255,46,136,0.85); letter-spacing:0.20em; }
+  .card.wild { border:1px solid rgba(126,63,242,0.55); color:#FF2E88; }
   .card.selected { transform:translateY(-10px); box-shadow:0 8px 16px rgba(0,0,0,.5); outline:3px solid var(--accent); }
-  .card .val { font-size:20px; }
-  .card .sub { font-size:10px; opacity:.8; }
 
   .trade { background:rgba(255,255,255,.06); border:1px solid var(--line); padding:12px; border-radius:12px; margin:12px 0; }
 
@@ -192,9 +197,12 @@
   function cardEl(c, opts={}){
     const sel = opts.selected ? 'selected' : '';
     const cls = ['card', c.kind === 'bomb' ? 'bomb' : (c.kind === 'wildcard' ? 'wild' : ''), sel].join(' ');
-    const sub = c.kind === 'bomb' ? '(-25)' : (c.kind === 'wildcard' ? 'wild' : 'pts');
     const attrs = opts.id !== false ? ` data-id="${c.id}"` : '';
-    return `<div class="${cls}"${attrs}><div class="val">${esc(c.label)}</div><div class="sub">${sub}</div></div>`;
+    let val, sub;
+    if (c.kind === 'bomb') { val = '−25'; sub = 'BOMB'; }
+    else if (c.kind === 'wildcard') { val = 'WILD'; sub = 'wild'; }
+    else { val = c.label; sub = c.value === 1 ? 'PT' : 'PTS'; }
+    return `<div class="${cls}"${attrs}><div class="val">${esc(val)}</div><div class="sub">${esc(sub)}</div></div>`;
   }
 
   function renderTable(){

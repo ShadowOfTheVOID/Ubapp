@@ -276,19 +276,17 @@ struct BluffMarketGuestView: View {
 
     @ViewBuilder
     private func bluffCardChip(_ c: BluffMarketGuestModel.Card) -> some View {
-        let bomb = c.kind == "bomb"
-        let wild = c.kind == "wildcard"
-        VStack(spacing: 4) {
-            Text(c.label).font(.title3.bold())
-            Text(bomb ? "(-25)" : (wild ? "wild" : "pts"))
-                .font(.caption2)
+        switch c.kind {
+        case "bomb":
+            BluffBombCard(width: 80)
+        case "wildcard":
+            // Wildcard reuses the bomb framing in magenta but with a "WILD"
+            // hero label — the shared component set doesn't have one yet so
+            // we render a minimal placeholder until the design lands.
+            BluffPointCard(value: 0, width: 80)
+        default:
+            BluffPointCard(value: c.value, width: 80)
         }
-        .padding(8)
-        .frame(width: 80, height: 96)
-        .background(bomb ? Color.red.opacity(0.85) : (wild ? Color.purple.opacity(0.8) : Color.white))
-        .foregroundStyle(bomb ? Color.white : (wild ? Color.white : Color.black))
-        .cornerRadius(10)
-        .shadow(radius: 2)
     }
 
     private var isMyTurn: Bool { model.currentId == ctx.yourId }

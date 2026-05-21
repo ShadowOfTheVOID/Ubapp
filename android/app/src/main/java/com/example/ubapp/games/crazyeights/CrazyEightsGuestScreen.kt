@@ -177,19 +177,13 @@ fun CrazyEightsGuestScreen(ctx: GuestContext) {
 
 @Composable
 private fun CardFace(c: CrazyEightsGuestState.Card) {
-    val red = c.suit == "diamonds" || c.suit == "hearts"
-    Box(Modifier
-        .size(70.dp, 100.dp)
-        .background(Color.White, RoundedCornerShape(8.dp))
-        .padding(6.dp)) {
-        Text(rankShort(c.rank),
-             style = MaterialTheme.typography.titleMedium,
-             color = if (red) Color(0xFFC62828) else Color.Black,
-             modifier = Modifier.align(Alignment.TopStart))
-        Text(suitGlyph(c.suit),
-             style = MaterialTheme.typography.headlineMedium,
-             color = if (red) Color(0xFFC62828) else Color.Black,
-             modifier = Modifier.align(Alignment.BottomEnd))
+    val suit = com.example.ubapp.games.cards.CardSuit.fromWire(c.suit)
+    if (suit != null) {
+        com.example.ubapp.games.cards.NoirCardFace(
+            rank = c.rank, suit = suit, width = 70.dp, wildAccent = true,
+        )
+    } else {
+        com.example.ubapp.games.cards.GridCardBack(width = 70.dp)
     }
 }
 

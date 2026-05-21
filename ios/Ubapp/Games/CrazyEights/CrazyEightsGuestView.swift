@@ -139,18 +139,11 @@ struct CrazyEightsGuestView: View {
 
     @ViewBuilder
     private func cardView(_ c: CrazyEightsGuestModel.Card, faceUp: Bool) -> some View {
-        let red = c.suit == "diamonds" || c.suit == "hearts"
-        VStack(alignment: .leading) {
-            Text(rankShort(c.rank)).font(.title3.bold())
-            Spacer()
-            HStack { Spacer(); Text(suitGlyph(c.suit)).font(.title) }
+        if let suit = CardSuit.fromWire(c.suit), faceUp {
+            NoirCardFace(rank: c.rank, suit: suit, width: 64, wildAccent: true)
+        } else {
+            GridCardBack(width: 64)
         }
-        .padding(6)
-        .frame(width: 64, height: 96)
-        .background(Color.white)
-        .foregroundStyle(red ? .red : .black)
-        .cornerRadius(10)
-        .shadow(radius: 2)
     }
 
     @ViewBuilder

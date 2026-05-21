@@ -213,21 +213,12 @@ fun CheatGuestScreen(ctx: GuestContext) {
 
 @Composable
 private fun CardFace(c: CheatGuestState.Card, small: Boolean = false) {
-    val red = c.suit == "diamonds" || c.suit == "hearts"
     val w = if (small) 48.dp else 70.dp
-    val h = if (small) 72.dp else 100.dp
-    Box(Modifier
-        .size(w, h)
-        .background(Color.White, RoundedCornerShape(8.dp))
-        .padding(6.dp)) {
-        Text(rankShort(c.rank),
-             style = MaterialTheme.typography.titleMedium,
-             color = if (red) Color(0xFFC62828) else Color.Black,
-             modifier = Modifier.align(Alignment.TopStart))
-        Text(suitGlyph(c.suit),
-             style = MaterialTheme.typography.headlineMedium,
-             color = if (red) Color(0xFFC62828) else Color.Black,
-             modifier = Modifier.align(Alignment.BottomEnd))
+    val suit = com.example.ubapp.games.cards.CardSuit.fromWire(c.suit)
+    if (suit != null) {
+        com.example.ubapp.games.cards.NoirCardFace(rank = c.rank, suit = suit, width = w)
+    } else {
+        com.example.ubapp.games.cards.GridCardBack(width = w)
     }
 }
 

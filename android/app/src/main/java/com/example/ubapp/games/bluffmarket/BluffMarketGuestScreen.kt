@@ -287,28 +287,10 @@ private fun ScoringPhase(s: BluffMarketGuestState, finalized: Boolean) {
 
 @Composable
 private fun BluffCardFace(c: BluffMarketGuestState.Card) {
-    val bomb = c.kind == "bomb"
-    val wild = c.kind == "wildcard"
-    val bg = when {
-        bomb -> Color(0xFFC62828)
-        wild -> Color(0xFF7E3FF2)
-        else -> Color.White
-    }
-    val fg = when {
-        bomb || wild -> Color.White
-        else -> Color.Black
-    }
-    Column(Modifier
-        .size(80.dp, 100.dp)
-        .background(bg, RoundedCornerShape(8.dp))
-        .padding(6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Text(c.label, style = MaterialTheme.typography.titleMedium,
-             fontWeight = FontWeight.Bold, color = fg)
-        Text(when { bomb -> "(-25)"; wild -> "wild"; else -> "pts" },
-             style = MaterialTheme.typography.labelSmall, color = fg)
+    when (c.kind) {
+        "bomb" -> com.example.ubapp.games.cards.BluffBombCard(width = 80.dp)
+        "wildcard" -> com.example.ubapp.games.cards.BluffPointCard(value = 0, width = 80.dp)
+        else -> com.example.ubapp.games.cards.BluffPointCard(value = c.value, width = 80.dp)
     }
 }
 

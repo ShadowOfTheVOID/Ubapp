@@ -40,9 +40,12 @@
 
   .hand { display:flex; flex-wrap:wrap; gap:6px; padding:8px; background:rgba(0,0,0,.2); border-radius:14px;
     justify-content:center; }
-  .card { width:64px; height:96px; background:#fff; color:#000; border-radius:10px; padding:6px; cursor:pointer; user-select:none;
-    display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 2px 4px rgba(0,0,0,.3); transition:transform .12s; }
-  .card.red { color:#c62828; }
+  .card { width:64px; height:90px; background:#101013; color:#F4F4F6; border-radius:6px; padding:6px; cursor:pointer; user-select:none;
+    border:1px solid rgba(255,255,255,0.10);
+    display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 8px 24px -8px rgba(0,0,0,0.35); transition:transform .12s;
+    font-family:-apple-system, system-ui, sans-serif; }
+  .card .rank { font-weight:800; letter-spacing:-0.04em; }
+  .card.red { color:#FF3D5A; }
   .card.selected { transform:translateY(-12px); box-shadow:0 8px 16px rgba(0,0,0,.5); outline:3px solid var(--accent); }
   .card .rank { font-size:18px; font-weight:700; line-height:1; }
   .card .suit { font-size:24px; line-height:1; align-self:flex-end; }
