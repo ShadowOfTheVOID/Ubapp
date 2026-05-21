@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>President</title>
+<style>
+  :root { color-scheme: dark; --bg:#000; --table:#0d4429; --card:#141414; --line:#2c2c2e;
+    --text:#fff; --muted:#9da7b3; --accent:#ff2e88; --warn:#d29922; --danger:#f85149; --good:#2ea043; }
+  * { box-sizing:border-box; }
+  html,body{ height:100%; }
+  body { margin:0; padding:env(safe-area-inset-top) 16px env(safe-area-inset-bottom);
+    background:var(--bg); color:var(--text); font-family:-apple-system, system-ui, sans-serif;
+    display:flex; flex-direction:column; min-height:100%; }
+  .wrap { width:100%; max-width:600px; margin:auto; padding:16px 0; text-align:center; }
+  h1 { font-size:24px; margin:0 0 12px; }
+  h2 { font-size:13px; margin:18px 0 8px; color:var(--muted); text-transform:uppercase; letter-spacing:1.2px; }
+  .panel { background:var(--card); padding:16px; border-radius:14px; margin-bottom:12px; text-align:left; }
+  button, input[type=text] { width:100%; font-size:16px; padding:14px 16px; border-radius:12px;
+    border:1px solid var(--line); background:#21262d; color:var(--text); font-family:inherit; }
+  button { background:var(--accent); color:#fff; border:none; font-weight:600; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  button.gray { background:#30363d; color:var(--text); }
+  button.good { background:var(--good); }
+  .row { display:flex; gap:8px; }
+  .row > * { flex:1; }
+
+  .table { background:var(--table); border-radius:18px; padding:18px; text-align:center; margin-bottom:12px;
+    box-shadow: inset 0 0 60px rgba(0,0,0,.3); }
+  .pile-info { font-size:14px; color:rgba(255,255,255,.85); margin:4px 0; }
+  .claim { font-size:18px; font-weight:700; margin:4px 0; }
+
+  .players { display:flex; gap:8px; overflow-x:auto; padding:8px 0; }
+  .pchip { background:#21262d; padding:8px 12px; border-radius:10px; min-width:96px; flex:0 0 auto; }
+  .pchip.current { background:var(--accent); color:#fff; }
+  .pchip.passed { opacity:.5; }
+  .pchip .name { font-size:13px; font-weight:600; }
+  .pchip .hc { font-size:11px; opacity:.8; }
+  .pchip .rk { font-size:11px; color:#facc15; }
+
+  .hand { display:flex; flex-wrap:wrap; gap:6px; padding:8px; background:rgba(0,0,0,.2); border-radius:14px;
+    justify-content:center; }
+  .card { width:64px; height:90px; background:#101013; color:#F4F4F6; border-radius:6px; padding:6px; cursor:pointer; user-select:none;
+    border:1px solid rgba(255,255,255,0.10);
+    display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 8px 24px -8px rgba(0,0,0,0.35); transition:transform .12s;
+    font-family:-apple-system, system-ui, sans-serif; }
+  .card .rank { font-weight:800; letter-spacing:-0.04em; }
+  .card.red { color:#FF3D5A; }
+  .card.selected { transform:translateY(-12px); box-shadow:0 8px 16px rgba(0,0,0,.5); outline:3px solid var(--accent); }
+  .card .rank { font-size:18px; font-weight:700; line-height:1; }
+  .card .suit { font-size:24px; line-height:1; align-self:flex-end; }
+
+  .tutorial-card { background:linear-gradient(160deg, #1d4a36, #0d2a1f); color:#e6edf3; padding:20px; border-radius:14px; margin-bottom:12px; }
+  .tutorial-card h2 { color:#6ee7a8; font-size:18px; margin:0 0 8px; letter-spacing:0; text-transform:none; }
+  .tutorial-card h3 { font-size:14px; margin:12px 0 4px; color:#e6edf3; text-transform:none; letter-spacing:0; }
+  .tutorial-card p { margin:4px 0; color:#cfd8de; font-size:14px; line-height:1.45; }
+  .tutorial-card .menu-label { color:#6ee7a8; font-size:16px; margin:18px 0 6px; font-weight:700; }
+  .tutorial-card .wait { color:#9da7b3; font-size:13px; margin-top:14px; }
+  .vote-row { display:flex; gap:8px; }
+  .vote-row button { flex:1; }
+  .vote-yes { background:#2ea043; }
+  .vote-no { background:#f85149; }
+  .vote-yes.selected, .vote-no.selected { outline:3px solid #fff; }
+</style>
+</head>
+<body>
+<div class="wrap" id="root"></div>
+<script>
+(() => {
+  const root = document.getElementById('root');
+  const ws = new WebSocket(`wss://${location.host}/ws`);
+  let wakeLock = null;
+  async function requestWakeLock() { try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {} }
+  if ('wakeLock' in navigator) {
+    requestWakeLock();
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') requestWakeLock();
+    });
+  }
+  const state = { me:null, phase:'lobby', players:[], hand:[], trick:null, lastPlay:null,
+    currentId:null, lastEvent:'', roundNumber:0, swapPrompts:[], passed:[],
+    selected:new Set(), options:{allowHouseRules:false, revolution:false},
+    tutorial:{isOpen:false,yesCount:0,noCount:0,eligibleCount:0,result:null,tutorialShown:false},
+    tutorialContent:null, myTutorialVote:null };
+
+  function send(o){ if (ws.readyState===1) ws.send(JSON.stringify(o)); }
+
+  ws.addEventListener('message', e => {
+    let m; try { m=JSON.parse(e.data); } catch { return; }
+    switch (m.type) {
+      case 'welcome': state.me = { id:m.yourId, name:m.yourName }; break;
+      case 'lobby':
+        state.players = m.players.map(p => Object.assign({}, p, {handCount:0,rank:'neutral',finished:false,finishOrder:0}));
+        state.phase='lobby'; break;
+      case 'options':
+        state.options = { allowHouseRules: !!m.allowHouseRules, revolution: !!m.revolution };
+        break;
+      case 'state':
+        Object.assign(state, {
+          phase:m.phase, players:m.players, currentId:m.currentId,
+          roundNumber:m.roundNumber, lastEvent:m.lastEvent || '',
+          trick:m.trick || null, lastPlay:m.lastPlay || null,
+          passed:m.passedThisTrick || [],
+        });
+        state.selected = new Set();
+        break;
+      case 'hand': state.hand = m.cards; break;
+      case 'swap_prompts': state.swapPrompts = m.prompts; break;
+      case 'over':
+        state.phase='gameOver';
+        if (m.rankings) {
+          const byId = Object.fromEntries(m.rankings.map(r => [r.id, r]));
+          state.players = state.players.map(p => {
+            const r = byId[p.id];
+            return r ? Object.assign({}, p, { rank: r.rank, finished:true, finishOrder: r.finishOrder }) : p;
+          });
+        }
+        break;
+      case 'reset':
+        state.phase='lobby'; state.hand=[]; state.trick=null; state.lastPlay=null;
+        state.passed=[]; state.swapPrompts=[]; state.lastEvent=''; state.roundNumber=0; break;
+      case 'tutorial_vote_state': {
+        const wasOpen = state.tutorial.isOpen;
+        state.tutorial = { isOpen:m.isOpen, yesCount:m.yesCount, noCount:m.noCount,
+          eligibleCount:m.eligibleCount, result:m.result, tutorialShown:m.tutorialShown };
+        if (m.title) state.tutorialContent = { title:m.title, sections:m.sections || [], menuSections:m.menuSections || [] };
+        if (!wasOpen && m.isOpen) state.myTutorialVote = null;
+        break;
+      }
+    }
+    render();
+  });
+
+  function rankShort(r){ return ({11:'J',12:'Q',13:'K',14:'A'}[r] || String(r)); }
+  function suitGlyph(s){ return ({clubs:'♣',diamonds:'♦',hearts:'♥',spades:'♠'}[s] || ''); }
+  function suitIsRed(s){ return s==='diamonds' || s==='hearts'; }
+  function esc(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function rankLabel(r){ return ({president:'President',vicePresident:'VP',viceScum:'Vice Scum',scum:'Scum'}[r] || ''); }
+
+  function render(){
+    if (!state.me) {
+      root.innerHTML = `<h1>President</h1><div class="panel"><h2>Pick a name</h2><input id="n" type="text" placeholder="Your name" maxlength="20" autofocus><div style="height:12px"></div><button id="b">Join</button></div>`;
+      bindJoin(); return;
+    }
+    if (state.phase==='lobby') return renderLobby();
+    if (state.phase==='gameOver') return renderOver();
+    if (state.phase==='swapping') return renderSwap();
+    return renderTable();
+  }
+
+  function bindJoin(){
+    const i=document.getElementById('n'), b=document.getElementById('b');
+    if (!i||!b) return;
+    const submit=()=>{ const n=i.value.trim(); if (n) send({type:'join', name:n}); };
+    b.addEventListener('click', submit);
+    i.addEventListener('keydown', e => { if (e.key==='Enter') submit(); });
+  }
+
+  function viewOptions(){
+    const o = state.options;
+    const flags = [];
+    if (o.allowHouseRules) flags.push('house rules');
+    if (o.revolution) flags.push('revolution display');
+    return `<div class="panel"><h2>Game options</h2><p>${flags.length ? flags.join(' · ') : 'standard'}</p></div>`;
+  }
+
+  function renderLobby(){
+    root.innerHTML = `<h1>Lobby</h1>${viewTutorialBanner()}${viewTutorialVote()}${viewOptions()}<div class="panel"><p>Waiting for the host to deal.</p><h2>Players (${state.players.length})</h2>${state.players.map(p=>`<div class="pchip" style="margin-bottom:6px"><div class="name">${esc(p.name)}${p.isHost?' • host':''}${state.me.id===p.id?' • you':''}</div></div>`).join('')}</div>`;
+    bindTutorialVote();
+  }
+
+  function viewTutorialBanner(){
+    const t = state.tutorial, c = state.tutorialContent;
+    if (t.result !== true || t.tutorialShown) return '';
+    if (!c) return `<div class="tutorial-card">Loading tutorial…</div>`;
+    const ruleSecs = c.sections.map(s => `<div><h3>${esc(s.heading)}</h3><p>${esc(s.body)}</p></div>`).join('');
+    const menuSecs = (c.menuSections || []).map(s => `<div><h3>${esc(s.heading)}</h3><p>${esc(s.body)}</p></div>`).join('');
+    return `<div class="tutorial-card"><h2>${esc(c.title)}</h2>${ruleSecs}${menuSecs ? `<div class="menu-label">Using this screen</div>${menuSecs}` : ''}<p class="wait">Waiting for the host to finish reading.</p></div>`;
+  }
+
+  function viewTutorialVote(){
+    const t = state.tutorial;
+    if (t.isOpen) {
+      return `<div class="panel"><h2>Show tutorial first?</h2><p>${t.yesCount + t.noCount} / ${t.eligibleCount} voted — majority wins.</p><div class="vote-row"><button class="vote-yes ${state.myTutorialVote===true?'selected':''}" id="tut-yes">Yes (${t.yesCount})</button><button class="vote-no ${state.myTutorialVote===false?'selected':''}" id="tut-no">No (${t.noCount})</button></div></div>`;
+    }
+    if (t.result === null && !t.tutorialShown) {
+      return `<div class="panel"><p>Want a refresher on the rules?</p><button id="call-tut">Call tutorial vote</button></div>`;
+    }
+    if (t.result === false) return `<div class="panel"><p>Majority voted to skip the tutorial.</p></div>`;
+    return '';
+  }
+
+  function bindTutorialVote(){
+    const cb = document.getElementById('call-tut');
+    if (cb) cb.addEventListener('click', () => send({type:'call_tutorial_vote'}));
+    const y = document.getElementById('tut-yes'), n = document.getElementById('tut-no');
+    if (y) y.addEventListener('click', () => { state.myTutorialVote=true; send({type:'tutorial_vote', yes:true}); render(); });
+    if (n) n.addEventListener('click', () => { state.myTutorialVote=false; send({type:'tutorial_vote', yes:false}); render(); });
+  }
+
+  function renderTable(){
+    const isMyTurn = state.currentId === state.me.id;
+    const playersBar = state.players.map(p => {
+      const isCurrent = state.currentId === p.id;
+      const passed = state.passed.includes(p.id);
+      const rk = p.finished ? rankLabel(p.rank) : '';
+      return `<div class="pchip ${isCurrent?'current':''} ${passed?'passed':''}"><div class="name">${esc(p.name)}${state.me.id===p.id?' (you)':''}</div><div class="hc">${p.handCount} cards</div>${rk?`<div class="rk">${rk}</div>`:''}${passed?'<div class="rk" style="color:#9da7b3">passed</div>':''}</div>`;
+    }).join('');
+
+    let trickLine = '';
+    if (state.trick) {
+      trickLine = `<div class="claim">Open trick: ${esc(state.trick.kind)}${state.trick.length ? ` (${state.trick.length})` : ''}</div><div class="pile-info">Must beat power ${state.trick.topPower}</div>`;
+    } else {
+      trickLine = `<div class="claim">${isMyTurn ? 'Your lead — play anything' : 'Awaiting lead'}</div>`;
+    }
+    let lastLine = '';
+    if (state.lastPlay) {
+      const pname = (state.players.find(p => p.id === state.lastPlay.playerId) || {}).name || '?';
+      const cards = state.lastPlay.cards.map(c => rankShort(c.rank)+suitGlyph(c.suit)).join(' ');
+      lastLine = `<div class="pile-info">Last: ${esc(pname)} — ${esc(cards)}</div>`;
+    }
+
+    const handHtml = state.hand.map(c => {
+      const key = `${c.suit}-${c.rank}`;
+      const cls = ['card', suitIsRed(c.suit)?'red':'', state.selected.has(key)?'selected':''].join(' ');
+      return `<div class="${cls}" data-key="${key}" data-suit="${c.suit}" data-rank="${c.rank}"><div class="rank">${rankShort(c.rank)}</div><div class="suit">${suitGlyph(c.suit)}</div></div>`;
+    }).join('');
+
+    let actions = '';
+    if (isMyTurn) {
+      const count = state.selected.size;
+      actions += `<button id="play" ${count===0?'disabled':''}>Play ${count}</button>`;
+      if (state.trick) actions += `<button id="pass" class="gray">Pass</button>`;
+    }
+
+    root.innerHTML = `
+      <div class="players">${playersBar}</div>
+      <div class="table">
+        <div class="pile-info">Round ${state.roundNumber}</div>
+        ${trickLine}
+        ${lastLine}
+        ${state.lastEvent ? `<div class="pile-info" style="opacity:.7">${esc(state.lastEvent)}</div>` : ''}
+      </div>
+      <div class="hand">${handHtml || '<p style="color:var(--muted);padding:12px">No cards</p>'}</div>
+      ${actions ? `<div class="row" style="margin-top:8px">${actions}</div>` : ''}
+    `;
+    bindTable();
+  }
+
+  function renderSwap(){
+    const handHtml = state.hand.map(c => {
+      const key = `${c.suit}-${c.rank}`;
+      const cls = ['card', suitIsRed(c.suit)?'red':'', state.selected.has(key)?'selected':''].join(' ');
+      return `<div class="${cls}" data-key="${key}" data-suit="${c.suit}" data-rank="${c.rank}"><div class="rank">${rankShort(c.rank)}</div><div class="suit">${suitGlyph(c.suit)}</div></div>`;
+    }).join('');
+    let promptsHtml = '';
+    if (!state.swapPrompts || state.swapPrompts.length === 0) {
+      promptsHtml = `<div class="panel"><p>Waiting for others to swap…</p></div>`;
+    } else {
+      promptsHtml = state.swapPrompts.map(p => {
+        if (p.giverChooses) {
+          const count = state.selected.size;
+          const ok = count === p.count;
+          return `<div class="panel"><p><strong>Give ${p.count} card${p.count===1?'':'s'} to ${esc(p.toName)}.</strong></p><p>Pick ${p.count} below, then tap Send.</p><button class="swap-send" data-to="${p.toId}" data-count="${p.count}" ${ok?'':'disabled'}>Send ${count}/${p.count} → ${esc(p.toName)}</button></div>`;
+        } else {
+          return `<div class="panel"><p>Auto-send your top ${p.count} card${p.count===1?'':'s'} to ${esc(p.toName)}.</p><button class="swap-send" data-to="${p.toId}" data-count="0">Send best ${p.count} → ${esc(p.toName)}</button></div>`;
+        }
+      }).join('');
+    }
+    root.innerHTML = `<h1>Round ${state.roundNumber} — Swap</h1>${promptsHtml}<div class="hand">${handHtml || ''}</div>`;
+    bindSwap();
+  }
+
+  function renderOver(){
+    const sorted = state.players.slice().sort((a,b)=>{
+      const ao = a.finishOrder||999, bo = b.finishOrder||999; return ao-bo;
+    });
+    root.innerHTML = `<h1>Round over</h1><div class="panel">${sorted.map(p=>`<div class="pchip" style="margin-bottom:6px"><div class="name">${p.finishOrder||'?'}. ${esc(p.name)}</div><div class="hc">${rankLabel(p.rank)||''}</div></div>`).join('')}<p style="color:var(--muted);margin-top:16px">Waiting for the host to start the next round…</p></div>`;
+  }
+
+  function bindTable(){
+    document.querySelectorAll('.card').forEach(el => {
+      el.addEventListener('click', () => {
+        const key = el.dataset.key;
+        if (state.selected.has(key)) state.selected.delete(key); else state.selected.add(key);
+        render();
+      });
+    });
+    const playBtn = document.getElementById('play');
+    if (playBtn) playBtn.addEventListener('click', () => {
+      const cards = state.hand.filter(c => state.selected.has(`${c.suit}-${c.rank}`));
+      if (!cards.length) return;
+      send({type:'play', cards: cards.map(c => ({suit:c.suit, rank:c.rank}))});
+      state.selected = new Set();
+    });
+    const passBtn = document.getElementById('pass');
+    if (passBtn) passBtn.addEventListener('click', () => send({type:'pass'}));
+  }
+
+  function bindSwap(){
+    document.querySelectorAll('.card').forEach(el => {
+      el.addEventListener('click', () => {
+        const key = el.dataset.key;
+        if (state.selected.has(key)) state.selected.delete(key); else state.selected.add(key);
+        render();
+      });
+    });
+    document.querySelectorAll('.swap-send').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const count = parseInt(btn.dataset.count, 10);
+        const cards = count > 0
+          ? state.hand.filter(c => state.selected.has(`${c.suit}-${c.rank}`))
+          : [];
+        send({type:'swap', cards: cards.map(c => ({suit:c.suit, rank:c.rank}))});
+        state.selected = new Set();
+      });
+    });
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>

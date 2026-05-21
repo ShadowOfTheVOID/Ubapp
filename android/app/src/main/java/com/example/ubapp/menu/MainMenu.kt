@@ -17,9 +17,12 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.ubapp.games.bluffmarket.BluffMarketScreen
+import com.example.ubapp.games.cheat.CheatScreen
 import com.example.ubapp.games.codenames.CodenamesScreen
 import com.example.ubapp.games.connectfour.ConnectFourScreen
 import com.example.ubapp.games.crazyeights.CrazyEightsScreen
+import com.example.ubapp.games.president.PresidentScreen
 import com.example.ubapp.games.imposter.ImposterScreen
 import com.example.ubapp.games.mafia.MafiaScreen
 import com.example.ubapp.games.realtime.RealtimeScreen
@@ -46,6 +49,9 @@ private val groups = listOf(
             MenuItem("imposter", "Imposter", "Bluff your way through a secret word."),
             MenuItem("codenames", "Codenames", "Word association duel for two teams."),
             MenuItem("crazy_eights", "Crazy Eights", "Race to empty your hand."),
+            MenuItem("cheat", "Cheat", "Bluff your way out by claiming the right rank — or call BS."),
+            MenuItem("president", "President", "Shed your hand, win social status, swap cards next round."),
+            MenuItem("bluff_market", "Bluff Market", "Trade face-down cards. Avoid the Bomb."),
             MenuItem("secret_hitler", "Secret Hitler", "Politics, lies, and hidden roles."),
         ),
     ),
@@ -110,6 +116,9 @@ fun MainMenu() {
         composable("imposter") { ImposterScreen() }
         composable("codenames") { CodenamesScreen() }
         composable("crazy_eights") { CrazyEightsScreen() }
+        composable("cheat") { CheatScreen() }
+        composable("president") { PresidentScreen() }
+        composable("bluff_market") { BluffMarketScreen() }
         composable("secret_hitler") { SecretHitlerScreen() }
         composable("tag") { TagLobbyScreen() }
         composable("realtime") { RealtimeScreen() }

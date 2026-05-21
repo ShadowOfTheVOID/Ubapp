@@ -92,20 +92,19 @@ fun CrazyEightsGuestScreen(ctx: GuestContext) {
                            horizontalAlignment = Alignment.CenterHorizontally) {
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier
-                                .background(Color(0xFF0D2A1F), RoundedCornerShape(8.dp))
-                                .size(70.dp, 100.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center) {
-                                Text("${s.drawCount}",
-                                     style = MaterialTheme.typography.titleLarge,
-                                     color = Color(0xFF9DA7B3))
-                                Text("draw", style = MaterialTheme.typography.labelSmall,
-                                     color = Color(0xFF9DA7B3))
+                            Box(contentAlignment = Alignment.Center) {
+                                com.example.ubapp.games.cards.GridCardBack(width = 64.dp)
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("${s.drawCount}",
+                                         style = MaterialTheme.typography.titleLarge,
+                                         color = Color.White)
+                                    Text("draw", style = MaterialTheme.typography.labelSmall,
+                                         color = Color.White.copy(alpha = 0.7f))
+                                }
                             }
                             val top = s.topCard
                             if (top != null) CardFace(top)
-                            else Spacer(Modifier.size(70.dp, 100.dp))
+                            else Spacer(Modifier.size(64.dp, 90.dp))
                         }
                         Text("Active suit: ${suitGlyph(s.activeSuit ?: s.topCard?.suit ?: "")}",
                              style = MaterialTheme.typography.bodyMedium)
@@ -177,19 +176,13 @@ fun CrazyEightsGuestScreen(ctx: GuestContext) {
 
 @Composable
 private fun CardFace(c: CrazyEightsGuestState.Card) {
-    val red = c.suit == "diamonds" || c.suit == "hearts"
-    Box(Modifier
-        .size(70.dp, 100.dp)
-        .background(Color.White, RoundedCornerShape(8.dp))
-        .padding(6.dp)) {
-        Text(rankShort(c.rank),
-             style = MaterialTheme.typography.titleMedium,
-             color = if (red) Color(0xFFC62828) else Color.Black,
-             modifier = Modifier.align(Alignment.TopStart))
-        Text(suitGlyph(c.suit),
-             style = MaterialTheme.typography.headlineMedium,
-             color = if (red) Color(0xFFC62828) else Color.Black,
-             modifier = Modifier.align(Alignment.BottomEnd))
+    val suit = com.example.ubapp.games.cards.CardSuit.fromWire(c.suit)
+    if (suit != null) {
+        com.example.ubapp.games.cards.NoirCardFace(
+            rank = c.rank, suit = suit, width = 70.dp, wildAccent = true,
+        )
+    } else {
+        com.example.ubapp.games.cards.GridCardBack(width = 70.dp)
     }
 }
 

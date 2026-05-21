@@ -85,6 +85,9 @@ struct JoinFlowView: View {
         case "imposter":      ImposterGuestView(ctx: ctx)
         case "codenames":     CodenamesGuestView(ctx: ctx)
         case "crazy_eights":  CrazyEightsGuestView(ctx: ctx)
+        case "cheat":         CheatGuestView(ctx: ctx)
+        case "president":     PresidentGuestView(ctx: ctx)
+        case "bluff_market":  BluffMarketGuestView(ctx: ctx)
         case "secret_hitler": SecretHitlerGuestView(ctx: ctx)
         case "tag":           TagGuestView(ctx: ctx)
         default:

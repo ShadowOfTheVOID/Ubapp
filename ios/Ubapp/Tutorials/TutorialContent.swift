@@ -119,6 +119,51 @@ enum GameTutorials {
         ]
     )
 
+    static let cheat = GameTutorial(
+        title: "How to play Cheat (BS)",
+        sections: [
+            TutorialSection(heading: "Deal", body: "All 52 cards are dealt face-down to the table. Some hands may be one card bigger — that's fine."),
+            TutorialSection(heading: "Claim a rank", body: "On your turn you must play at least one card face-down and claim a rank — Aces first, then 2s, 3s, all the way to Kings, then back to Aces."),
+            TutorialSection(heading: "Call BS", body: "Any other player can call BS on the last play. The cards flip — if the claim was a lie the cheater picks up the whole pile. If it was honest, the caller picks it up."),
+            TutorialSection(heading: "Winning", body: "Empty your hand and survive the BS window — if no-one calls (or the call fails), you win the round."),
+        ],
+        browserMenuSections: [
+            TutorialSection(heading: "Your hand", body: "Tap cards to lift them out of your hand. The button at the bottom tells you what rank you're claiming and how many cards you'll play."),
+            TutorialSection(heading: "Calling BS", body: "When someone else has just played, a red Call BS button appears. Once the next player plays, the window closes — be quick."),
+            TutorialSection(heading: "Pending win", body: "When someone plays their last card, the round pauses with Call BS / Accept buttons. Catch the cheater or confirm the win."),
+        ]
+    )
+
+    static let president = GameTutorial(
+        title: "How to play President (Scum / Asshole)",
+        sections: [
+            TutorialSection(heading: "Goal", body: "Shed your hand first to become President. Last out is Scum. The ranks carry into the next round's card-swap."),
+            TutorialSection(heading: "Tricks", body: "Each trick the leader plays a combination — single, pair, triple, quad, or run of consecutive pairs. Everyone must match the same type and beat the previous power, or pass. When all but one player passes, that player wins the trick and leads next."),
+            TutorialSection(heading: "Card order", body: "Low → high: 3 4 5 6 7 8 9 10 J Q K A 2. Twos are the strongest singles."),
+            TutorialSection(heading: "Swap phase", body: "After round 1, Scum gives their 2 best cards to President; President gives back any 2. Vice Scum & Vice President swap 1 each. Good gets better — and worse — fast."),
+        ],
+        browserMenuSections: [
+            TutorialSection(heading: "Picking cards", body: "Tap cards in your hand to highlight them. The Play button shows how many you've picked; tap Pass when you can't (or won't) play."),
+            TutorialSection(heading: "Swap prompts", body: "If you owe a swap, a card appears at the top of your screen telling you who gets your cards and whether you choose them or they're picked automatically."),
+            TutorialSection(heading: "Round end", body: "When only one player has cards, the round ends and ranks are assigned. The host taps Next round to deal again."),
+        ]
+    )
+
+    static let bluffMarket = GameTutorial(
+        title: "How to play Bluff Market",
+        sections: [
+            TutorialSection(heading: "Setup", body: "Everyone gets 3 face-down cards. Most are positive point cards. Exactly one is the Bomb (-25). You only see your own cards — you don't know who has the Bomb (it may be you)."),
+            TutorialSection(heading: "Three actions", body: "On your turn: 1) Propose a trade with another player (both commit a card face-down, both reveal, both decide). 2) Buy the top market card face-down. 3) Sell one of your cards to the market for +2 coins."),
+            TutorialSection(heading: "The Guarantee", body: "Once per game each player can invoke The Guarantee, forcing the current trade to complete regardless of how either side answered."),
+            TutorialSection(heading: "Round end & scoring", body: "After each player has taken the configured number of turns, hands are revealed. Sum your cards + coins. Subtract 25 if you held the Bomb at scoring."),
+        ],
+        browserMenuSections: [
+            TutorialSection(heading: "Your hand", body: "Tap a card to select it (purple outline). Selling, proposing a trade, and committing a counter-card all use the selected card."),
+            TutorialSection(heading: "Trade flow", body: "Proposer offers a card → target commits a counter card (or declines/uses Guarantee). Both cards flip; both accept or reject. If either Guaranteed, the trade is forced."),
+            TutorialSection(heading: "Scoring", body: "When the round ends the host taps Reveal to show every hand. The Bomb subtracts 25 from whichever player holds it at that moment."),
+        ]
+    )
+
     static let tag = GameTutorial(
         title: "How to play Tag (BLE proximity)",
         sections: [
@@ -161,6 +206,9 @@ enum GameTutorials {
         case "codenames": return codenames
         case "crazy_eights": return crazyEights
         case "secret_hitler": return secretHitler
+        case "cheat": return cheat
+        case "president": return president
+        case "bluff_market": return bluffMarket
         case "tag": return tag
         case "tic_tac_toe": return ticTacToe
         case "connect_four": return connectFour
