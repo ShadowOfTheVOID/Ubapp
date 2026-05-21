@@ -13,6 +13,9 @@ struct MainMenuView: View {
                         gameTile("Imposter", "Bluff your way through a secret word.") { ImposterView() }
                         gameTile("Codenames", "Word association duel for two teams.") { CodenamesView() }
                         gameTile("Crazy Eights", "Race to empty your hand.") { CrazyEightsView() }
+                        gameTile("Cheat", "Bluff your way out by claiming the right rank — or call BS.") { CheatView() }
+                        gameTile("President", "Shed your hand, win social status, swap cards next round.") { PresidentView() }
+                        gameTile("Bluff Market", "Trade face-down cards. Avoid the Bomb.") { BluffMarketView() }
                         gameTile("Secret Hitler", "Politics, lies, and hidden roles.") { SecretHitlerView() }
                     }
 

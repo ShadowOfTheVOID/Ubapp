@@ -12,9 +12,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
+import com.example.ubapp.games.bluffmarket.BluffMarketGuestScreen
+import com.example.ubapp.games.cheat.CheatGuestScreen
 import com.example.ubapp.games.codenames.CodenamesGuestScreen
 import com.example.ubapp.games.crazyeights.CrazyEightsGuestScreen
 import com.example.ubapp.games.imposter.ImposterGuestScreen
+import com.example.ubapp.games.president.PresidentGuestScreen
 import com.example.ubapp.games.mafia.MafiaGuestScreen
 import com.example.ubapp.games.secrethitler.SecretHitlerGuestScreen
 import com.example.ubapp.games.werewolf.WerewolfGuestScreen
@@ -63,6 +66,9 @@ fun JoinFlowScreen() {
             "imposter" -> ImposterGuestScreen(ctx)
             "codenames" -> CodenamesGuestScreen(ctx)
             "crazy_eights" -> CrazyEightsGuestScreen(ctx)
+            "cheat" -> CheatGuestScreen(ctx)
+            "president" -> PresidentGuestScreen(ctx)
+            "bluff_market" -> BluffMarketGuestScreen(ctx)
             "secret_hitler" -> SecretHitlerGuestScreen(ctx)
             "tag" -> com.example.ubapp.games.tag.TagGuestScreen(ctx)
             else -> Text("Unknown game: $game")
