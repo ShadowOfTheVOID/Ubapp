@@ -38,6 +38,9 @@ final class ImposterEngine {
     var category = ""
     var secretWord = ""
     var imposterIds: Set<String> = []
+    /// Last round's imposter line-up, used to avoid handing the role to the
+    /// exact same people two rounds running. Survives `reset()` on purpose.
+    private var lastImposterIds: Set<String> = []
 
     /// Player who gives the first clue, and the direction play proceeds
     /// around the room. Chosen at round start so everyone agrees on order.
@@ -92,7 +95,16 @@ final class ImposterEngine {
         }
         let ids = playerOrder.shuffled(using: &rng)
         let count = min(max(1, options.imposterCount), max(1, ids.count - 1))
-        imposterIds = Set(ids.prefix(count))
+        var chosen = Set(ids.prefix(count))
+        // Don't repeat the exact same imposter line-up two rounds in a row
+        // when the lobby is big enough to pick someone else — swapping one
+        // member guarantees a different set in a single deterministic step.
+        if chosen == lastImposterIds && ids.count > count {
+            chosen.remove(ids[0])
+            chosen.insert(ids[count])
+        }
+        imposterIds = chosen
+        lastImposterIds = chosen
         firstPlayerId = ids[Int.random(in: 0..<ids.count, using: &rng)]
         clockwise = Int.random(in: 0..<2, using: &rng) == 0
         for p in players.values {
