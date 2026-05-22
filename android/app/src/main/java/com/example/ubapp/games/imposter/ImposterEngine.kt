@@ -30,6 +30,14 @@ class ImposterEngine(private val rng: Random = Random.Default) {
     var category: String = ""
     var secretWord: String = ""
     var imposterIds: Set<String> = emptySet()
+    /** Last round's imposter line-up, used to avoid handing the role to the
+     *  exact same people two rounds running. Survives [reset] on purpose. */
+    private var lastImposterIds: Set<String> = emptySet()
+
+    /** Player who gives the first clue, and the direction play proceeds
+     *  around the room. Chosen at round start so everyone agrees on order. */
+    var firstPlayerId: String? = null
+    var clockwise: Boolean = true
 
     val votes: MutableMap<String, String?> = mutableMapOf()
     var mostVotedId: String? = null
@@ -66,7 +74,17 @@ class ImposterEngine(private val rng: Random = Random.Default) {
         }
         val ids = players.keys.toList().shuffled(rng)
         val count = options.imposterCount.coerceIn(1, maxOf(1, ids.size - 1))
-        imposterIds = ids.take(count).toSet()
+        var chosen = ids.take(count).toSet()
+        // Don't repeat the exact same imposter line-up two rounds in a row
+        // when the lobby is big enough to pick someone else — swapping one
+        // member guarantees a different set in a single deterministic step.
+        if (chosen == lastImposterIds && ids.size > count) {
+            chosen = chosen - ids[0] + ids[count]
+        }
+        imposterIds = chosen
+        lastImposterIds = chosen
+        firstPlayerId = ids[rng.nextInt(ids.size)]
+        clockwise = rng.nextInt(2) == 0
         for (p in players.values) {
             p.isImposter = p.id in imposterIds
             p.decoyWord = null
@@ -115,6 +133,7 @@ class ImposterEngine(private val rng: Random = Random.Default) {
     fun reset() {
         phase = ImposterPhase.LOBBY
         category = ""; secretWord = ""; imposterIds = emptySet()
+        firstPlayerId = null; clockwise = true
         votes.clear(); mostVotedId = null; imposterCaught = null; winner = null
         for (p in players.values) { p.isImposter = false; p.decoyWord = null }
     }

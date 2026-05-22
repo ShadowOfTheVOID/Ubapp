@@ -84,6 +84,20 @@ fun ImposterGuestScreen(ctx: GuestContext) {
                         }
                     }
                 }
+                if (s.firstPlayerName.isNotEmpty()) {
+                    ElevatedCard(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(16.dp),
+                               horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("TURN ORDER", style = MaterialTheme.typography.labelSmall)
+                            val who = if (s.firstPlayerId == ctx.yourId) "You go first"
+                                      else "${s.firstPlayerName} goes first"
+                            val dir = if (s.direction == "counterclockwise") "counter-clockwise"
+                                      else "clockwise"
+                            Text("$who — then continue $dir.",
+                                 style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
                 Text("Waiting for the host to call a vote…",
                      style = MaterialTheme.typography.bodySmall)
             }
@@ -151,6 +165,9 @@ class ImposterGuestState {
     var resultWord by mutableStateOf("")
     var hideCategory by mutableStateOf(false)
     var isDecoy by mutableStateOf(false)
+    var firstPlayerId by mutableStateOf<String?>(null)
+    var firstPlayerName by mutableStateOf("")
+    var direction by mutableStateOf("clockwise")
     var error by mutableStateOf<String?>(null)
     var tutorialState by mutableStateOf(GuestTutorialState())
     var tutorialContent by mutableStateOf<GuestTutorialContent?>(null)
@@ -172,6 +189,9 @@ class ImposterGuestState {
                 isImposter = m.optBoolean("isImposter")
                 hideCategory = m.optBoolean("hideCategory")
                 isDecoy = m.optBoolean("isDecoy")
+                firstPlayerId = if (m.isNull("firstPlayerId")) null else m.optString("firstPlayerId").ifEmpty { null }
+                firstPlayerName = m.optString("firstPlayerName")
+                direction = m.optString("direction", "clockwise")
                 phase = "playing"; voted = false; picked = null
             }
             "voting" -> { phase = "voting"; voted = false; picked = null }

@@ -114,6 +114,7 @@ class ImposterServer(context: Context, val hostName: String = "Host") {
     }
     private fun sendRolesPrivately() {
         val hideCat = engine.options.hideCategory
+        val firstName = engine.firstPlayerId?.let { engine.players[it]?.name } ?: ""
         // Includes the host: it plays through its own in-process loopback
         // guest, so it must receive the same private role message.
         for (p in engine.players.values) {
@@ -124,6 +125,9 @@ class ImposterServer(context: Context, val hostName: String = "Host") {
                 .put("category", if (hide) "" else engine.category)
                 .put("hideCategory", hide)
                 .put("isImposter", p.isImposter)
+                .put("firstPlayerId", engine.firstPlayerId ?: JSONObject.NULL)
+                .put("firstPlayerName", firstName)
+                .put("direction", if (engine.clockwise) "clockwise" else "counterclockwise")
             if (!p.isImposter) {
                 payload.put("word", engine.secretWord)
             } else if (p.decoyWord != null) {

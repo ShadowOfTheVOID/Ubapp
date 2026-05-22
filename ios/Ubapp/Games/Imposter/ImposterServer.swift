@@ -140,6 +140,7 @@ final class ImposterServer {
 
     private func sendRolesPrivately() {
         let hideCat = engine.options.hideCategory
+        let firstName = engine.firstPlayerId.flatMap { engine.players[$0]?.name } ?? ""
         // Includes the host: it plays through its own in-process loopback
         // guest, so it must receive the same private role message.
         for p in engine.players.values {
@@ -148,6 +149,9 @@ final class ImposterServer {
                 "category": (p.isImposter && hideCat) ? "" : engine.category,
                 "hideCategory": p.isImposter && hideCat,
                 "isImposter": p.isImposter,
+                "firstPlayerId": engine.firstPlayerId as Any,
+                "firstPlayerName": firstName,
+                "direction": engine.clockwise ? "clockwise" : "counterclockwise",
             ]
             if !p.isImposter {
                 payload["word"] = engine.secretWord

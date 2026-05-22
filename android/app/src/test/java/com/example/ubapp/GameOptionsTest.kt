@@ -21,6 +21,7 @@ import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -76,6 +77,31 @@ class GameOptionsTest {
         val imp = e.players.values.first { it.isImposter }
         assertNotNull(imp.decoyWord)
         assertFalse(imp.decoyWord == e.secretWord)
+    }
+
+    @Test fun `imposter picks a first player and direction on start`() {
+        val e = ImposterEngine(Random(6))
+        val ids = listOf("a", "b", "c", "d")
+        ids.forEach { e.addPlayer(it, it) }
+        e.start()
+        assertNotNull(e.firstPlayerId)
+        assertTrue(e.firstPlayerId in ids)
+        e.reset()
+        assertNull(e.firstPlayerId)
+        assertTrue(e.clockwise)
+    }
+
+    @Test fun `imposter does not repeat the same line-up two rounds in a row`() {
+        val e = ImposterEngine(Random(7))
+        listOf("a", "b", "c", "d").forEach { e.addPlayer(it, it) }
+        var prev: Set<String>? = null
+        repeat(40) {
+            e.start()
+            val now = e.imposterIds
+            assertNotEquals(prev, now)
+            prev = now
+            e.reset()
+        }
     }
 
     // --- Mafia ---
