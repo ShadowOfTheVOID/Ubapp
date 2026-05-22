@@ -31,6 +31,11 @@ class ImposterEngine(private val rng: Random = Random.Default) {
     var secretWord: String = ""
     var imposterIds: Set<String> = emptySet()
 
+    /** Player who gives the first clue, and the direction play proceeds
+     *  around the room. Chosen at round start so everyone agrees on order. */
+    var firstPlayerId: String? = null
+    var clockwise: Boolean = true
+
     val votes: MutableMap<String, String?> = mutableMapOf()
     var mostVotedId: String? = null
     var imposterCaught: Boolean? = null
@@ -67,6 +72,8 @@ class ImposterEngine(private val rng: Random = Random.Default) {
         val ids = players.keys.toList().shuffled(rng)
         val count = options.imposterCount.coerceIn(1, maxOf(1, ids.size - 1))
         imposterIds = ids.take(count).toSet()
+        firstPlayerId = ids[rng.nextInt(ids.size)]
+        clockwise = rng.nextInt(2) == 0
         for (p in players.values) {
             p.isImposter = p.id in imposterIds
             p.decoyWord = null
@@ -115,6 +122,7 @@ class ImposterEngine(private val rng: Random = Random.Default) {
     fun reset() {
         phase = ImposterPhase.LOBBY
         category = ""; secretWord = ""; imposterIds = emptySet()
+        firstPlayerId = null; clockwise = true
         votes.clear(); mostVotedId = null; imposterCaught = null; winner = null
         for (p in players.values) { p.isImposter = false; p.decoyWord = null }
     }

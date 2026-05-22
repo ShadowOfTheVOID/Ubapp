@@ -87,6 +87,14 @@ struct ImposterGuestView: View {
                 }.padding(8)
             }
         }
+        if !model.firstPlayerName.isEmpty {
+            GroupBox("Turn order") {
+                let who = model.firstPlayerId == ctx.yourId
+                    ? "You go first" : "\(model.firstPlayerName) goes first"
+                let dir = model.direction == "counterclockwise" ? "counter-clockwise" : "clockwise"
+                Text("\(who) — then continue \(dir).")
+            }
+        }
         Text("Waiting for the host to call a vote…").foregroundStyle(.secondary)
     }
 
@@ -150,6 +158,9 @@ final class ImposterGuestModel: ObservableObject {
     @Published var resultWord: String = ""
     @Published var hideCategory = false
     @Published var isDecoy = false
+    @Published var firstPlayerId: String?
+    @Published var firstPlayerName: String = ""
+    @Published var direction: String = "clockwise"
     @Published var error: String?
     @Published var tutorialState = GuestTutorialState()
     @Published var tutorialContent: GuestTutorialContent?
@@ -180,6 +191,9 @@ final class ImposterGuestModel: ObservableObject {
             isImposter = m["isImposter"] as? Bool ?? false
             hideCategory = m["hideCategory"] as? Bool ?? false
             isDecoy = m["isDecoy"] as? Bool ?? false
+            firstPlayerId = m["firstPlayerId"] as? String
+            firstPlayerName = m["firstPlayerName"] as? String ?? ""
+            direction = m["direction"] as? String ?? "clockwise"
             phase = "playing"; voted = false; picked = nil
         case "voting":
             phase = "voting"; voted = false; picked = nil

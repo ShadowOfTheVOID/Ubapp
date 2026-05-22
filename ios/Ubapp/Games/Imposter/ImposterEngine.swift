@@ -39,6 +39,11 @@ final class ImposterEngine {
     var secretWord = ""
     var imposterIds: Set<String> = []
 
+    /// Player who gives the first clue, and the direction play proceeds
+    /// around the room. Chosen at round start so everyone agrees on order.
+    var firstPlayerId: String?
+    var clockwise = true
+
     var votes: [String: String?] = [:]
     var mostVotedId: String?
     var imposterCaught: Bool?
@@ -88,6 +93,8 @@ final class ImposterEngine {
         let ids = playerOrder.shuffled(using: &rng)
         let count = min(max(1, options.imposterCount), max(1, ids.count - 1))
         imposterIds = Set(ids.prefix(count))
+        firstPlayerId = ids[Int.random(in: 0..<ids.count, using: &rng)]
+        clockwise = Int.random(in: 0..<2, using: &rng) == 0
         for p in players.values {
             p.isImposter = imposterIds.contains(p.id)
             p.decoyWord = nil
@@ -135,6 +142,7 @@ final class ImposterEngine {
     func reset() {
         phase = .lobby
         category = ""; secretWord = ""; imposterIds.removeAll()
+        firstPlayerId = nil; clockwise = true
         votes.removeAll(); mostVotedId = nil; imposterCaught = nil; winner = nil
         for p in players.values { p.isImposter = false; p.decoyWord = nil }
     }

@@ -78,7 +78,7 @@
       if (document.visibilityState === 'visible') requestWakeLock();
     });
   }
-  const state = { me:null, phase:'lobby', players:[], category:'', word:null, isImposter:false, hideCategory:false, isDecoy:false, picked:null, voted:false, result:null,
+  const state = { me:null, phase:'lobby', players:[], category:'', word:null, isImposter:false, hideCategory:false, isDecoy:false, firstPlayerId:null, firstPlayerName:'', direction:'clockwise', picked:null, voted:false, result:null,
     options:{imposterCount:1, decoyWord:false, hideCategory:false, mixedPool:false, maxImposterCount:1},
     tutorial:{isOpen:false,yesCount:0,noCount:0,eligibleCount:0,result:null,tutorialShown:false}, tutorialContent:null, myTutorialVote:null };
 
@@ -90,7 +90,7 @@
       case 'welcome': state.me = { id:m.yourId, name:m.yourName }; break;
       case 'lobby':   state.players = m.players; state.phase='lobby'; break;
       case 'options': state.options = { imposterCount:m.imposterCount||1, decoyWord:!!m.decoyWord, hideCategory:!!m.hideCategory, mixedPool:!!m.mixedPool, maxImposterCount:m.maxImposterCount||1 }; break;
-      case 'role':    state.category = m.category; state.word = m.word; state.isImposter = !!m.isImposter; state.hideCategory = !!m.hideCategory; state.isDecoy = !!m.isDecoy; state.phase='playing'; state.voted=false; state.picked=null; state.result=null; break;
+      case 'role':    state.category = m.category; state.word = m.word; state.isImposter = !!m.isImposter; state.hideCategory = !!m.hideCategory; state.isDecoy = !!m.isDecoy; state.firstPlayerId = m.firstPlayerId || null; state.firstPlayerName = m.firstPlayerName || ''; state.direction = m.direction || 'clockwise'; state.phase='playing'; state.voted=false; state.picked=null; state.result=null; break;
       case 'voting':  state.phase='voting'; state.picked=null; state.voted=false; break;
       case 'result':  state.phase='result'; state.result = m; break;
       case 'reset':   state.phase='lobby'; state.word=null; state.result=null; break;
@@ -168,7 +168,15 @@
     } else {
       card = `<div class="secret-card"><div class="label">secret word</div><div class="word">${esc(state.word||'')}</div><div class="category">Category: <strong>${esc(state.category)}</strong></div><p class="small">Discuss in person. Find the imposter.</p></div>`;
     }
-    root.innerHTML = card + `<div class="card center small">Waiting for the host to call a vote…</div>`;
+    root.innerHTML = card + viewTurnOrder() + `<div class="card center small">Waiting for the host to call a vote…</div>`;
+  }
+
+  function viewTurnOrder(){
+    if (!state.firstPlayerName) return '';
+    const dir = state.direction === 'counterclockwise' ? 'counter-clockwise' : 'clockwise';
+    const who = state.me && state.firstPlayerId === state.me.id
+      ? 'You go first' : `${esc(state.firstPlayerName)} goes first`;
+    return `<div class="card center"><h2>Turn order</h2><p>${who} — then continue <strong>${dir}</strong>.</p></div>`;
   }
 
   function renderVoting(){

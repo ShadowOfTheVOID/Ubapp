@@ -78,6 +78,18 @@ class GameOptionsTest {
         assertFalse(imp.decoyWord == e.secretWord)
     }
 
+    @Test fun `imposter picks a first player and direction on start`() {
+        val e = ImposterEngine(Random(6))
+        val ids = listOf("a", "b", "c", "d")
+        ids.forEach { e.addPlayer(it, it) }
+        e.start()
+        assertNotNull(e.firstPlayerId)
+        assertTrue(e.firstPlayerId in ids)
+        e.reset()
+        assertNull(e.firstPlayerId)
+        assertTrue(e.clockwise)
+    }
+
     // --- Mafia ---
 
     @Test fun `mafia defaults match formula`() {
