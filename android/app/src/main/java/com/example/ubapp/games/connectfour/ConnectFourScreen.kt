@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.ubapp.stats.StatsStore
+import com.example.ubapp.stats.SeriesScore
 import com.example.ubapp.theme.UbappTheme
 import com.example.ubapp.tutorials.GameTutorials
 import kotlinx.coroutines.Dispatchers
@@ -30,6 +31,9 @@ fun ConnectFourScreen() {
     }
     var thinking by remember { mutableStateOf(false) }
     var showTutorial by remember { mutableStateOf(false) }
+    // Running tally across rematches in this sitting; resets when options change.
+    val series = remember(options) { SeriesScore() }
+    var seriesText by remember(options) { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
 
@@ -41,6 +45,8 @@ fun ConnectFourScreen() {
                 else -> "draw"
             }
             StatsStore.record(ctx.applicationContext, "connect_four", listOf("You", "CPU"), outcome)
+            series.record(when (model.winner) { Disc.RED -> "You"; Disc.YELLOW -> "CPU"; else -> "Draw" })
+            seriesText = series.banner()
         }
     }
 
@@ -60,6 +66,9 @@ fun ConnectFourScreen() {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(status, style = MaterialTheme.typography.titleLarge)
+        if (seriesText.isNotEmpty()) {
+            Text(seriesText, style = MaterialTheme.typography.bodyMedium)
+        }
 
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for ((c, r) in boardPresets) {

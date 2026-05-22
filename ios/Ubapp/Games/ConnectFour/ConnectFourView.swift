@@ -5,6 +5,9 @@ struct ConnectFourView: View {
     @State private var model = ConnectFourModel()
     @State private var thinking = false
     @State private var showTutorial = false
+    // Running tally across rematches in this sitting; resets when options change.
+    @State private var series = SeriesScore()
+    @State private var seriesText = ""
 
     private static let presets = [(6, 5), (7, 6), (8, 7)]
 
@@ -13,6 +16,7 @@ struct ConnectFourView: View {
             Spacer(minLength: 0)
             VStack(spacing: 12) {
                 Text(statusText).font(.headline)
+                if !seriesText.isEmpty { Text(seriesText).font(.subheadline).foregroundStyle(.secondary) }
                 optionControls
                 board
                 HStack(spacing: 16) {
@@ -57,13 +61,16 @@ struct ConnectFourView: View {
             set: {
                 let (c, r) = Self.presets[$0]
                 options = ConnectFourOptions(cols: c, rows: r, connectN: 4, difficulty: options.difficulty).normalized()
+                resetSeries()
                 newGame()
             }
         )
     }
     private var difficultyBinding: Binding<ConnectFourDifficulty> {
-        Binding(get: { options.difficulty }, set: { options.difficulty = $0 })
+        Binding(get: { options.difficulty }, set: { options.difficulty = $0; resetSeries() })
     }
+
+    private func resetSeries() { series = SeriesScore(); seriesText = "" }
 
     private var board: some View {
         VStack(spacing: 4) {
@@ -107,6 +114,12 @@ struct ConnectFourView: View {
         default: outcome = "draw"
         }
         StatsStore.record(gameId: "connect_four", players: ["You", "CPU"], outcome: outcome)
+        switch model.winner {
+        case .red: series.record("You")
+        case .yellow: series.record("CPU")
+        default: series.record("Draw")
+        }
+        seriesText = series.banner()
     }
 
     private var statusText: String {

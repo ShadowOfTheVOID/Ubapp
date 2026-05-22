@@ -7,12 +7,16 @@ struct TicTacToeView: View {
     @State private var model = TicTacToeModel()
     @State private var aiThinking = false
     @State private var showTutorial = false
+    // Running tally across rematches in this sitting; resets when options change.
+    @State private var series = SeriesScore()
+    @State private var seriesText = ""
 
     var body: some View {
         VStack(spacing: 16) {
             Spacer(minLength: 0)
             VStack(spacing: 12) {
                 Text(statusText).font(.headline)
+                if !seriesText.isEmpty { Text(seriesText).font(.subheadline).foregroundStyle(.secondary) }
                 optionControls
                 grid
                 HStack(spacing: 16) {
@@ -51,12 +55,14 @@ struct TicTacToeView: View {
 
     private var boardBinding: Binding<Int> {
         Binding(get: { options.boardSize },
-                set: { options = TicTacToeOptions(boardSize: $0, difficulty: options.difficulty).normalized(); newGame() })
+                set: { options = TicTacToeOptions(boardSize: $0, difficulty: options.difficulty).normalized(); resetSeries(); newGame() })
     }
     private var difficultyBinding: Binding<TicTacToeDifficulty> {
         Binding(get: { options.difficulty },
-                set: { options.difficulty = $0 })
+                set: { options.difficulty = $0; resetSeries() })
     }
+
+    private func resetSeries() { series = SeriesScore(); seriesText = "" }
 
     private var grid: some View {
         VStack(spacing: 8) {
@@ -97,6 +103,12 @@ struct TicTacToeView: View {
         default: outcome = "draw"
         }
         StatsStore.record(gameId: "tic_tac_toe", players: ["You", "CPU"], outcome: outcome)
+        switch model.winner {
+        case .x: series.record("You")
+        case .o: series.record("CPU")
+        default: series.record("Draw")
+        }
+        seriesText = series.banner()
     }
 
     private var statusText: String {

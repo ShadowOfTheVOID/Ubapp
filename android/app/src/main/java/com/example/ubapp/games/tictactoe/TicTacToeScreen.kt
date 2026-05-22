@@ -14,6 +14,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ubapp.stats.StatsStore
+import com.example.ubapp.stats.SeriesScore
 import com.example.ubapp.theme.UbappTheme
 import com.example.ubapp.tutorials.GameTutorials
 import kotlinx.coroutines.Dispatchers
@@ -26,6 +27,9 @@ fun TicTacToeScreen() {
     var model by remember(options) { mutableStateOf(TicTacToeModel(options.boardSize, options.winLength)) }
     var thinking by remember { mutableStateOf(false) }
     var showTutorial by remember { mutableStateOf(false) }
+    // Running tally across rematches in this sitting; resets when options change.
+    val series = remember(options) { SeriesScore() }
+    var seriesText by remember(options) { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
 
@@ -37,6 +41,8 @@ fun TicTacToeScreen() {
                 else -> "draw"
             }
             StatsStore.record(ctx.applicationContext, "tic_tac_toe", listOf("You", "CPU"), outcome)
+            series.record(when (model.winner) { Mark.X -> "You"; Mark.O -> "CPU"; else -> "Draw" })
+            seriesText = series.banner()
         }
     }
 
@@ -57,6 +63,9 @@ fun TicTacToeScreen() {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(status, style = MaterialTheme.typography.titleLarge)
+        if (seriesText.isNotEmpty()) {
+            Text(seriesText, style = MaterialTheme.typography.bodyMedium)
+        }
 
         // Board size + difficulty selectors. Changing either resets the board.
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
