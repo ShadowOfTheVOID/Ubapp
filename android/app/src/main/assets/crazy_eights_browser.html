@@ -107,7 +107,7 @@
   }
   const state = { me:null, phase:'lobby', players:[], hand:[], topCard:null, activeSuit:null,
     drawCount:0, currentId:null, winnerId:null, lastEvent:'', justDrew:false, picked:null, pickingSuitFor:null,
-    options:{startingHandSize:null, jackSkips:false, queenReverses:false},
+    options:{startingHandSize:null, jackSkips:false, queenReverses:false, twosDrawTwo:false},
     tutorial:{isOpen:false,yesCount:0,noCount:0,eligibleCount:0,result:null,tutorialShown:false}, tutorialContent:null, myTutorialVote:null };
 
   function send(o){ if (ws.readyState===1) ws.send(JSON.stringify(o)); }
@@ -122,6 +122,7 @@
           startingHandSize: (m.startingHandSize === null || m.startingHandSize === undefined) ? null : m.startingHandSize,
           jackSkips: !!m.jackSkips,
           queenReverses: !!m.queenReverses,
+          twosDrawTwo: !!m.twosDrawTwo,
         }; break;
       case 'state': Object.assign(state, m); state.picked=null; state.pickingSuitFor=null; break;
       case 'hand': state.hand = m.cards; break;
@@ -162,6 +163,7 @@
     const flags = [];
     if (o.jackSkips) flags.push('jacks skip');
     if (o.queenReverses) flags.push('queens reverse');
+    if (o.twosDrawTwo) flags.push('twos draw two');
     const flagsLine = flags.length ? flags.join(' · ') : 'standard rules';
     return `<div class="panel"><h2>Game options</h2><p>Starting hand: <strong>${hand}</strong> · ${flagsLine}</p></div>`;
   }

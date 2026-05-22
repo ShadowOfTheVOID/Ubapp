@@ -160,6 +160,8 @@ final class CheatServer {
         broadcast([
             "type": "options",
             "freeClaim": engine.options.freeClaim,
+            "randomStartRank": engine.options.randomStartRank,
+            "descending": engine.options.descending,
         ])
     }
 

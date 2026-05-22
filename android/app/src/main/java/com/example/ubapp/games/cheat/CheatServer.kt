@@ -120,7 +120,12 @@ class CheatServer(context: Context, val hostName: String = "Host") {
     }
 
     private fun broadcastOptions() {
-        broadcast(JSONObject().put("type", "options").put("freeClaim", engine.options.freeClaim))
+        broadcast(
+            JSONObject().put("type", "options")
+                .put("freeClaim", engine.options.freeClaim)
+                .put("randomStartRank", engine.options.randomStartRank)
+                .put("descending", engine.options.descending),
+        )
     }
 
     private fun broadcastLobby() {

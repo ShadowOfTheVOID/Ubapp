@@ -104,7 +104,8 @@ class CrazyEightsServer(context: Context, val hostName: String = "Host") {
             .put("type", "options")
             .put("startingHandSize", o.startingHandSize ?: JSONObject.NULL)
             .put("jackSkips", o.jackSkips)
-            .put("queenReverses", o.queenReverses))
+            .put("queenReverses", o.queenReverses)
+            .put("twosDrawTwo", o.twosDrawTwo))
     }
 
     private fun applyPlay(pid: String, j: JSONObject) {

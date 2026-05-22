@@ -139,6 +139,7 @@ final class CrazyEightsServer {
             "startingHandSize": o.startingHandSize as Any,
             "jackSkips": o.jackSkips,
             "queenReverses": o.queenReverses,
+            "twosDrawTwo": o.twosDrawTwo,
         ])
     }
 

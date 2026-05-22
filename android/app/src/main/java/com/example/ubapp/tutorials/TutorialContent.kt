@@ -170,16 +170,18 @@ object GameTutorials {
     val ticTacToe = GameTutorial(
         title = "How to play Tic-Tac-Toe",
         sections = listOf(
-            TutorialSection("Goal", "Get three of your marks in a row — horizontally, vertically, or diagonally."),
-            TutorialSection("Turns", "You are X, the AI is O. Tap an empty cell to play. The AI uses a perfect-play search, so your best result against it is a draw."),
+            TutorialSection("Goal", "Line up your marks in a row — horizontally, vertically, or diagonally. On the 3x3 board that means three; on the bigger boards it's four in a row."),
+            TutorialSection("Turns", "You are X, the AI is O. Tap an empty cell to play."),
+            TutorialSection("Options", "Pick the board size (3x3, 4x4, 5x5) and the AI difficulty before you start. On Hard 3x3 the AI plays perfectly, so the best you can do is a draw."),
         ),
     )
 
     val connectFour = GameTutorial(
         title = "How to play Connect Four",
         sections = listOf(
-            TutorialSection("Goal", "Drop discs into the columns. First to line up four discs in a row, column, or diagonal wins."),
+            TutorialSection("Goal", "Drop discs into the columns. First to line up the target number of discs in a row, column, or diagonal wins."),
             TutorialSection("Turns", "Tap a column to drop your disc. The AI alternates with you. The center column tends to be the strongest opener."),
+            TutorialSection("Options", "Choose a board size and AI difficulty before you start. Easy looks a couple of moves ahead; Hard searches much deeper."),
         ),
     )
 

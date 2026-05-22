@@ -143,6 +143,11 @@ private fun CrazyEightsOptionsCard(engine: CrazyEightsEngine, server: CrazyEight
                        onCheckedChange = { server.hostSetOptions(engine.options.copy(queenReverses = it)) })
                 Text("  Queens reverse direction")
             }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = engine.options.twosDrawTwo,
+                       onCheckedChange = { server.hostSetOptions(engine.options.copy(twosDrawTwo = it)) })
+                Text("  Twos: next player draws two")
+            }
         }
     }
 }

@@ -27,6 +27,10 @@ data class CheatOptions(
     /** When true, the active player may claim any rank rather than the
      *  next rank in sequence. More chaos, less strategy. */
     val freeClaim: Boolean = false,
+    /** Start the rank sequence on a random rank instead of always Aces. */
+    val randomStartRank: Boolean = false,
+    /** Count the rank sequence down (K → Q → … → A) instead of up. */
+    val descending: Boolean = false,
 )
 
 /** The currently-open play that any non-author can BS-call. */
@@ -113,11 +117,11 @@ class CheatEngine(private val rng: Random = Random.Default) {
         pile.clear()
         lastPlay = null
         lastReveal = null
-        expectedRank = 1
+        expectedRank = if (options.randomStartRank) 1 + rng.nextInt(13) else 1
         currentIndex = 0
         winnerId = null
         phase = CheatPhase.PLAYING
-        lastEvent = "${current!!.name} starts — claim Aces"
+        lastEvent = "${current!!.name} starts — claim ${rankName(expectedRank)}"
     }
 
     /** Returns null on success, an error message on failure. */
@@ -213,8 +217,10 @@ class CheatEngine(private val rng: Random = Random.Default) {
         val i = order.indexOf(id); return if (i < 0) 0 else i
     }
 
-    /** Aces (1) → 2 → 3 … → K (13) → Aces. */
-    fun nextRank(r: Int): Int = (r % 13) + 1
+    /** Ascending Aces (1) → 2 … → K (13) → Aces, or the reverse when
+     *  [CheatOptions.descending] is set. */
+    fun nextRank(r: Int): Int =
+        if (options.descending) (if (r <= 1) 13 else r - 1) else (r % 13) + 1
 
     fun rankName(r: Int): String = when (r) {
         1 -> "Aces"; 11 -> "Jacks"; 12 -> "Queens"; 13 -> "Kings"; else -> "${r}s"

@@ -37,6 +37,8 @@ struct CrazyEightsOptions: Equatable {
     var jackSkips: Bool = false
     /// Playing a Queen reverses turn direction.
     var queenReverses: Bool = false
+    /// Playing a 2 forces the next player to draw two cards and lose their turn.
+    var twosDrawTwo: Bool = false
 }
 
 final class CrazyEightsPlayer {
@@ -154,6 +156,15 @@ final class CrazyEightsEngine {
         }
         advanceTurn()
         if skipNext { advanceTurn() }
+        if options.twosDrawTwo && card.rank == 2 && order.count >= 2 {
+            let victim = current!
+            for _ in 0..<2 {
+                if drawPile.isEmpty { reshuffle() }
+                if !drawPile.isEmpty { victim.hand.append(drawPile.removeLast()) }
+            }
+            lastEvent = "\(victim.name) draws two and is skipped"
+            advanceTurn()
+        }
         return nil
     }
 
