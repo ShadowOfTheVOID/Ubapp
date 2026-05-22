@@ -202,9 +202,6 @@ struct CrazyEightsGuestView: View {
 private func suitGlyph(_ s: String) -> String {
     switch s { case "clubs": "♣"; case "diamonds": "♦"; case "hearts": "♥"; case "spades": "♠"; default: "" }
 }
-private func rankShort(_ r: Int) -> String {
-    switch r { case 11: "J"; case 12: "Q"; case 13: "K"; case 14: "A"; default: "\(r)" }
-}
 
 @MainActor
 final class CrazyEightsGuestModel: ObservableObject {

@@ -336,9 +336,6 @@ final class CheatGuestModel: ObservableObject {
 fileprivate func suitGlyph(_ s: String) -> String {
     switch s { case "clubs": "♣"; case "diamonds": "♦"; case "hearts": "♥"; case "spades": "♠"; default: "" }
 }
-fileprivate func rankShort(_ r: Int) -> String {
-    switch r { case 1: "A"; case 11: "J"; case 12: "Q"; case 13: "K"; default: "\(r)" }
-}
 fileprivate func rankName(_ r: Int) -> String {
     switch r {
     case 1: "Aces"

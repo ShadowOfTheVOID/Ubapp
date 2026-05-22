@@ -192,10 +192,13 @@ struct PresidentGuestView: View {
     }
 
     @ViewBuilder private var gameOver: some View {
+        let ranked = model.players.sorted { a, b in
+            let ao = a.finishOrder == 0 ? Int.max : a.finishOrder
+            let bo = b.finishOrder == 0 ? Int.max : b.finishOrder
+            return ao < bo
+        }
         GroupBox("Round over") {
-            ForEach(model.players.sorted { $0.finishOrder == 0 ? Int.max : $0.finishOrder
-                                          < ($1.finishOrder == 0 ? Int.max : $1.finishOrder) },
-                    id: \.id) { p in
+            ForEach(ranked, id: \.id) { p in
                 HStack {
                     Text("\(p.finishOrder == 0 ? "?" : String(p.finishOrder)). \(p.name)")
                     Spacer()
@@ -349,9 +352,6 @@ final class PresidentGuestModel: ObservableObject {
 
 fileprivate func suitGlyph(_ s: String) -> String {
     switch s { case "clubs": "♣"; case "diamonds": "♦"; case "hearts": "♥"; case "spades": "♠"; default: "" }
-}
-fileprivate func rankShort(_ r: Int) -> String {
-    switch r { case 11: "J"; case 12: "Q"; case 13: "K"; case 14: "A"; default: "\(r)" }
 }
 fileprivate func rankLabel(_ r: String) -> String {
     switch r {
