@@ -80,6 +80,7 @@
   }
   const state = { me:null, phase:'lobby', players:[], category:'', word:null, isImposter:false, hideCategory:false, isDecoy:false, firstPlayerId:null, firstPlayerName:'', direction:'clockwise', picked:null, voted:false, result:null,
     options:{imposterCount:1, decoyWord:false, hideCategory:false, mixedPool:false, maxImposterCount:1},
+    series:{rounds:0, scores:{}},
     tutorial:{isOpen:false,yesCount:0,noCount:0,eligibleCount:0,result:null,tutorialShown:false}, tutorialContent:null, myTutorialVote:null };
 
   function send(o){ if (ws.readyState===1) ws.send(JSON.stringify(o)); }
@@ -94,6 +95,7 @@
       case 'voting':  state.phase='voting'; state.picked=null; state.voted=false; break;
       case 'result':  state.phase='result'; state.result = m; break;
       case 'reset':   state.phase='lobby'; state.word=null; state.result=null; break;
+      case 'series_state': state.series = { rounds:m.rounds||0, scores:m.scores||{} }; break;
       case 'tutorial_vote_state': {
         const wasOpen = state.tutorial.isOpen;
         state.tutorial = { isOpen:m.isOpen, yesCount:m.yesCount, noCount:m.noCount, eligibleCount:m.eligibleCount, result:m.result, tutorialShown:m.tutorialShown };
@@ -113,8 +115,14 @@
     if (state.phase==='result') return renderResult();
   }
 
+  function seriesBanner(){
+    const s = state.series; if (!s || !s.rounds) return '';
+    const parts = Object.keys(s.scores).map(k => `${esc(k)} ${s.scores[k]}`).join(' · ');
+    return `<div class="card"><strong>Series</strong> — ${parts}</div>`;
+  }
+
   function renderLobby(){
-    root.innerHTML = `<h1>Lobby</h1>${viewTutorialBanner()}${viewTutorialVote()}${viewOptions()}<div class="card"><p class="small">Waiting for the host to start.</p><h2>Players (${state.players.length})</h2>${state.players.map(p=>`<div class="player"><span>${esc(p.name)}${p.isHost?' <span class="pill">host</span>':''}</span>${state.me.id===p.id?'<span class="pill you">you</span>':''}</div>`).join('')}</div>`;
+    root.innerHTML = `<h1>Lobby</h1>${seriesBanner()}${viewTutorialBanner()}${viewTutorialVote()}${viewOptions()}<div class="card"><p class="small">Waiting for the host to start.</p><h2>Players (${state.players.length})</h2>${state.players.map(p=>`<div class="player"><span>${esc(p.name)}${p.isHost?' <span class="pill">host</span>':''}</span>${state.me.id===p.id?'<span class="pill you">you</span>':''}</div>`).join('')}</div>`;
   }
 
   function viewOptions(){
@@ -198,7 +206,7 @@
     const names = ids.map(id => { const p = r.players.find(pp=>pp.id===id); return p ? p.name : '?'; });
     const label = names.length === 1 ? 'imposter was' : 'imposters were';
     const impLine = names.length ? `<p>The ${label} <strong>${esc(names.join(', '))}</strong>.</p>` : '';
-    root.innerHTML = `<h1>${winner}</h1><div class="card center">${impLine}${accused?`<p>You voted out <strong>${esc(accused.name)}</strong>${r.imposterCaught?' — correct!':' — wrong!'}</p>`:'<p>The vote tied — no one was eliminated.</p>'}<p>Secret word was <strong>${esc(r.word)}</strong> (${esc(r.category)}).</p></div><div class="card center small">Waiting for the host to start a new round…</div>`;
+    root.innerHTML = `<h1>${winner}</h1>${seriesBanner()}<div class="card center">${impLine}${accused?`<p>You voted out <strong>${esc(accused.name)}</strong>${r.imposterCaught?' — correct!':' — wrong!'}</p>`:'<p>The vote tied — no one was eliminated.</p>'}<p>Secret word was <strong>${esc(r.word)}</strong> (${esc(r.category)}).</p></div><div class="card center small">Waiting for the host to start a new round…</div>`;
   }
 
   // join handler bind

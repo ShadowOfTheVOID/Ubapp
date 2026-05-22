@@ -13,6 +13,7 @@ final class CodenamesServer {
 
     var onStateChange: (() -> Void)?
     private var statRecorded = false
+    private let series = SeriesScore()
 
     init(server: HostServer? = nil, hostName: String = "Host") {
         self.server = server ?? HostServer(html: HostServer.htmlResource(named: "codenames_browser"))
@@ -71,7 +72,9 @@ final class CodenamesServer {
         engine.reset()
         statRecorded = false
         broadcast(["type": "reset"])
-        broadcastLobby(); emit()
+        broadcastLobby()
+        if !series.isEmpty { broadcastSeries() }   // standings carry across rematches
+        emit()
     }
     func hostCallTutorialVote() { openTutorialVote() }
     func hostTutorialVote(_ yes: Bool) { submitTutorialVote(voterId: Self.hostId, yes: yes) }
@@ -144,7 +147,9 @@ final class CodenamesServer {
         guestToPlayer[guest] = pid
         playerToGuest[pid] = guest
         send(guest, ["type": "welcome", "yourId": pid, "yourName": name, "game": "codenames"])
-        broadcastLobby(); broadcastOptions(); broadcastTutorialState(); emit()
+        broadcastLobby(); broadcastOptions(); broadcastTutorialState()
+        if !series.isEmpty { broadcastSeries() }
+        emit()
     }
 
     private func broadcastOptions() {
@@ -174,11 +179,14 @@ final class CodenamesServer {
     private func broadcastState() {
         if engine.phase == .gameOver && !statRecorded {
             statRecorded = true
+            let outcome = engine.winner?.rawValue ?? "unknown"
             StatsStore.record(
                 gameId: "codenames",
                 players: engine.players.values.map(\.name),
-                outcome: engine.winner?.rawValue ?? "unknown",
+                outcome: outcome,
             )
+            series.record(outcome)
+            broadcastSeries()
         }
         let boardPublic: [[String: Any]] = engine.board.map { c in
             var d: [String: Any] = ["word": c.word, "revealed": c.revealed]
@@ -241,6 +249,12 @@ final class CodenamesServer {
             payload["menuSections"] = GameTutorials.codenames.browserMenuSectionsJSON()
         }
         broadcast(payload)
+    }
+
+    private func broadcastSeries() {
+        var scores: [String: Int] = [:]
+        for entry in series.scores { scores[entry.key] = entry.value }
+        broadcast(["type": "series_state", "rounds": series.rounds, "scores": scores])
     }
 
     private func emit() { onStateChange?() }

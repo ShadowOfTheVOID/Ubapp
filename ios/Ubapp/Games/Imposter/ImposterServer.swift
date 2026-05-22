@@ -13,6 +13,7 @@ final class ImposterServer {
 
     var onStateChange: (() -> Void)?
     private var statRecorded = false
+    private let series = SeriesScore()
 
     init(server: HostServer? = nil, hostName: String = "Host") {
         self.server = server ?? HostServer(html: HostServer.htmlResource(named: "imposter_browser"))
@@ -60,6 +61,7 @@ final class ImposterServer {
         statRecorded = false
         broadcast(["type": "reset"])
         broadcastLobby()
+        if !series.isEmpty { broadcastSeries() }
         emit()
     }
     func hostCallTutorialVote() { openTutorialVote() }
@@ -121,6 +123,7 @@ final class ImposterServer {
         broadcastLobby()
         broadcastOptions()
         broadcastTutorialState()
+        if !series.isEmpty { broadcastSeries() }
         emit()
     }
 
@@ -207,11 +210,14 @@ final class ImposterServer {
     private func broadcastResult() {
         if !statRecorded {
             statRecorded = true
+            let outcome = engine.winner == .town ? "town" : "imposter"
             StatsStore.record(
                 gameId: "imposter",
                 players: engine.players.values.map(\.name),
-                outcome: engine.winner == .town ? "town" : "imposter",
+                outcome: outcome,
             )
+            series.record(outcome)
+            broadcastSeries()
         }
         broadcast([
             "type": "result",
@@ -225,6 +231,12 @@ final class ImposterServer {
                 ["id": $0.id, "name": $0.name, "isImposter": $0.isImposter]
             },
         ])
+    }
+
+    private func broadcastSeries() {
+        var scores: [String: Int] = [:]
+        for entry in series.scores { scores[entry.key] = entry.value }
+        broadcast(["type": "series_state", "rounds": series.rounds, "scores": scores])
     }
 
     private func emit() { onStateChange?() }

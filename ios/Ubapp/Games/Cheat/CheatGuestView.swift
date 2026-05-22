@@ -13,6 +13,7 @@ struct CheatGuestView: View {
                     Spacer(minLength: 0)
                     VStack(alignment: .center, spacing: 12) {
                         Text("Playing as \(ctx.yourName)").font(.caption).foregroundStyle(.secondary)
+                        SeriesBanner(state: model.series)
                         switch model.phase {
                         case "lobby":    lobby
                         case "gameOver": gameOver
@@ -256,6 +257,7 @@ final class CheatGuestModel: ObservableObject {
     @Published var tutorialState = GuestTutorialState()
     @Published var tutorialContent: GuestTutorialContent?
     @Published var myTutorialVote: Bool?
+    @Published var series = GuestSeriesState()
 
     private weak var client: (any GuestLink)?
 
@@ -321,6 +323,8 @@ final class CheatGuestModel: ObservableObject {
         case "reset":
             phase = "lobby"; hand = []; winnerId = nil; lastPlay = nil; lastReveal = nil
             pileSize = 0; lastEvent = ""
+        case "series_state":
+            series.apply(m)
         case "tutorial_vote_state":
             tutorialState.apply(m)
             if let title = m["title"] as? String {

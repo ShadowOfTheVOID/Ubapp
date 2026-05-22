@@ -14,6 +14,7 @@ struct CodenamesGuestView: View {
                     Spacer(minLength: 0)
                     VStack(alignment: .center, spacing: 12) {
                         Text("Playing as \(ctx.yourName)").font(.caption).foregroundStyle(.secondary)
+                        SeriesBanner(state: model.series)
                         switch model.phase {
                         case "lobby":    lobby
                         case "gameOver": board
@@ -218,6 +219,7 @@ final class CodenamesGuestModel: ObservableObject {
     @Published var tutorialState = GuestTutorialState()
     @Published var tutorialContent: GuestTutorialContent?
     @Published var myTutorialVote: Bool?
+    @Published var series = GuestSeriesState()
 
     private weak var client: (any GuestLink)?
 
@@ -264,6 +266,8 @@ final class CodenamesGuestModel: ObservableObject {
             lastEvent = m["lastEvent"] as? String ?? ""
         case "reset":
             phase = "lobby"; board = []; winner = nil; smView = []
+        case "series_state":
+            series.apply(m)
         case "tutorial_vote_state":
             tutorialState.apply(m)
             if let title = m["title"] as? String {

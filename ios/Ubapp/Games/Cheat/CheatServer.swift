@@ -14,6 +14,7 @@ final class CheatServer {
 
     var onStateChange: (() -> Void)?
     private var statRecorded = false
+    private let series = SeriesScore()
 
     init(server: HostServer? = nil, hostName: String = "Host") {
         self.server = server ?? HostServer(html: HostServer.htmlResource(named: "cheat_browser"))
@@ -51,7 +52,9 @@ final class CheatServer {
         engine.reset()
         statRecorded = false
         broadcast(["type": "reset"])
-        broadcastLobby(); broadcastTutorialState(); emit()
+        broadcastLobby(); broadcastTutorialState()
+        if !series.isEmpty { broadcastSeries() }
+        emit()
     }
     func hostCallTutorialVote() { openTutorialVote() }
     func hostTutorialVote(_ yes: Bool) { submitTutorialVote(voterId: Self.hostId, yes: yes) }
@@ -110,7 +113,9 @@ final class CheatServer {
         guestToPlayer[guest] = pid
         playerToGuest[pid] = guest
         send(guest, ["type": "welcome", "yourId": pid, "yourName": name, "game": "cheat"])
-        broadcastLobby(); broadcastOptions(); broadcastTutorialState(); emit()
+        broadcastLobby(); broadcastOptions(); broadcastTutorialState()
+        if !series.isEmpty { broadcastSeries() }
+        emit()
     }
 
     private func applyPlay(_ pid: String, json: [String: Any]) {
@@ -225,10 +230,12 @@ final class CheatServer {
     private func broadcastOver() {
         if !statRecorded {
             statRecorded = true
+            let winnerName = engine.winnerId.flatMap { engine.players[$0]?.name }
             var names: [String] = []
-            if let wid = engine.winnerId, let w = engine.players[wid] { names.append(w.name) }
+            if let w = winnerName { names.append(w) }
             for p in engine.players.values where p.id != engine.winnerId { names.append(p.name) }
             StatsStore.record(gameId: "cheat", players: names, outcome: "win")
+            if let w = winnerName { series.record(w); broadcastSeries() }
         }
         broadcast([
             "type": "over",
@@ -262,6 +269,12 @@ final class CheatServer {
             payload["menuSections"] = GameTutorials.cheat.browserMenuSectionsJSON()
         }
         broadcast(payload)
+    }
+
+    private func broadcastSeries() {
+        var scores: [String: Int] = [:]
+        for entry in series.scores { scores[entry.key] = entry.value }
+        broadcast(["type": "series_state", "rounds": series.rounds, "scores": scores])
     }
 
     private func emit() { onStateChange?() }

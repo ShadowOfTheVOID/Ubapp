@@ -109,6 +109,7 @@
     smView:null, // [{kind}] for spymaster only
     clueText:'', clueNumber:1,
     options:{boardSize:25, assassinCount:1, allowedSizes:[16,25,36]},
+    series:{rounds:0, scores:{}},
     tutorial:{isOpen:false,yesCount:0,noCount:0,eligibleCount:0,result:null,tutorialShown:false}, tutorialContent:null, myTutorialVote:null };
 
   function send(o){ if (ws.readyState===1) ws.send(JSON.stringify(o)); }
@@ -132,6 +133,7 @@
         state.phase = m.phase; state.winner = m.winner; state.endReason = m.endReason;
         state.lastEvent = m.lastEvent || ''; break;
       case 'reset': state.phase='lobby'; state.board=[]; state.winner=null; state.smView=null; break;
+      case 'series_state': state.series = { rounds:m.rounds||0, scores:m.scores||{} }; break;
       case 'tutorial_vote_state': {
         const wasOpen = state.tutorial.isOpen;
         state.tutorial = { isOpen:m.isOpen, yesCount:m.yesCount, noCount:m.noCount, eligibleCount:m.eligibleCount, result:m.result, tutorialShown:m.tutorialShown };
@@ -160,6 +162,12 @@
     i.addEventListener('keydown', e => { if (e.key==='Enter') submit(); });
   }
 
+  function seriesBanner(){
+    const s = state.series; if (!s || !s.rounds) return '';
+    const parts = Object.keys(s.scores).map(k => `${esc(k)} ${s.scores[k]}`).join(' · ');
+    return `<div class="panel"><strong>Series</strong> — ${parts}</div>`;
+  }
+
   function renderLobby(){
     const myTeamButtons = `<div class="row">
       <button class="red" id="join-red">Join Red</button>
@@ -179,6 +187,7 @@
     const o = state.options;
     const optsCard = `<div class="panel"><h2>Game options</h2><p class="small">Board: <strong>${o.boardSize}</strong> · Assassins: <strong>${o.assassinCount}</strong></p></div>`;
     root.innerHTML = `<h1>Codenames</h1>
+      ${seriesBanner()}
       ${viewTutorialBanner()}
       ${viewTutorialVote()}
       <div class="panel">${myTeamButtons}</div>
@@ -245,7 +254,7 @@
 
     const lastEv = state.lastEvent ? `<p class="small" style="text-align:center">${esc(state.lastEvent)}</p>` : '';
 
-    root.innerHTML = `${scoreboard}${banner}${clueDisplay}${grid}${endTurnBtn}${lastEv}`;
+    root.innerHTML = `${seriesBanner()}${scoreboard}${banner}${clueDisplay}${grid}${endTurnBtn}${lastEv}`;
     bindGame();
   }
 

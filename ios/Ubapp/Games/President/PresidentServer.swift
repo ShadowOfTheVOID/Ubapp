@@ -12,6 +12,11 @@ final class PresidentServer {
 
     var onStateChange: (() -> Void)?
     private var statRecorded = false
+    private let series = SeriesScore()
+    // President plays multiple rounds per match (next_round), so the series
+    // counts each round's president — gated separately from the once-per-match
+    // stat recording.
+    private var seriesRecorded = false
 
     init(server: HostServer? = nil, hostName: String = "Host") {
         self.server = server ?? HostServer(html: HostServer.htmlResource(named: "president_browser"))
@@ -40,17 +45,21 @@ final class PresidentServer {
         engine.setOptions(o); broadcastOptions(); emit()
     }
     func hostStart() {
+        seriesRecorded = false
         engine.start()
         broadcastState(); sendHandsPrivately(); broadcastSwapPrompts(); emit()
     }
     func hostNextRound() {
+        seriesRecorded = false
         engine.startNextRound()
         broadcastState(); sendHandsPrivately(); broadcastSwapPrompts(); emit()
     }
     func hostNewGame() {
         engine.reset(); statRecorded = false
         broadcast(["type": "reset"])
-        broadcastLobby(); broadcastTutorialState(); emit()
+        broadcastLobby(); broadcastTutorialState()
+        if !series.isEmpty { broadcastSeries() }
+        emit()
     }
     func hostCallTutorialVote() { openTutorialVote() }
     func hostTutorialVote(_ yes: Bool) { submitTutorialVote(voterId: Self.hostId, yes: yes) }
@@ -111,7 +120,9 @@ final class PresidentServer {
         guestToPlayer[guest] = pid
         playerToGuest[pid] = guest
         send(guest, ["type": "welcome", "yourId": pid, "yourName": name, "game": "president"])
-        broadcastLobby(); broadcastOptions(); broadcastTutorialState(); emit()
+        broadcastLobby(); broadcastOptions(); broadcastTutorialState()
+        if !series.isEmpty { broadcastSeries() }
+        emit()
     }
 
     private func applyPlay(_ pid: String, json: [String: Any]) {
@@ -258,6 +269,12 @@ final class PresidentServer {
             }
             StatsStore.record(gameId: "president", players: names, outcome: "win")
         }
+        if !seriesRecorded {
+            seriesRecorded = true
+            if let presidentId = engine.finishOrder.first, let p = engine.players[presidentId] {
+                series.record(p.name); broadcastSeries()
+            }
+        }
         let rankings = engine.finishOrder.compactMap { pid -> [String: Any]? in
             guard let p = engine.players[pid] else { return nil }
             return ["id": p.id, "name": p.name, "rank": p.rank.rawValue,
@@ -292,6 +309,12 @@ final class PresidentServer {
             payload["menuSections"] = GameTutorials.president.browserMenuSectionsJSON()
         }
         broadcast(payload)
+    }
+
+    private func broadcastSeries() {
+        var scores: [String: Int] = [:]
+        for entry in series.scores { scores[entry.key] = entry.value }
+        broadcast(["type": "series_state", "rounds": series.rounds, "scores": scores])
     }
 
     private func emit() { onStateChange?() }
