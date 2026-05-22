@@ -3,11 +3,16 @@ package com.example.ubapp.theme
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -42,6 +47,31 @@ fun Modifier.ubCard(
 /** Accent-tinted hero/callout container. */
 fun Modifier.ubAccentCard(radius: Dp = Ub.Radius.card): Modifier =
     ubCard(radius, fill = Ub.AccentSoft, stroke = Ub.AccentLine)
+
+/** Centered "Hosting · <game>" + "Waiting for players" lobby header. */
+@Composable
+fun LobbyHeader(game: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally,
+           verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        MonoLabel("Hosting · $game", color = Ub.Accent)
+        Text("Waiting for players", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold,
+             letterSpacing = (-0.6).sp, color = Ub.Foreground)
+    }
+}
+
+/** A lobby player row: avatar + name + optional host tag, on a surface card. */
+@Composable
+fun LobbyPlayerRow(name: String, host: Boolean) {
+    Row(Modifier.fillMaxWidth().ubCard(radius = Ub.Radius.row)
+        .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        Avatar(name, host = host, size = 30.dp)
+        Spacer(Modifier.width(12.dp))
+        Text(name, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Ub.Foreground)
+        Spacer(Modifier.weight(1f))
+        if (host) MonoLabel("host", size = 9, color = Ub.Faint)
+    }
+}
 
 /** Uppercase monospaced micro-label (codes, section headers, metadata). */
 @Composable
