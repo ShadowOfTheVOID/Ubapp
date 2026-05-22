@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.ubapp.join.LoopbackGuest
 import com.example.ubapp.social.GuestId
 import com.example.ubapp.social.HostServer
+import com.example.ubapp.stats.SeriesScore
 import com.example.ubapp.stats.StatsStore
 import com.example.ubapp.tutorials.GameTutorials
 import org.json.JSONArray
@@ -18,6 +19,7 @@ class CodenamesServer(context: Context, val hostName: String = "Host") {
     private val playerToGuest = HashMap<String, GuestId>()
     var onStateChange: (() -> Unit)? = null
     private var statRecorded = false
+    private val series = SeriesScore()
 
     init { server.onMessage = ::onMessage; server.onLeave = ::onLeave }
     companion object { const val HOST_ID = "host" }
@@ -49,7 +51,9 @@ class CodenamesServer(context: Context, val hostName: String = "Host") {
     fun hostEndTurn() { engine.endTurn(HOST_ID); broadcastState(); emit() }
     fun hostNewGame() {
         engine.reset(); statRecorded = false
-        broadcast(JSONObject().put("type", "reset")); broadcastLobby(); emit()
+        broadcast(JSONObject().put("type", "reset")); broadcastLobby()
+        if (!series.isEmpty) broadcastSeries()   // standings carry across rematches
+        emit()
     }
     fun hostCallTutorialVote() = openTutorialVote()
     fun hostTutorialVote(yes: Boolean) = submitTutorialVote(HOST_ID, yes)
@@ -99,7 +103,9 @@ class CodenamesServer(context: Context, val hostName: String = "Host") {
         engine.addPlayer(pid, name)
         guestToPlayer[guest] = pid; playerToGuest[pid] = guest
         send(guest, JSONObject().put("type", "welcome").put("yourId", pid).put("yourName", name).put("game", "codenames"))
-        broadcastLobby(); broadcastOptions(); broadcastTutorialState(); emit()
+        broadcastLobby(); broadcastOptions(); broadcastTutorialState()
+        if (!series.isEmpty) broadcastSeries()
+        emit()
     }
 
     private fun broadcastOptions() {
@@ -125,11 +131,10 @@ class CodenamesServer(context: Context, val hostName: String = "Host") {
     private fun broadcastState() {
         if (engine.phase == CodenamesPhase.GAME_OVER && !statRecorded) {
             statRecorded = true
-            StatsStore.record(
-                appCtx, "codenames",
-                engine.players.values.map { it.name },
-                engine.winner?.name?.lowercase() ?: "unknown",
-            )
+            val outcome = engine.winner?.name?.lowercase() ?: "unknown"
+            StatsStore.record(appCtx, "codenames", engine.players.values.map { it.name }, outcome)
+            series.record(outcome)
+            broadcastSeries()
         }
         val arr = JSONArray()
         for (c in engine.board) {
@@ -189,6 +194,12 @@ class CodenamesServer(context: Context, val hostName: String = "Host") {
             p.put("menuSections", JSONArray(GameTutorials.codenames.browserMenuSectionsJson().map { JSONObject(it as Map<*, *>) }))
         }
         broadcast(p)
+    }
+
+    private fun broadcastSeries() {
+        val scores = JSONObject()
+        for ((k, v) in series.scores) scores.put(k, v)
+        broadcast(JSONObject().put("type", "series_state").put("rounds", series.rounds).put("scores", scores))
     }
 
     private fun emit() { onStateChange?.invoke() }

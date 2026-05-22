@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.ubapp.join.LoopbackGuest
 import com.example.ubapp.social.GuestId
 import com.example.ubapp.social.HostServer
+import com.example.ubapp.stats.SeriesScore
 import com.example.ubapp.stats.StatsStore
 import com.example.ubapp.tutorials.GameTutorials
 import org.json.JSONArray
@@ -18,6 +19,7 @@ class CheatServer(context: Context, val hostName: String = "Host") {
     private val playerToGuest = HashMap<String, GuestId>()
     var onStateChange: (() -> Unit)? = null
     private var statRecorded = false
+    private val series = SeriesScore()
 
     init { server.onMessage = ::onMessage; server.onLeave = ::onLeave }
     companion object { const val HOST_ID = "host" }
@@ -42,7 +44,9 @@ class CheatServer(context: Context, val hostName: String = "Host") {
     fun hostStart() { engine.start(); broadcastState(); sendHandsPrivately(); emit() }
     fun hostNewGame() {
         engine.reset(); statRecorded = false
-        broadcast(JSONObject().put("type", "reset")); broadcastLobby(); broadcastTutorialState(); emit()
+        broadcast(JSONObject().put("type", "reset")); broadcastLobby(); broadcastTutorialState()
+        if (!series.isEmpty) broadcastSeries()
+        emit()
     }
     fun hostCallTutorialVote() = openTutorialVote()
     fun hostTutorialVote(yes: Boolean) = submitTutorialVote(HOST_ID, yes)
@@ -81,7 +85,9 @@ class CheatServer(context: Context, val hostName: String = "Host") {
         engine.addPlayer(pid, name)
         guestToPlayer[guest] = pid; playerToGuest[pid] = guest
         send(guest, JSONObject().put("type", "welcome").put("yourId", pid).put("yourName", name).put("game", "cheat"))
-        broadcastLobby(); broadcastOptions(); broadcastTutorialState(); emit()
+        broadcastLobby(); broadcastOptions(); broadcastTutorialState()
+        if (!series.isEmpty) broadcastSeries()
+        emit()
     }
 
     private fun applyPlay(pid: String, j: JSONObject) {
@@ -185,10 +191,12 @@ class CheatServer(context: Context, val hostName: String = "Host") {
     private fun broadcastOver() {
         if (!statRecorded) {
             statRecorded = true
+            val winnerName = engine.winnerId?.let { engine.players[it]?.name }
             val names = ArrayList<String>()
-            engine.winnerId?.let { wid -> engine.players[wid]?.let { names.add(it.name) } }
+            winnerName?.let { names.add(it) }
             for (p in engine.players.values) if (p.id != engine.winnerId) names.add(p.name)
             StatsStore.record(appCtx, "cheat", names, "win")
+            if (winnerName != null) { series.record(winnerName); broadcastSeries() }
         }
         val arr = JSONArray()
         for (p in engine.players.values) arr.put(JSONObject().put("id", p.id).put("name", p.name).put("handCount", p.hand.size))
@@ -216,6 +224,12 @@ class CheatServer(context: Context, val hostName: String = "Host") {
             p.put("menuSections", JSONArray(GameTutorials.cheat.browserMenuSectionsJson().map { JSONObject(it as Map<*, *>) }))
         }
         broadcast(p)
+    }
+
+    private fun broadcastSeries() {
+        val scores = JSONObject()
+        for ((k, v) in series.scores) scores.put(k, v)
+        broadcast(JSONObject().put("type", "series_state").put("rounds", series.rounds).put("scores", scores))
     }
 
     private fun emit() { onStateChange?.invoke() }

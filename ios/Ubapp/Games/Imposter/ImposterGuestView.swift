@@ -12,6 +12,7 @@ struct ImposterGuestView: View {
                     Spacer(minLength: 0)
                     VStack(alignment: .center, spacing: 16) {
                         Text("Playing as \(ctx.yourName)").font(.caption).foregroundStyle(.secondary)
+                        SeriesBanner(state: model.series)
                         if let err = model.error {
                             Text(err).foregroundStyle(.white).padding().frame(maxWidth: .infinity)
                                 .background(Color.red).cornerRadius(12)
@@ -165,6 +166,7 @@ final class ImposterGuestModel: ObservableObject {
     @Published var tutorialState = GuestTutorialState()
     @Published var tutorialContent: GuestTutorialContent?
     @Published var myTutorialVote: Bool?
+    @Published var series = GuestSeriesState()
 
     private weak var client: (any GuestLink)?
 
@@ -213,6 +215,8 @@ final class ImposterGuestModel: ObservableObject {
             }
         case "reset":
             phase = "lobby"; word = nil; isImposter = false
+        case "series_state":
+            series.apply(m)
         case "tutorial_vote_state":
             tutorialState.apply(m)
             if let title = m["title"] as? String {

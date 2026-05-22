@@ -20,8 +20,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.ubapp.theme.UbappTheme
 import com.example.ubapp.join.GuestContext
+import com.example.ubapp.join.GuestSeriesState
 import com.example.ubapp.join.GuestTutorialContent
 import com.example.ubapp.join.GuestTutorialState
+import com.example.ubapp.join.SeriesBannerCard
 import com.example.ubapp.join.TutorialGuestCard
 import org.json.JSONObject
 
@@ -50,6 +52,7 @@ fun CodenamesGuestScreen(ctx: GuestContext) {
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text("Playing as ${ctx.yourName}", style = MaterialTheme.typography.bodySmall)
+        SeriesBannerCard(s.series)
         if (s.phase == "lobby") {
             TutorialGuestCard(s.tutorialState, s.tutorialContent, s.myTutorialVote,
                 onCall = { ctx.client.send(JSONObject().put("type", "call_tutorial_vote")) },
@@ -234,9 +237,11 @@ class CodenamesGuestState {
     var tutorialState by mutableStateOf(GuestTutorialState())
     var tutorialContent by mutableStateOf<GuestTutorialContent?>(null)
     var myTutorialVote by mutableStateOf<Boolean?>(null)
+    var series by mutableStateOf(GuestSeriesState())
 
     fun handle(m: JSONObject) {
         when (m.optString("type")) {
+            "series_state" -> series = GuestSeriesState.from(m)
             "lobby" -> {
                 val arr = m.optJSONArray("players") ?: return
                 players = (0 until arr.length()).map {

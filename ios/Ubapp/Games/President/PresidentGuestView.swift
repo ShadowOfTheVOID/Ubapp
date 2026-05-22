@@ -13,6 +13,7 @@ struct PresidentGuestView: View {
                     Spacer(minLength: 0)
                     VStack(alignment: .center, spacing: 12) {
                         Text("Playing as \(ctx.yourName)").font(.caption).foregroundStyle(.secondary)
+                        SeriesBanner(state: model.series)
                         switch model.phase {
                         case "lobby":    lobby
                         case "swapping": swapping
@@ -247,6 +248,7 @@ final class PresidentGuestModel: ObservableObject {
     @Published var tutorialState = GuestTutorialState()
     @Published var tutorialContent: GuestTutorialContent?
     @Published var myTutorialVote: Bool?
+    @Published var series = GuestSeriesState()
 
     private weak var client: (any GuestLink)?
 
@@ -335,6 +337,8 @@ final class PresidentGuestModel: ObservableObject {
         case "reset":
             phase = "lobby"; hand = []; trick = nil; lastPlay = nil; passed = []
             swapPrompts = []; lastEvent = ""; roundNumber = 0
+        case "series_state":
+            series.apply(m)
         case "tutorial_vote_state":
             tutorialState.apply(m)
             if let title = m["title"] as? String {

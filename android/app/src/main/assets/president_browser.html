@@ -80,6 +80,7 @@
   const state = { me:null, phase:'lobby', players:[], hand:[], trick:null, lastPlay:null,
     currentId:null, lastEvent:'', roundNumber:0, swapPrompts:[], passed:[],
     selected:new Set(), options:{allowHouseRules:false, revolution:false},
+    series:{rounds:0, scores:{}},
     tutorial:{isOpen:false,yesCount:0,noCount:0,eligibleCount:0,result:null,tutorialShown:false},
     tutorialContent:null, myTutorialVote:null };
 
@@ -119,6 +120,7 @@
       case 'reset':
         state.phase='lobby'; state.hand=[]; state.trick=null; state.lastPlay=null;
         state.passed=[]; state.swapPrompts=[]; state.lastEvent=''; state.roundNumber=0; break;
+      case 'series_state': state.series = { rounds:m.rounds||0, scores:m.scores||{} }; break;
       case 'tutorial_vote_state': {
         const wasOpen = state.tutorial.isOpen;
         state.tutorial = { isOpen:m.isOpen, yesCount:m.yesCount, noCount:m.noCount,
@@ -148,6 +150,12 @@
     return renderTable();
   }
 
+  function seriesBanner(){
+    const s = state.series; if (!s || !s.rounds) return '';
+    const parts = Object.keys(s.scores).map(k => `${esc(k)} ${s.scores[k]}`).join(' · ');
+    return `<div class="panel"><strong>Series</strong> — ${parts}</div>`;
+  }
+
   function bindJoin(){
     const i=document.getElementById('n'), b=document.getElementById('b');
     if (!i||!b) return;
@@ -165,7 +173,7 @@
   }
 
   function renderLobby(){
-    root.innerHTML = `<h1>Lobby</h1>${viewTutorialBanner()}${viewTutorialVote()}${viewOptions()}<div class="panel"><p>Waiting for the host to deal.</p><h2>Players (${state.players.length})</h2>${state.players.map(p=>`<div class="pchip" style="margin-bottom:6px"><div class="name">${esc(p.name)}${p.isHost?' • host':''}${state.me.id===p.id?' • you':''}</div></div>`).join('')}</div>`;
+    root.innerHTML = `<h1>Lobby</h1>${seriesBanner()}${viewTutorialBanner()}${viewTutorialVote()}${viewOptions()}<div class="panel"><p>Waiting for the host to deal.</p><h2>Players (${state.players.length})</h2>${state.players.map(p=>`<div class="pchip" style="margin-bottom:6px"><div class="name">${esc(p.name)}${p.isHost?' • host':''}${state.me.id===p.id?' • you':''}</div></div>`).join('')}</div>`;
     bindTutorialVote();
   }
 
@@ -275,7 +283,7 @@
     const sorted = state.players.slice().sort((a,b)=>{
       const ao = a.finishOrder||999, bo = b.finishOrder||999; return ao-bo;
     });
-    root.innerHTML = `<h1>Round over</h1><div class="panel">${sorted.map(p=>`<div class="pchip" style="margin-bottom:6px"><div class="name">${p.finishOrder||'?'}. ${esc(p.name)}</div><div class="hc">${rankLabel(p.rank)||''}</div></div>`).join('')}<p style="color:var(--muted);margin-top:16px">Waiting for the host to start the next round…</p></div>`;
+    root.innerHTML = `<h1>Round over</h1>${seriesBanner()}<div class="panel">${sorted.map(p=>`<div class="pchip" style="margin-bottom:6px"><div class="name">${p.finishOrder||'?'}. ${esc(p.name)}</div><div class="hc">${rankLabel(p.rank)||''}</div></div>`).join('')}<p style="color:var(--muted);margin-top:16px">Waiting for the host to start the next round…</p></div>`;
   }
 
   function bindTable(){

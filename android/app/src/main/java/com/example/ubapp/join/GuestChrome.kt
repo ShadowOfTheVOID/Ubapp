@@ -45,6 +45,30 @@ data class GuestTutorialContent(
     }
 }
 
+/** Mirrors the iOS GuestSeriesState — the running series tally a guest sees. */
+data class GuestSeriesState(
+    val rounds: Int = 0,
+    val scores: List<Pair<String, Int>> = emptyList(),
+) {
+    val banner: String
+        get() = if (rounds == 0) "" else "Series — " + scores.joinToString(" · ") { "${it.first} ${it.second}" }
+
+    companion object {
+        fun from(m: JSONObject): GuestSeriesState {
+            val obj = m.optJSONObject("scores")
+            val list = if (obj == null) emptyList()
+                       else obj.keys().asSequence().map { it to obj.optInt(it) }.toList()
+            return GuestSeriesState(rounds = m.optInt("rounds", 0), scores = list)
+        }
+    }
+}
+
+@Composable
+fun SeriesBannerCard(state: GuestSeriesState) {
+    if (state.rounds == 0) return
+    Text(state.banner, style = MaterialTheme.typography.bodyMedium)
+}
+
 @Composable
 fun TutorialGuestCard(
     state: GuestTutorialState,

@@ -12,6 +12,7 @@ final class BluffMarketServer {
 
     var onStateChange: (() -> Void)?
     private var statRecorded = false
+    private let series = SeriesScore()
 
     init(server: HostServer? = nil, hostName: String = "Host") {
         self.server = server ?? HostServer(html: HostServer.htmlResource(named: "bluff_market_browser"))
@@ -45,7 +46,9 @@ final class BluffMarketServer {
     }
     func hostNewGame() {
         engine.reset(); statRecorded = false
-        broadcast(["type": "reset"]); broadcastLobby(); broadcastTutorialState(); emit()
+        broadcast(["type": "reset"]); broadcastLobby(); broadcastTutorialState()
+        if !series.isEmpty { broadcastSeries() }
+        emit()
     }
     func hostFinalize() {
         engine.finalize()
@@ -138,7 +141,9 @@ final class BluffMarketServer {
         guestToPlayer[guest] = pid
         playerToGuest[pid] = guest
         send(guest, ["type": "welcome", "yourId": pid, "yourName": name, "game": "bluff_market"])
-        broadcastLobby(); broadcastOptions(); broadcastTutorialState(); emit()
+        broadcastLobby(); broadcastOptions(); broadcastTutorialState()
+        if !series.isEmpty { broadcastSeries() }
+        emit()
     }
 
     private func broadcastOptions() {
@@ -245,6 +250,7 @@ final class BluffMarketServer {
             if let w = winner { names.append(w.name) }
             for r in scores where r.id != winner?.id { names.append(r.name) }
             StatsStore.record(gameId: "bluff_market", players: names, outcome: "win")
+            if let w = winner { series.record(w.name); broadcastSeries() }
         }
         broadcast([
             "type": "over",
@@ -282,6 +288,12 @@ final class BluffMarketServer {
             payload["menuSections"] = GameTutorials.bluffMarket.browserMenuSectionsJSON()
         }
         broadcast(payload)
+    }
+
+    private func broadcastSeries() {
+        var scores: [String: Int] = [:]
+        for entry in series.scores { scores[entry.key] = entry.value }
+        broadcast(["type": "series_state", "rounds": series.rounds, "scores": scores])
     }
 
     private func emit() { onStateChange?() }
