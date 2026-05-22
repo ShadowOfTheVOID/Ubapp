@@ -10,6 +10,7 @@ import com.example.ubapp.games.cheat.CheatPhase
 import com.example.ubapp.games.cheat.CheatSuit
 import com.example.ubapp.games.connectfour.ConnectFourAI
 import com.example.ubapp.games.connectfour.ConnectFourModel
+import com.example.ubapp.games.connectfour.ConnectFourOptions
 import com.example.ubapp.games.connectfour.Disc
 import com.example.ubapp.games.crazyeights.CrazyEightsEngine
 import com.example.ubapp.games.crazyeights.CrazyEightsPhase
@@ -25,8 +26,10 @@ import com.example.ubapp.games.tag.PlayerStatus
 import com.example.ubapp.games.tag.TagEngine
 import com.example.ubapp.games.tag.TagVariant
 import com.example.ubapp.games.tictactoe.Mark
-import com.example.ubapp.games.tictactoe.Minimax
+import com.example.ubapp.games.tictactoe.TicTacToeAI
+import com.example.ubapp.games.tictactoe.TicTacToeDifficulty
 import com.example.ubapp.games.tictactoe.TicTacToeModel
+import com.example.ubapp.games.tictactoe.TicTacToeOptions
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -37,11 +40,11 @@ import kotlin.test.assertTrue
 
 class TicTacToeTest {
     @Test fun `optimal play from empty board never loses`() {
-        // Self-play with minimax should always draw.
+        // Self-play at a leaf-reaching depth should always draw on a 3x3.
         val m = TicTacToeModel()
+        val depth = TicTacToeDifficulty.HARD.searchDepth(m.size)
         while (!m.isOver) {
-            val ai = if (m.current == Mark.X) Mark.X else Mark.O
-            val move = Minimax.bestMove(m, ai)
+            val move = TicTacToeAI.bestMove(m, m.current, depth)
             assertNotNull(move)
             m.apply(move)
         }
@@ -62,6 +65,29 @@ class TicTacToeTest {
             assertEquals(Mark.X, m.winner)
         }
     }
+
+    @Test fun `four by four board requires four in a row`() {
+        val opt = TicTacToeOptions(boardSize = 4).normalized()
+        assertEquals(4, opt.winLength)   // auto-derived for larger boards
+        val m = TicTacToeModel(opt.boardSize, opt.winLength)
+        m.board[0] = Mark.X; m.board[1] = Mark.X; m.board[2] = Mark.X
+        assertNull(m.winner)             // three is not enough
+        m.board[3] = Mark.X
+        assertEquals(Mark.X, m.winner)
+    }
+
+    @Test fun `diagonal win on a larger board`() {
+        val m = TicTacToeModel(4, 4)
+        for (i in 0 until 4) m.board[i * 4 + i] = Mark.O
+        assertEquals(Mark.O, m.winner)
+    }
+
+    @Test fun `AI returns a legal move on a larger board`() {
+        val m = TicTacToeModel(4, 4)
+        val mv = TicTacToeAI.bestMove(m, Mark.X, TicTacToeDifficulty.HARD.searchDepth(4))
+        assertNotNull(mv)
+        assertEquals(Mark.EMPTY, m.board[mv!!])
+    }
 }
 
 class ConnectFourTest {
@@ -80,6 +106,22 @@ class ConnectFourTest {
         m.current = Disc.YELLOW
         val move = ConnectFourAI.bestMove(m, Disc.YELLOW, depth = 4)
         assertEquals(3, move)
+    }
+
+    @Test fun `custom geometry still detects a connect-four`() {
+        val opt = ConnectFourOptions(cols = 5, rows = 4).normalized()
+        assertEquals(5, opt.cols); assertEquals(4, opt.rows); assertEquals(4, opt.connectN)
+        val m = ConnectFourModel(opt.cols, opt.rows, opt.connectN)
+        for (c in 0 until 4) m.board[c][0] = Disc.RED
+        assertEquals(Disc.RED, m.winner)
+    }
+
+    @Test fun `connect-three variant wins on three in a column`() {
+        val m = ConnectFourModel(6, 5, 3)
+        for (r in 0 until 2) m.board[2][r] = Disc.YELLOW
+        assertNull(m.winner)
+        m.board[2][2] = Disc.YELLOW
+        assertEquals(Disc.YELLOW, m.winner)
     }
 }
 

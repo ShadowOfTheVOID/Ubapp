@@ -177,16 +177,18 @@ enum GameTutorials {
     static let ticTacToe = GameTutorial(
         title: "How to play Tic-Tac-Toe",
         sections: [
-            TutorialSection(heading: "Goal", body: "Get three of your marks in a row — horizontally, vertically, or diagonally."),
-            TutorialSection(heading: "Turns", body: "You are X, the AI is O. Tap an empty cell to play. The AI uses a perfect-play search, so your best result against it is a draw."),
+            TutorialSection(heading: "Goal", body: "Line up your marks in a row — horizontally, vertically, or diagonally. On the 3x3 board that means three; on the bigger boards it's four in a row."),
+            TutorialSection(heading: "Turns", body: "You are X, the AI is O. Tap an empty cell to play."),
+            TutorialSection(heading: "Options", body: "Pick the board size (3x3, 4x4, 5x5) and the AI difficulty before you start. On Hard 3x3 the AI plays perfectly, so the best you can do is a draw."),
         ]
     )
 
     static let connectFour = GameTutorial(
         title: "How to play Connect Four",
         sections: [
-            TutorialSection(heading: "Goal", body: "Drop discs into the columns. First to line up four discs in a row, column, or diagonal wins."),
+            TutorialSection(heading: "Goal", body: "Drop discs into the columns. First to line up the target number of discs in a row, column, or diagonal wins."),
             TutorialSection(heading: "Turns", body: "Tap a column to drop your disc. The AI alternates with you. The center column tends to be the strongest opener."),
+            TutorialSection(heading: "Options", body: "Choose a board size and AI difficulty before you start. Easy looks a couple of moves ahead; Hard searches much deeper."),
         ]
     )
 

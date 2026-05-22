@@ -2,14 +2,16 @@ package com.example.ubapp.games.connectfour
 
 /**
  * Depth-limited negamax with alpha-beta pruning + simple line-score heuristic
- * at horizon. Depth 6 plays a reasonable medium-strength opponent.
+ * at the horizon. Reads the board geometry and win length straight off the
+ * model, so it adapts to non-default board sizes. Depth 5 (MEDIUM) plays a
+ * reasonable opponent on the classic 7x6 board.
  */
 object ConnectFourAI {
     fun bestMove(model: ConnectFourModel, ai: Disc, depth: Int = 6): Int? {
         var bestScore = Int.MIN_VALUE / 2
         var bestCol: Int? = null
-        for (col in ordered(model.legalMoves())) {
-            val copy = copyOf(model).apply { apply(col) }
+        for (col in ordered(model, model.legalMoves())) {
+            val copy = model.copy().apply { apply(col) }
             // After the AI moves it's the opponent's turn; negamax returns the
             // value from the opponent's perspective, so the AI wants the move
             // that minimizes it (= maximizes its negation).
@@ -20,15 +22,8 @@ object ConnectFourAI {
         return bestCol
     }
 
-    private fun copyOf(m: ConnectFourModel): ConnectFourModel {
-        val out = ConnectFourModel()
-        for (c in 0 until COLS) for (r in 0 until ROWS) out.board[c][r] = m.board[c][r]
-        out.current = m.current
-        return out
-    }
-
-    private fun ordered(moves: List<Int>): List<Int> =
-        moves.sortedBy { kotlin.math.abs(it - COLS / 2) }
+    private fun ordered(m: ConnectFourModel, moves: List<Int>): List<Int> =
+        moves.sortedBy { kotlin.math.abs(it - m.cols / 2) }
 
     /** Standard negamax: returns the score from [toMove]'s perspective. */
     private fun negamax(m: ConnectFourModel, toMove: Disc, depth: Int,
@@ -40,8 +35,8 @@ object ConnectFourAI {
         if (depth == 0) return heuristic(m, toMove)
         var alpha = alphaIn
         var best = Int.MIN_VALUE / 2
-        for (col in ordered(m.legalMoves())) {
-            val copy = copyOf(m).apply { apply(col) }
+        for (col in ordered(m, m.legalMoves())) {
+            val copy = m.copy().apply { apply(col) }
             val s = -negamax(copy, toMove.opponent, depth - 1, -beta, -alpha)
             if (s > best) best = s
             if (best > alpha) alpha = best
@@ -51,26 +46,28 @@ object ConnectFourAI {
     }
 
     private fun heuristic(m: ConnectFourModel, ai: Disc): Int {
+        val k = m.connectN
         var score = 0
-        val dirs = listOf(1 to 0, 0 to 1, 1 to 1, 1 to -1)
-        for (c in 0 until COLS) for (r in 0 until ROWS) for ((dc, dr) in dirs) {
-            if (!inBounds(c + 3 * dc, r + 3 * dr)) continue
+        for (c in 0 until m.cols) for (r in 0 until m.rows) for ((dc, dr) in ConnectFourModel.DIRS) {
+            if (!inBounds(m, c + (k - 1) * dc, r + (k - 1) * dr)) continue
             score += scoreWindow(m, c, r, dc, dr, ai)
         }
         // Center column control matters.
-        for (r in 0 until ROWS) {
-            if (m.at(COLS / 2, r) == ai) score += 3
-            if (m.at(COLS / 2, r) == ai.opponent) score -= 3
+        for (r in 0 until m.rows) {
+            if (m.at(m.cols / 2, r) == ai) score += 3
+            if (m.at(m.cols / 2, r) == ai.opponent) score -= 3
         }
         return score
     }
 
-    private fun inBounds(c: Int, r: Int) = c in 0 until COLS && r in 0 until ROWS
+    private fun inBounds(m: ConnectFourModel, c: Int, r: Int) =
+        c in 0 until m.cols && r in 0 until m.rows
 
     private fun scoreWindow(m: ConnectFourModel, c: Int, r: Int,
                             dc: Int, dr: Int, ai: Disc): Int {
+        val k = m.connectN
         var mine = 0; var theirs = 0; var empty = 0
-        for (i in 0 until 4) {
+        for (i in 0 until k) {
             val d = m.at(c + i * dc, r + i * dr)
             when (d) {
                 ai -> mine++
@@ -79,11 +76,11 @@ object ConnectFourAI {
             }
         }
         if (mine > 0 && theirs > 0) return 0
-        if (mine == 4) return 100
-        if (mine == 3 && empty == 1) return 10
-        if (mine == 2 && empty == 2) return 2
-        if (theirs == 3 && empty == 1) return -12
-        if (theirs == 2 && empty == 2) return -2
+        if (mine == k) return 100
+        if (mine == k - 1 && empty == 1) return 10
+        if (mine == k - 2 && empty == 2) return 2
+        if (theirs == k - 1 && empty == 1) return -12
+        if (theirs == k - 2 && empty == 2) return -2
         return 0
     }
 }
