@@ -73,15 +73,71 @@
   .tutorial-card .t-sec { margin-top:6px; }
   .tutorial-card .menu-label { color:#6ee7a8; font-size:16px; margin:18px 0 6px; font-weight:700; }
   .tutorial-card .wait { color:#9da7b3; font-size:13px; margin-top:14px; }
-  /* ===== unified ubapp chrome: shared palette + centered layout ===== */
+  /* ===== unified ubapp chrome: ubapp design system (redesign) =====
+     Appended last so it wins the cascade. Refines shared shell + tokens to
+     the brand spec; per-game structural CSS above is left intact. ===== */
   :root{
-    --bg:#000000; --card:#141414; --card2:#1f1f1f;
-    --line:#2c2c2e; --text:#ffffff; --muted:#9da7b3; --accent:#ff2e88;
+    --bg:#0a0a0a; --ink:#000000; --fg:#ffffff;
+    --accent:#ff2e88; --accent-ink:#2a0010;
+    --accent-soft:rgba(255,46,136,0.14); --accent-line:rgba(255,46,136,0.45);
+    --card:#141416; --card2:#1c1c1f; --surface-hi:#1c1c1f;
+    --line:rgba(255,255,255,0.08); --line-strong:rgba(255,255,255,0.14);
+    --text:#ffffff; --muted:rgba(255,255,255,0.58); --faint:rgba(255,255,255,0.38);
+    --online:#3ddc84;
+    --sys:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
   }
   html,body{ height:100%; }
-  body{ display:flex; flex-direction:column; min-height:100%; }
-  .wrap{ width:100%; margin:auto; padding:24px 16px; text-align:center; }
+  body{ margin:0; background:var(--bg); color:var(--text); font-family:var(--sys);
+    display:flex; flex-direction:column; min-height:100%;
+    padding:env(safe-area-inset-top) 16px env(safe-area-inset-bottom); }
+  .wrap{ width:100%; max-width:600px; margin:auto; padding:20px 0; text-align:center; }
   .target{ text-align:center; }
+  h1{ font-size:28px; font-weight:800; letter-spacing:-0.03em; margin:0 0 14px; color:var(--fg); }
+  h2{ font-family:var(--mono); font-size:11px; font-weight:600; letter-spacing:0.14em;
+    text-transform:uppercase; color:var(--muted); margin:18px 0 8px; }
+  p{ color:var(--text); }
+  p.small,.small{ color:var(--muted); font-size:13px; }
+  .panel{ background:var(--card); border:1px solid var(--line); border-radius:16px;
+    padding:16px; margin-bottom:12px; }
+  button, input[type=text]{ width:100%; font-size:16px; padding:14px 16px; border-radius:12px;
+    border:1px solid var(--line-strong); background:rgba(255,255,255,0.06); color:var(--text);
+    font-family:inherit; box-sizing:border-box; }
+  button{ background:var(--accent); color:var(--accent-ink); border:none; font-weight:700;
+    cursor:pointer; letter-spacing:-0.01em; transition:filter .12s, opacity .12s; }
+  button:hover{ filter:brightness(1.06); }
+  button:active{ filter:brightness(0.96); }
+  button:disabled{ opacity:.5; cursor:not-allowed; filter:none; }
+  button.gray, button.secondary{ background:rgba(255,255,255,0.06); color:var(--text);
+    border:1px solid var(--line-strong); font-weight:600; }
+  input[type=text]{ background:rgba(255,255,255,0.04); }
+  input[type=text]:focus{ outline:none; border-color:var(--accent-line); }
+  .players{ display:flex; gap:8px; overflow-x:auto; padding:8px 0; }
+  .pchip{ background:var(--card); border:1px solid var(--line); padding:8px 12px;
+    border-radius:12px; min-width:96px; flex:0 0 auto; text-align:left; color:var(--text); }
+  .pchip.current{ background:var(--accent-soft); border-color:var(--accent-line); color:var(--text); }
+  .pchip .name{ font-size:13px; font-weight:600; }
+  .pchip .hc{ font-family:var(--mono); font-size:9px; letter-spacing:0.12em;
+    text-transform:uppercase; color:var(--faint); opacity:1; }
+  .modal{ position:fixed; inset:0; background:rgba(0,0,0,.72); display:flex; align-items:center;
+    justify-content:center; z-index:99; backdrop-filter:blur(10px); }
+  .modal .panel{ max-width:360px; width:90%; border-radius:18px; }
+  .vote-row{ display:flex; gap:8px; }
+  .vote-row button{ flex:1; }
+  .vote-yes{ background:var(--accent); color:var(--accent-ink); border:none; }
+  .vote-no{ background:rgba(255,255,255,0.06); color:var(--text); border:1px solid var(--line-strong); }
+  .vote-yes.selected, .vote-no.selected{ outline:2px solid var(--fg); outline-offset:1px; }
+  /* tutorial card recolor — magenta brand instead of legacy green */
+  .tutorial-banner{ background:var(--accent-soft); border:1px solid var(--accent-line);
+    color:var(--fg); border-radius:16px; }
+  .tutorial-card{ background:var(--accent-soft); border:1px solid var(--accent-line);
+    color:var(--text); border-radius:16px; }
+  .tutorial-card h2{ color:var(--accent); font-family:var(--sys); font-size:18px;
+    letter-spacing:-0.02em; text-transform:none; }
+  .tutorial-card h3{ color:var(--fg); }
+  .tutorial-card p{ color:var(--muted); }
+  .tutorial-card .menu-label{ color:var(--accent); }
+  .tutorial-card .wait{ color:var(--faint); }
 </style>
 </head>
 <body>

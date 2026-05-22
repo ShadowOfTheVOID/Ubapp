@@ -160,8 +160,8 @@ struct GameMeta: Identifiable {
     let glyph: GameGlyph
     let destination: AnyView
 
-    init(_ id: String, _ title: String, _ desc: String, players: String,
-         minutes: String? = nil, glyph: GameGlyph, @ViewBuilder destination: () -> some View) {
+    init<D: View>(_ id: String, _ title: String, _ desc: String, players: String,
+                  minutes: String? = nil, glyph: GameGlyph, @ViewBuilder destination: () -> D) {
         self.id = id
         self.title = title
         self.desc = desc
