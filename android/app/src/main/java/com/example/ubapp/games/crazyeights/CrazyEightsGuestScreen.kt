@@ -16,9 +16,19 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.ubapp.theme.Avatar
+import com.example.ubapp.theme.MonoLabel
+import com.example.ubapp.theme.Ub
+import com.example.ubapp.theme.UbSecondaryButton
 import com.example.ubapp.theme.UbappTheme
+import com.example.ubapp.theme.ubAccentCard
+import com.example.ubapp.theme.ubCard
 import com.example.ubapp.join.GuestContext
 import com.example.ubapp.join.GuestSeriesState
 import com.example.ubapp.join.GuestTutorialContent
@@ -45,80 +55,97 @@ fun CrazyEightsGuestScreen(ctx: GuestContext) {
     Column(
         Modifier
             .verticalScroll(rememberScrollState())
-            .widthIn(max = 480.dp)
+            .statusBarsPadding()
+            .widthIn(max = 520.dp)
             .fillMaxWidth()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(20.dp),
+        horizontalAlignment = Alignment.Start,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text("Playing as ${ctx.yourName}", style = MaterialTheme.typography.bodySmall)
         SeriesBannerCard(s.series)
         when (s.phase) {
             "lobby" -> {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    MonoLabel("Crazy 8s · lobby", color = Ub.Accent)
+                    Text("Waiting for the deal", fontSize = 26.sp, fontWeight = FontWeight.ExtraBold,
+                         letterSpacing = (-0.8).sp, color = Ub.Foreground)
+                    Text("Playing as ${ctx.yourName}", fontSize = 13.sp, color = Ub.Muted)
+                }
                 TutorialGuestCard(s.tutorialState, s.tutorialContent, s.myTutorialVote,
                     onCall = { ctx.client.send(JSONObject().put("type", "call_tutorial_vote")) },
                     onVote = { yes -> s.myTutorialVote = yes
                         ctx.client.send(JSONObject().put("type", "tutorial_vote").put("yes", yes)) })
-                Text("Players (${s.players.size})", style = MaterialTheme.typography.titleSmall)
-                for (p in s.players) Text(p.name + if (p.isHost) " (host)" else "")
+                MonoLabel("In the room · ${s.players.size}")
+                for (p in s.players) PlayerRow(p.name, p.isHost, p.id == ctx.yourId)
             }
             "gameOver" -> {
                 val winner = s.players.firstOrNull { it.id == s.winnerId }
-                Text("Game over", style = MaterialTheme.typography.headlineSmall)
-                Text("${winner?.name ?: "?"} wins!",
-                     style = MaterialTheme.typography.titleLarge)
-                for (p in s.players) Row(Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween)
-                { Text(p.name); Text("${p.handCount} cards left") }
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    MonoLabel("Game over", color = Ub.Accent)
+                    Text("${winner?.name ?: "?"} wins", fontSize = 28.sp,
+                         fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.8).sp, color = Ub.Foreground)
+                }
+                MonoLabel("Final standings")
+                for (p in s.players.sortedBy { it.handCount }) {
+                    Row(Modifier.fillMaxWidth().ubCard(radius = Ub.Radius.row)
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Avatar(p.name, host = p.isHost, size = 30.dp)
+                        Spacer(Modifier.width(12.dp))
+                        Text(p.name + if (p.id == s.winnerId) "  🏆" else "",
+                             fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Ub.Foreground)
+                        Spacer(Modifier.weight(1f))
+                        MonoLabel("${p.handCount} left", size = 10)
+                    }
+                }
             }
             else -> {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    MonoLabel("Crazy 8s", color = Ub.Accent)
+                    val mine = s.currentId == ctx.yourId
+                    Text(if (mine) "Your turn"
+                         else "${s.players.firstOrNull { it.id == s.currentId }?.name ?: ""}'s turn",
+                         fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.8).sp,
+                         color = if (mine) Ub.Accent else Ub.Foreground)
+                    Text("Match ${suitGlyph(s.activeSuit ?: s.topCard?.suit ?: "")} or rank — or play an 8.",
+                         fontSize = 13.sp, color = Ub.Muted)
+                }
                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    for (p in s.players) {
-                        val isCurrent = s.currentId == p.id
-                        Column(Modifier
-                            .background(
-                                if (isCurrent) MaterialTheme.colorScheme.primary else Color(0xFF373D45),
-                                RoundedCornerShape(8.dp))
-                            .padding(8.dp)) {
-                            Text(p.name + if (p.id == ctx.yourId) " (you)" else "",
-                                 style = MaterialTheme.typography.labelMedium,
-                                 color = if (isCurrent) Color.White else Color(0xFFE6EDF3))
-                            Text("${p.handCount} cards",
-                                 style = MaterialTheme.typography.labelSmall,
-                                 color = if (isCurrent) Color.White else Color(0xFFA0A8B0))
-                        }
-                    }
+                    for (p in s.players) PlayerChip(p.name, p.isHost, p.handCount, s.currentId == p.id)
                 }
-                ElevatedCard(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp),
-                           horizontalAlignment = Alignment.CenterHorizontally) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically) {
-                            Box(contentAlignment = Alignment.Center) {
-                                com.example.ubapp.games.cards.GridCardBack(width = 64.dp)
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text("${s.drawCount}",
-                                         style = MaterialTheme.typography.titleLarge,
-                                         color = Color.White)
-                                    Text("draw", style = MaterialTheme.typography.labelSmall,
-                                         color = Color.White.copy(alpha = 0.7f))
-                                }
+                Row(
+                    Modifier.fillMaxWidth()
+                        .clip(RoundedCornerShape(Ub.Radius.hero))
+                        .background(Brush.radialGradient(
+                            listOf(Ub.Accent.copy(alpha = 0.12f), Color.Transparent), radius = 420f))
+                        .padding(vertical = 28.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally,
+                           verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Box(contentAlignment = Alignment.Center) {
+                            com.example.ubapp.games.cards.GridCardBack(width = 70.dp)
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("${s.drawCount}", fontSize = 22.sp,
+                                     fontWeight = FontWeight.Bold, color = Color.White)
+                                Text("draw", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
                             }
-                            val top = s.topCard
-                            if (top != null) CardFace(top)
-                            else Spacer(Modifier.size(64.dp, 90.dp))
                         }
-                        Text("Active suit: ${suitGlyph(s.activeSuit ?: s.topCard?.suit ?: "")}",
-                             style = MaterialTheme.typography.bodyMedium)
-                        Text(if (s.currentId == ctx.yourId) "Your turn"
-                             else "${s.players.firstOrNull { it.id == s.currentId }?.name ?: ""}'s turn",
-                             style = MaterialTheme.typography.titleSmall)
-                        if (s.lastEvent.isNotEmpty())
-                            Text(s.lastEvent, style = MaterialTheme.typography.bodySmall)
+                        MonoLabel("Draw · ${s.drawCount}", size = 9)
+                    }
+                    Spacer(Modifier.width(26.dp))
+                    Column(horizontalAlignment = Alignment.CenterHorizontally,
+                           verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        val top = s.topCard
+                        if (top != null) CardFace(top) else Spacer(Modifier.size(64.dp, 90.dp))
+                        MonoLabel("Suit ${suitGlyph(s.activeSuit ?: s.topCard?.suit ?: "")}",
+                                  size = 9, color = Ub.Accent)
                     }
                 }
-                Text("Your hand (${s.hand.size})", style = MaterialTheme.typography.titleSmall)
+                if (s.lastEvent.isNotEmpty()) MonoLabel(s.lastEvent, size = 10)
+                MonoLabel("Your hand · ${s.hand.size}")
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(70.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -136,16 +163,15 @@ fun CrazyEightsGuestScreen(ctx: GuestContext) {
                             }) { CardFace(c) }
                     }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (s.currentId == ctx.yourId && s.justDrew) {
-                        OutlinedButton(onClick = { ctx.client.send(JSONObject().put("type", "pass")) })
-                        { Text("Pass") }
-                    }
-                    if (s.currentId == ctx.yourId) {
-                        OutlinedButton(
-                            onClick = { ctx.client.send(JSONObject().put("type", "draw")) },
-                            enabled = !s.justDrew,
-                        ) { Text("Draw") }
+                if (s.currentId == ctx.yourId) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        if (s.justDrew) {
+                            UbSecondaryButton("Pass", modifier = Modifier.weight(1f),
+                                onClick = { ctx.client.send(JSONObject().put("type", "pass")) })
+                        }
+                        UbSecondaryButton(if (s.justDrew) "Drew" else "Draw",
+                            modifier = Modifier.weight(1f), enabled = !s.justDrew,
+                            onClick = { ctx.client.send(JSONObject().put("type", "draw")) })
                     }
                 }
             }
@@ -154,26 +180,70 @@ fun CrazyEightsGuestScreen(ctx: GuestContext) {
     }
     suitPickFor?.let { card ->
         AlertDialog(onDismissRequest = { suitPickFor = null },
+            containerColor = Ub.Surface,
             confirmButton = {},
-            dismissButton = { TextButton(onClick = { suitPickFor = null }) { Text("Cancel") } },
-            title = { Text("Declare a new suit") },
+            dismissButton = { TextButton(onClick = { suitPickFor = null }) {
+                Text("Cancel", color = Ub.Muted) } },
+            title = { MonoLabel("Choose the next suit", color = Ub.Accent) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    for (suit in listOf("clubs", "diamonds", "hearts", "spades")) {
-                        Button(onClick = {
-                            ctx.client.send(JSONObject().put("type", "play")
-                                .put("suit", card.suit).put("rank", card.rank)
-                                .put("declaredSuit", suit))
-                            suitPickFor = null
-                        }, modifier = Modifier.fillMaxWidth()) {
-                            Text(suitGlyph(suit), style = MaterialTheme.typography.headlineMedium,
-                                 color = if (suit == "diamonds" || suit == "hearts") Color(0xFFC62828) else Color.White)
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    for (row in listOf(listOf("spades", "hearts"), listOf("diamonds", "clubs"))) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            for (suit in row) {
+                                Box(
+                                    Modifier.weight(1f).height(64.dp).ubAccentCard(radius = Ub.Radius.button)
+                                        .clickable {
+                                            ctx.client.send(JSONObject().put("type", "play")
+                                                .put("suit", card.suit).put("rank", card.rank)
+                                                .put("declaredSuit", suit))
+                                            suitPickFor = null
+                                        },
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(suitGlyph(suit), fontSize = 32.sp,
+                                         color = if (suit == "diamonds" || suit == "hearts") Ub.Accent else Color.White)
+                                }
+                            }
                         }
                     }
                 }
             }
         )
     }
+    }
+}
+
+@Composable
+private fun PlayerRow(name: String, host: Boolean, isYou: Boolean) {
+    Row(Modifier.fillMaxWidth().ubCard(radius = Ub.Radius.row)
+        .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        Avatar(name, host = host, size = 32.dp)
+        Spacer(Modifier.width(12.dp))
+        Text(name, fontSize = 15.sp,
+             fontWeight = if (isYou) FontWeight.Bold else FontWeight.SemiBold, color = Ub.Foreground)
+        if (isYou) { Spacer(Modifier.width(8.dp)); MonoLabel("you", size = 9, color = Ub.Accent) }
+        Spacer(Modifier.weight(1f))
+        if (host) MonoLabel("host", size = 9, color = Ub.Faint)
+    }
+}
+
+@Composable
+private fun PlayerChip(name: String, host: Boolean, cards: Int, current: Boolean) {
+    Row(
+        Modifier
+            .ubCard(radius = Ub.Radius.button,
+                    fill = if (current) Ub.AccentSoft else Ub.Surface,
+                    stroke = if (current) Ub.AccentLine else Ub.Line)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Avatar(name, host = host, size = 26.dp)
+        Spacer(Modifier.width(8.dp))
+        Column {
+            Text(name, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Ub.Foreground)
+            MonoLabel("$cards cards", size = 9, color = Ub.Faint)
+        }
     }
 }
 

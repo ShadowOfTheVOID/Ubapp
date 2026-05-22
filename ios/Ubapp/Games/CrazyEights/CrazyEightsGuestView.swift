@@ -7,129 +7,144 @@ struct CrazyEightsGuestView: View {
     @State private var suitPickFor: CrazyEightsGuestModel.Card?
 
     var body: some View {
-        GeometryReader { proxy in
-            ScrollView {
-                VStack(spacing: 0) {
-                    Spacer(minLength: 0)
-                    VStack(alignment: .center, spacing: 12) {
-                        Text("Playing as \(ctx.yourName)").font(.caption).foregroundStyle(.secondary)
-                        SeriesBanner(state: model.series)
-                        switch model.phase {
-                        case "lobby":    lobby
-                        case "gameOver": gameOver
-                        default:         table
-                        }
-                    }
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 480)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding()
-                    Spacer(minLength: 0)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                SeriesBanner(state: model.series)
+                switch model.phase {
+                case "lobby":    lobby
+                case "gameOver": gameOver
+                default:         table
                 }
-                .frame(minHeight: proxy.size.height)
-                .frame(maxWidth: .infinity)
             }
-            .navigationTitle("Crazy Eights")
-            .onAppear { model.attach(ctx: ctx) }
-            .onDisappear { ctx.client.onMessage = nil }
-            .sheet(item: $suitPickFor) { card in suitPicker(card: card) }
+            .frame(maxWidth: 520, alignment: .leading)
+            .frame(maxWidth: .infinity)
+            .padding(20)
         }
+        .scrollIndicators(.hidden)
+        .navigationTitle("Crazy 8s")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear { model.attach(ctx: ctx) }
+        .onDisappear { ctx.client.onMessage = nil }
+        .sheet(item: $suitPickFor) { card in suitPicker(card: card) }
         .ubappChrome()
     }
 
     @ViewBuilder private var lobby: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            MonoLabel("Crazy 8s · lobby", color: UbappTheme.accent)
+            Text("Waiting for the deal")
+                .font(.system(size: 26, weight: .heavy)).kerning(-0.8).foregroundStyle(.white)
+            Text("Playing as \(ctx.yourName)")
+                .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+        }
         TutorialGuestCard(state: model.tutorialState, content: model.tutorialContent,
                           myVote: model.myTutorialVote,
                           onCall: { model.send(["type": "call_tutorial_vote"]) },
                           onVote: { yes in model.myTutorialVote = yes
                               model.send(["type": "tutorial_vote", "yes": yes]) })
-        GroupBox("Players (\(model.players.count))") {
-            ForEach(model.players, id: \.id) { p in
-                HStack {
-                    Text(p.name).fontWeight(p.id == ctx.yourId ? .bold : .regular)
-                    if p.isHost { Text("host").font(.caption).foregroundStyle(.secondary) }
-                    Spacer()
-                }
+        VStack(alignment: .leading, spacing: 8) {
+            MonoLabel("In the room · \(model.players.count)")
+            VStack(spacing: 8) {
+                ForEach(model.players, id: \.id) { p in playerRow(p) }
             }
         }
-        Text("Waiting for the host to deal…").foregroundStyle(.secondary).font(.caption)
+    }
+
+    private func playerRow(_ p: CrazyEightsGuestModel.Player) -> some View {
+        HStack(spacing: 12) {
+            Avatar(name: p.name, host: p.isHost, size: 32)
+            Text(p.name).font(.system(size: 15, weight: p.id == ctx.yourId ? .bold : .semibold))
+                .foregroundStyle(.white)
+            if p.id == ctx.yourId { MonoLabel("you", size: 9, color: UbappTheme.accent) }
+            Spacer()
+            if p.isHost { MonoLabel("host", size: 9, color: UbappTheme.faint) }
+        }
+        .padding(.vertical, 12).padding(.horizontal, 14)
+        .ubCard(radius: UbappRadius.row)
     }
 
     @ViewBuilder private var table: some View {
+        turnHeader
         playersStrip
-        topCard
+        tableArea
         if !model.lastEvent.isEmpty {
-            Text(model.lastEvent).font(.caption).foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .center)
+            MonoLabel(model.lastEvent, size: 10, color: UbappTheme.muted)
         }
-        hand
-        if isMyTurn {
-            HStack {
-                if model.justDrew {
-                    Button("Pass") { model.send(["type": "pass"]) }.buttonStyle(.bordered)
-                }
-                Button("Draw") { model.send(["type": "draw"]) }
-                    .disabled(model.justDrew)
-                    .buttonStyle(.bordered)
-            }
+        handArea
+        actionBar
+    }
+
+    private var turnHeader: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            MonoLabel("Crazy 8s", color: UbappTheme.accent)
+            Text(isMyTurn ? "Your turn" : "\(currentName)'s turn")
+                .font(.system(size: 26, weight: .heavy)).kerning(-0.8)
+                .foregroundStyle(isMyTurn ? UbappTheme.accent : .white)
+            Text("Match \(suitGlyph(model.activeSuit ?? model.topCard?.suit ?? "")) or rank — or play an 8.")
+                .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
         }
     }
 
-    @ViewBuilder private var playersStrip: some View {
+    private var playersStrip: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(model.players, id: \.id) { p in
-                    VStack(spacing: 4) {
-                        Text(p.name).font(.caption.bold())
-                        Text("\(p.handCount) cards").font(.caption2)
+                    let current = model.currentId == p.id
+                    HStack(spacing: 8) {
+                        Avatar(name: p.name, host: p.isHost, size: 26)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(p.name).font(.system(size: 12, weight: .semibold)).foregroundStyle(.white)
+                            MonoLabel("\(p.handCount) cards", size: 9, color: UbappTheme.faint)
+                        }
                     }
-                    .padding(8).frame(minWidth: 80)
-                    .background(model.currentId == p.id ? Color.accentColor : Color.white.opacity(0.04))
-                    .foregroundStyle(model.currentId == p.id ? .white : .primary)
-                    .cornerRadius(8)
+                    .padding(.vertical, 8).padding(.horizontal, 10)
+                    .ubCard(radius: UbappRadius.button,
+                            fill: current ? UbappTheme.accentSoft : UbappTheme.surface,
+                            stroke: current ? UbappTheme.accentLine : UbappTheme.line)
                 }
             }
         }
     }
 
-    @ViewBuilder private var topCard: some View {
-        GroupBox {
-            VStack {
-                HStack(spacing: 24) {
-                    ZStack {
-                        GridCardBack(width: 64)
-                        VStack(spacing: 0) {
-                            Text("\(model.drawCount)")
-                                .font(.title2.bold())
-                                .foregroundStyle(.white)
-                            Text("draw")
-                                .font(.caption2)
-                                .foregroundStyle(Color.white.opacity(0.7))
-                        }
-                    }
-
-                    if let top = model.topCard {
-                        cardView(top, faceUp: true)
-                    } else {
-                        Color.clear.frame(width: 64, height: 90)
+    private var tableArea: some View {
+        HStack(spacing: 26) {
+            VStack(spacing: 8) {
+                ZStack {
+                    GridCardBack(width: 70)
+                    VStack(spacing: 0) {
+                        Text("\(model.drawCount)").font(.system(size: 22, weight: .bold)).foregroundStyle(.white)
+                        Text("draw").font(.system(size: 10)).foregroundStyle(.white.opacity(0.7))
                     }
                 }
-                Text("Active suit: \(suitGlyph(model.activeSuit ?? model.topCard?.suit ?? ""))")
-                    .font(.subheadline)
-                Text(isMyTurn ? "Your turn" : "\(currentName)'s turn")
-                    .font(.headline).foregroundStyle(isMyTurn ? .green : .secondary)
-            }.padding(.vertical, 4)
+                MonoLabel("Draw · \(model.drawCount)", size: 9)
+            }
+            VStack(spacing: 8) {
+                if let top = model.topCard {
+                    cardView(top, faceUp: true)
+                } else {
+                    Color.clear.frame(width: 70, height: 98)
+                }
+                MonoLabel("Suit \(suitGlyph(model.activeSuit ?? model.topCard?.suit ?? ""))",
+                          size: 9, color: UbappTheme.accent)
+            }
         }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 28)
+        .background(
+            RadialGradient(colors: [UbappTheme.accent.opacity(0.12), .clear],
+                           center: .center, startRadius: 0, endRadius: 180),
+        )
+        .clipShape(RoundedRectangle(cornerRadius: UbappRadius.hero, style: .continuous))
     }
 
-    @ViewBuilder private var hand: some View {
-        GroupBox("Your hand (\(model.hand.count))") {
+    private var handArea: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            MonoLabel("Your hand · \(model.hand.count)")
             let cols = [GridItem(.adaptive(minimum: 64), spacing: 8)]
             LazyVGrid(columns: cols, spacing: 8) {
                 ForEach(Array(model.hand.enumerated()), id: \.offset) { _, card in
                     Button {
-                        guard isMyTurn else { return }
-                        guard isPlayable(card) else { return }
+                        guard isMyTurn, isPlayable(card) else { return }
                         if card.rank == 8 { suitPickFor = card }
                         else { model.send(["type": "play", "suit": card.suit, "rank": card.rank]) }
                     } label: {
@@ -138,6 +153,21 @@ struct CrazyEightsGuestView: View {
                     }
                     .buttonStyle(.plain)
                 }
+            }
+        }
+    }
+
+    @ViewBuilder private var actionBar: some View {
+        if isMyTurn {
+            HStack(spacing: 10) {
+                if model.justDrew {
+                    Button("Pass") { model.send(["type": "pass"]) }
+                        .buttonStyle(UbSecondaryButtonStyle())
+                }
+                Button(model.justDrew ? "Drew — pass or play" : "Draw") { model.send(["type": "draw"]) }
+                    .buttonStyle(UbSecondaryButtonStyle())
+                    .disabled(model.justDrew)
+                    .opacity(model.justDrew ? 0.5 : 1)
             }
         }
     }
@@ -154,9 +184,9 @@ struct CrazyEightsGuestView: View {
     @ViewBuilder
     private func suitPicker(card: CrazyEightsGuestModel.Card) -> some View {
         VStack(spacing: 16) {
-            Text("Declare a new suit").font(.title3.bold())
+            MonoLabel("Choose the next suit", color: UbappTheme.accent)
             let suits = ["clubs", "diamonds", "hearts", "spades"]
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
                 ForEach(suits, id: \.self) { s in
                     Button {
                         model.send(["type": "play", "suit": card.suit, "rank": card.rank, "declaredSuit": s])
@@ -164,25 +194,44 @@ struct CrazyEightsGuestView: View {
                     } label: {
                         Text(suitGlyph(s)).font(.system(size: 40))
                             .frame(maxWidth: .infinity, minHeight: 80)
-                            .background(Color.white.opacity(0.04))
-                            .foregroundStyle(s == "diamonds" || s == "hearts" ? .red : .primary)
-                            .cornerRadius(10)
+                            .foregroundStyle(s == "diamonds" || s == "hearts"
+                                             ? UbappTheme.accent : .white)
+                            .ubAccentCard(radius: UbappRadius.button)
                     }
+                    .buttonStyle(.plain)
                 }
             }
             Button("Cancel") { suitPickFor = nil }
+                .buttonStyle(UbSecondaryButtonStyle())
         }
-        .padding()
+        .padding(20)
+        .frame(maxWidth: .infinity)
+        .background(UbappTheme.canvas)
         .presentationDetents([.medium])
     }
 
     @ViewBuilder private var gameOver: some View {
         let winner = model.players.first { $0.id == model.winnerId }
-        GroupBox("Game over") {
-            Text("\(winner?.name ?? "?") wins!").font(.title2.bold())
-            ForEach(model.players, id: \.id) { p in
-                HStack { Text(p.name); Spacer(); Text("\(p.handCount) cards left")
-                    .foregroundStyle(.secondary).font(.footnote) }
+        let standings = model.players.sorted { $0.handCount < $1.handCount }
+        VStack(alignment: .leading, spacing: 6) {
+            MonoLabel("Game over", color: UbappTheme.accent)
+            Text("\(winner?.name ?? "?") wins")
+                .font(.system(size: 28, weight: .heavy)).kerning(-0.8).foregroundStyle(.white)
+        }
+        VStack(alignment: .leading, spacing: 8) {
+            MonoLabel("Final standings")
+            VStack(spacing: 8) {
+                ForEach(standings, id: \.id) { p in
+                    HStack(spacing: 12) {
+                        Avatar(name: p.name, host: p.isHost, size: 30)
+                        Text(p.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
+                        if p.id == model.winnerId { Text("🏆") }
+                        Spacer()
+                        MonoLabel("\(p.handCount) left", size: 10, color: UbappTheme.muted)
+                    }
+                    .padding(.vertical, 12).padding(.horizontal, 14)
+                    .ubCard(radius: UbappRadius.row)
+                }
             }
         }
     }

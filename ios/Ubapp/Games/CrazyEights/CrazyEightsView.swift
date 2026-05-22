@@ -18,9 +18,14 @@ struct CrazyEightsView: View {
                         VStack(spacing: 0) {
                             Spacer(minLength: 0)
                             VStack(alignment: .center, spacing: 16) {
+                                VStack(spacing: 4) {
+                                    MonoLabel("Hosting · Crazy 8s", color: UbappTheme.accent)
+                                    Text("Waiting for players")
+                                        .font(.system(size: 24, weight: .heavy)).kerning(-0.6)
+                                        .foregroundStyle(.white)
+                                }
                                 HostingChrome(joinUrl: model.joinUrl, onStart: model.startHosting,
                                               onStop: model.stop)
-                                Text("Lobby").font(.headline)
                                 TutorialVoteCard(
                                     state: model.tutorialState, tutorial: GameTutorials.crazyEights,
                                     onCall: model.callTutorialVote, onVote: model.tutorialVote,
@@ -41,9 +46,9 @@ struct CrazyEightsView: View {
                 VStack(spacing: 0) {
                     CrazyEightsGuestView(ctx: ctx)
                     if model.phase == .gameOver {
-                        Divider()
-                        Button("New game") { model.newGame() }
-                            .buttonStyle(.borderedProminent).padding()
+                        Button("Rematch · same room") { model.newGame() }
+                            .buttonStyle(UbPrimaryButtonStyle())
+                            .padding(20)
                     }
                 }
             }
@@ -54,43 +59,63 @@ struct CrazyEightsView: View {
     }
 
     @ViewBuilder private var lobbyView: some View {
-        GroupBox("Players (\(model.players.count))") {
-            ForEach(model.players, id: \.id) { p in
-                HStack {
-                    Text(p.name)
-                    if p.isHost { Text("(host)").foregroundStyle(.secondary).font(.caption) }
+        VStack(alignment: .leading, spacing: 8) {
+            MonoLabel("Players · \(model.players.count)")
+            VStack(spacing: 8) {
+                ForEach(model.players, id: \.id) { p in
+                    HStack(spacing: 12) {
+                        Avatar(name: p.name, host: p.isHost, size: 30)
+                        Text(p.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
+                        Spacer()
+                        if p.isHost { MonoLabel("host", size: 9, color: UbappTheme.faint) }
+                    }
+                    .padding(.vertical, 10).padding(.horizontal, 14)
+                    .ubCard(radius: UbappRadius.row)
                 }
             }
         }
-        GroupBox("Options") {
-            Toggle("Custom starting hand", isOn: $model.customHandSize)
-                .onChange(of: model.customHandSize) { _, on in
-                    var o = model.options; o.startingHandSize = on ? model.handSizeValue : nil
-                    model.applyOptions(o)
+        .frame(maxWidth: .infinity, alignment: .leading)
+
+        VStack(alignment: .leading, spacing: 10) {
+            MonoLabel("Options")
+            VStack(spacing: 12) {
+                Toggle("Custom starting hand", isOn: $model.customHandSize)
+                    .onChange(of: model.customHandSize) { _, on in
+                        var o = model.options; o.startingHandSize = on ? model.handSizeValue : nil
+                        model.applyOptions(o)
+                    }
+                if model.customHandSize {
+                    Stepper(value: $model.handSizeValue, in: 3...10) {
+                        Text("Starting hand: \(model.handSizeValue)")
+                    }
+                    .onChange(of: model.handSizeValue) { _, v in
+                        var o = model.options; o.startingHandSize = v
+                        model.applyOptions(o)
+                    }
                 }
-            if model.customHandSize {
-                Stepper(value: $model.handSizeValue, in: 3...10) {
-                    Text("Starting hand: \(model.handSizeValue)")
-                }
-                .onChange(of: model.handSizeValue) { _, v in
-                    var o = model.options; o.startingHandSize = v
-                    model.applyOptions(o)
-                }
+                Toggle("Jacks skip next player", isOn: Binding(
+                    get: { model.options.jackSkips },
+                    set: { var o = model.options; o.jackSkips = $0; model.applyOptions(o) }))
+                Toggle("Queens reverse direction", isOn: Binding(
+                    get: { model.options.queenReverses },
+                    set: { var o = model.options; o.queenReverses = $0; model.applyOptions(o) }))
+                Toggle("Twos: next player draws two", isOn: Binding(
+                    get: { model.options.twosDrawTwo },
+                    set: { var o = model.options; o.twosDrawTwo = $0; model.applyOptions(o) }))
             }
-            Toggle("Jacks skip next player", isOn: Binding(
-                get: { model.options.jackSkips },
-                set: { var o = model.options; o.jackSkips = $0; model.applyOptions(o) }))
-            Toggle("Queens reverse direction", isOn: Binding(
-                get: { model.options.queenReverses },
-                set: { var o = model.options; o.queenReverses = $0; model.applyOptions(o) }))
-            Toggle("Twos: next player draws two", isOn: Binding(
-                get: { model.options.twosDrawTwo },
-                set: { var o = model.options; o.twosDrawTwo = $0; model.applyOptions(o) }))
+            .font(.system(size: 15))
+            .tint(UbappTheme.accent)
+            .padding(14)
+            .ubCard()
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+
         if model.canStart {
-            Button("Start round") { model.start() }.buttonStyle(.borderedProminent)
+            Button("Start round · \(model.players.count) players") { model.start() }
+                .buttonStyle(UbPrimaryButtonStyle())
         } else {
-            Text("Need 2–8 players to start.").foregroundStyle(.secondary)
+            Text("Need 2–8 players to start.")
+                .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
         }
     }
 
