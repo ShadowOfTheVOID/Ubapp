@@ -24,6 +24,8 @@ data class CrazyEightsOptions(
     val startingHandSize: Int? = null,
     val jackSkips: Boolean = false,
     val queenReverses: Boolean = false,
+    /** Playing a 2 forces the next player to draw two cards and lose their turn. */
+    val twosDrawTwo: Boolean = false,
 )
 
 class CrazyEightsPlayer(val id: String, val name: String, val isHost: Boolean) {
@@ -124,6 +126,15 @@ class CrazyEightsEngine(private val rng: Random = Random.Default) {
         }
         advanceTurn()
         if (skipNext) advanceTurn()
+        if (options.twosDrawTwo && card.rank == 2 && order.size >= 2) {
+            val victim = current!!
+            repeat(2) {
+                if (drawPile.isEmpty()) reshuffle()
+                if (drawPile.isNotEmpty()) victim.hand.add(drawPile.removeAt(drawPile.size - 1))
+            }
+            lastEvent = "${victim.name} draws two and is skipped"
+            advanceTurn()
+        }
         return null
     }
 

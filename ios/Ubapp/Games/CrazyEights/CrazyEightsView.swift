@@ -65,34 +65,27 @@ struct CrazyEightsView: View {
         GroupBox("Options") {
             Toggle("Custom starting hand", isOn: $model.customHandSize)
                 .onChange(of: model.customHandSize) { _, on in
-                    model.applyOptions(CrazyEightsOptions(
-                        startingHandSize: on ? model.handSizeValue : nil,
-                        jackSkips: model.options.jackSkips,
-                        queenReverses: model.options.queenReverses))
+                    var o = model.options; o.startingHandSize = on ? model.handSizeValue : nil
+                    model.applyOptions(o)
                 }
             if model.customHandSize {
                 Stepper(value: $model.handSizeValue, in: 3...10) {
                     Text("Starting hand: \(model.handSizeValue)")
                 }
                 .onChange(of: model.handSizeValue) { _, v in
-                    model.applyOptions(CrazyEightsOptions(
-                        startingHandSize: v,
-                        jackSkips: model.options.jackSkips,
-                        queenReverses: model.options.queenReverses))
+                    var o = model.options; o.startingHandSize = v
+                    model.applyOptions(o)
                 }
             }
             Toggle("Jacks skip next player", isOn: Binding(
                 get: { model.options.jackSkips },
-                set: { model.applyOptions(CrazyEightsOptions(
-                    startingHandSize: model.customHandSize ? model.handSizeValue : nil,
-                    jackSkips: $0,
-                    queenReverses: model.options.queenReverses)) }))
+                set: { var o = model.options; o.jackSkips = $0; model.applyOptions(o) }))
             Toggle("Queens reverse direction", isOn: Binding(
                 get: { model.options.queenReverses },
-                set: { model.applyOptions(CrazyEightsOptions(
-                    startingHandSize: model.customHandSize ? model.handSizeValue : nil,
-                    jackSkips: model.options.jackSkips,
-                    queenReverses: $0)) }))
+                set: { var o = model.options; o.queenReverses = $0; model.applyOptions(o) }))
+            Toggle("Twos: next player draws two", isOn: Binding(
+                get: { model.options.twosDrawTwo },
+                set: { var o = model.options; o.twosDrawTwo = $0; model.applyOptions(o) }))
         }
         if model.canStart {
             Button("Start round") { model.start() }.buttonStyle(.borderedProminent)

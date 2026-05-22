@@ -36,6 +36,10 @@ struct CheatOptions: Equatable {
     /// When true, the active player may claim *any* rank rather than the
     /// next rank in sequence. More chaos, less strategy.
     var freeClaim: Bool = false
+    /// Start the rank sequence on a random rank instead of always Aces.
+    var randomStartRank: Bool = false
+    /// Count the rank sequence down (K → Q → … → A) instead of up.
+    var descending: Bool = false
 }
 
 /// The currently-open play that any other player can call BS on. Cards
@@ -136,11 +140,11 @@ final class CheatEngine {
         pile.removeAll()
         lastPlay = nil
         lastReveal = nil
-        expectedRank = 1
+        expectedRank = options.randomStartRank ? Int.random(in: 1...13, using: &rng) : 1
         currentIndex = 0
         winnerId = nil
         phase = .playing
-        lastEvent = "\(current!.name) starts — claim Aces"
+        lastEvent = "\(current!.name) starts — claim \(rankName(expectedRank))"
     }
 
     /// Plays `cards` (must be in hand) from `playerId`, claiming
@@ -259,7 +263,11 @@ final class CheatEngine {
     private func indexOf(_ id: String) -> Int { order.firstIndex(of: id) ?? 0 }
 
     /// Aces (1) → 2 → 3 … → K (13) → Aces.
-    func nextRank(_ r: Int) -> Int { (r % 13) + 1 }
+    /// Ascending Aces (1) → 2 … → K (13) → Aces, or the reverse when
+    /// `CheatOptions.descending` is set.
+    func nextRank(_ r: Int) -> Int {
+        options.descending ? (r <= 1 ? 13 : r - 1) : (r % 13) + 1
+    }
 
     func rankName(_ r: Int) -> String {
         switch r {

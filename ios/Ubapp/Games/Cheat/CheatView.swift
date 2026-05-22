@@ -62,7 +62,15 @@ struct CheatView: View {
         GroupBox("Options") {
             Toggle("Free claim (any rank, no sequence)", isOn: Binding(
                 get: { model.options.freeClaim },
-                set: { model.applyOptions(CheatOptions(freeClaim: $0)) }))
+                set: { var o = model.options; o.freeClaim = $0; model.applyOptions(o) }))
+            Toggle("Random starting rank", isOn: Binding(
+                get: { model.options.randomStartRank },
+                set: { var o = model.options; o.randomStartRank = $0; model.applyOptions(o) }))
+                .disabled(model.options.freeClaim)
+            Toggle("Count ranks downward", isOn: Binding(
+                get: { model.options.descending },
+                set: { var o = model.options; o.descending = $0; model.applyOptions(o) }))
+                .disabled(model.options.freeClaim)
         }
         if model.canStart {
             Button("Start round") { model.start() }.buttonStyle(.borderedProminent)

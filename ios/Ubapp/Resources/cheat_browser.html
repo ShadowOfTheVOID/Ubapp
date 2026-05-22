@@ -90,7 +90,7 @@
   }
   const state = { me:null, phase:'lobby', players:[], hand:[], pileSize:0, expectedRank:1,
     lastPlay:null, lastReveal:null, currentId:null, winnerId:null, lastEvent:'',
-    selected:new Set(), options:{freeClaim:false},
+    selected:new Set(), options:{freeClaim:false, randomStartRank:false, descending:false},
     tutorial:{isOpen:false,yesCount:0,noCount:0,eligibleCount:0,result:null,tutorialShown:false},
     tutorialContent:null, myTutorialVote:null };
 
@@ -102,7 +102,7 @@
       case 'welcome': state.me = { id:m.yourId, name:m.yourName }; break;
       case 'lobby': state.players = m.players; state.phase='lobby'; break;
       case 'options':
-        state.options = { freeClaim: !!m.freeClaim };
+        state.options = { freeClaim: !!m.freeClaim, randomStartRank: !!m.randomStartRank, descending: !!m.descending };
         break;
       case 'state':
         Object.assign(state, {
@@ -157,7 +157,14 @@
 
   function viewOptions(){
     const o = state.options;
-    const line = o.freeClaim ? 'free claim — any rank' : 'sequence rule (A→K→A)';
+    let line;
+    if (o.freeClaim) {
+      line = 'free claim — any rank';
+    } else {
+      const dir = o.descending ? 'K→A→K' : 'A→K→A';
+      const start = o.randomStartRank ? 'random start' : 'starts on Aces';
+      line = `sequence rule (${dir}, ${start})`;
+    }
     return `<div class="panel"><h2>Game options</h2><p>${line}</p></div>`;
   }
 

@@ -6,6 +6,7 @@ import com.example.ubapp.games.bluffmarket.BluffMarketOptions
 import com.example.ubapp.games.bluffmarket.BluffMarketPhase
 import com.example.ubapp.games.cheat.CheatCard
 import com.example.ubapp.games.cheat.CheatEngine
+import com.example.ubapp.games.cheat.CheatOptions
 import com.example.ubapp.games.cheat.CheatPhase
 import com.example.ubapp.games.cheat.CheatSuit
 import com.example.ubapp.games.connectfour.ConnectFourAI
@@ -287,6 +288,32 @@ class CheatEngineTest {
         val e = CheatEngine(Random(2))
         assertEquals(1, e.nextRank(13))
         assertEquals(2, e.nextRank(1))
+    }
+
+    @Test fun `default start claims aces`() {
+        val e = engine(5)
+        e.start()
+        assertEquals(1, e.expectedRank)
+    }
+
+    @Test fun `descending option reverses the rank sequence`() {
+        val e = engine(2)
+        e.setOptions(CheatOptions(descending = true))
+        assertEquals(12, e.nextRank(13))
+        assertEquals(1, e.nextRank(2))
+        assertEquals(13, e.nextRank(1))   // wraps Ace back to King
+    }
+
+    @Test fun `random start rank varies and stays in range`() {
+        val starts = (1..20).map { seed ->
+            val e = CheatEngine(Random(seed))
+            listOf("a", "b", "c", "d").forEach { e.addPlayer(it, it) }
+            e.setOptions(CheatOptions(randomStartRank = true))
+            e.start()
+            e.expectedRank
+        }
+        assertTrue(starts.all { it in 1..13 })
+        assertTrue(starts.toSet().size > 1, "random start should not always pick the same rank")
     }
 }
 

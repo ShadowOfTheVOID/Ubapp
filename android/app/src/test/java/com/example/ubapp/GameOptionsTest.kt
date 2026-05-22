@@ -7,6 +7,7 @@ import com.example.ubapp.games.codenames.Team
 import com.example.ubapp.games.crazyeights.Card
 import com.example.ubapp.games.crazyeights.CrazyEightsEngine
 import com.example.ubapp.games.crazyeights.CrazyEightsOptions
+import com.example.ubapp.games.crazyeights.CrazyEightsPhase
 import com.example.ubapp.games.crazyeights.Suit
 import com.example.ubapp.games.imposter.ImposterEngine
 import com.example.ubapp.games.imposter.ImposterOptions
@@ -207,6 +208,7 @@ class GameOptionsTest {
         e.activeSuit = null
         val current = e.current!!
         current.hand.add(Card(Suit.SPADES, 11))
+        current.hand.add(Card(Suit.CLUBS, 3))   // spare so the play doesn't empty the hand (= win)
         e.playCard(current.id, Card(Suit.SPADES, 11))
         // Jack-skip: 1 normal advance + 1 skip = currentIndex moves by 2.
         assertEquals(2, e.currentIndex)
@@ -222,6 +224,7 @@ class GameOptionsTest {
         e.activeSuit = null
         val current = e.current!!
         current.hand.add(Card(Suit.SPADES, 11))
+        current.hand.add(Card(Suit.CLUBS, 3))   // spare so the play doesn't empty the hand (= win)
         e.playCard(current.id, Card(Suit.SPADES, 11))
         assertEquals(1, e.currentIndex)
     }
@@ -236,6 +239,7 @@ class GameOptionsTest {
         e.activeSuit = null
         val current = e.current!!
         current.hand.add(Card(Suit.HEARTS, 12))
+        current.hand.add(Card(Suit.CLUBS, 3))   // spare so the play doesn't empty the hand (= win)
         e.playCard(current.id, Card(Suit.HEARTS, 12))
         // Queen reverses, then advances by direction=-1 from currentIndex=0.
         // (0 + -1) mod 4 = 3.
@@ -248,5 +252,36 @@ class GameOptionsTest {
         e.setOptions(CrazyEightsOptions(startingHandSize = 4))
         e.start()
         for (p in e.players.values) assertEquals(4, p.hand.size)
+    }
+
+    @Test fun `crazy eights twos force the next player to draw two and skip`() {
+        val e = CrazyEightsEngine(Random(7))
+        listOf("a", "b", "c").forEach { e.addPlayer(it, it) }
+        e.setOptions(CrazyEightsOptions(twosDrawTwo = true))
+        e.start()
+        for (p in e.players.values) p.hand.clear()
+        e.discardPile.clear(); e.discardPile.add(Card(Suit.SPADES, 7))
+        e.activeSuit = null
+        val current = e.current!!
+        current.hand.add(Card(Suit.SPADES, 2))   // matches suit, is a 2
+        current.hand.add(Card(Suit.CLUBS, 3))    // spare so the play doesn't win
+        assertNull(e.playCard(current.id, Card(Suit.SPADES, 2)))
+        // Victim drew two and was skipped: index advances by 2.
+        assertEquals(2, e.currentIndex)
+        assertEquals(CrazyEightsPhase.PLAYING, e.phase)
+    }
+
+    @Test fun `crazy eights twos are inert when the option is off`() {
+        val e = CrazyEightsEngine(Random(7))
+        listOf("a", "b", "c").forEach { e.addPlayer(it, it) }
+        e.start()
+        for (p in e.players.values) p.hand.clear()
+        e.discardPile.clear(); e.discardPile.add(Card(Suit.SPADES, 7))
+        e.activeSuit = null
+        val current = e.current!!
+        current.hand.add(Card(Suit.SPADES, 2))
+        current.hand.add(Card(Suit.CLUBS, 3))
+        e.playCard(current.id, Card(Suit.SPADES, 2))
+        assertEquals(1, e.currentIndex)   // normal single advance, no draw
     }
 }

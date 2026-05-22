@@ -73,6 +73,18 @@ fun CheatScreen() {
                                        onCheckedChange = { server.hostSetOptions(e.options.copy(freeClaim = it)) })
                                 Text("  Free claim (any rank, no sequence)")
                             }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Switch(checked = e.options.randomStartRank,
+                                       onCheckedChange = { server.hostSetOptions(e.options.copy(randomStartRank = it)) },
+                                       enabled = !e.options.freeClaim)
+                                Text("  Random starting rank")
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Switch(checked = e.options.descending,
+                                       onCheckedChange = { server.hostSetOptions(e.options.copy(descending = it)) },
+                                       enabled = !e.options.freeClaim)
+                                Text("  Count ranks downward")
+                            }
                         }
                     }
                     Button(onClick = { server.hostStart() }, enabled = e.canStart) {
