@@ -35,41 +35,70 @@ struct JoinFlowView: View {
         }
     }
 
+    private var canConnect: Bool {
+        !name.trimmingCharacters(in: .whitespaces).isEmpty
+            && !rawCode.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
     @ViewBuilder private var joinForm: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                GroupBox("Your name") {
-                    TextField("Display name", text: $name)
-                        .textInputAutocapitalization(.words)
+            VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: 6) {
+                    MonoLabel("Join", color: UbappTheme.accent)
+                    Text("Enter the app code")
+                        .font(.system(size: 30, weight: .heavy)).kerning(-0.9)
+                        .foregroundStyle(.white)
+                    Text("The host's phone is showing it. Letters and numbers.")
+                        .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
                 }
-                GroupBox("Host address") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        TextField("Join code or IP (e.g. ABCD-EFG)", text: $rawCode)
-                            .textInputAutocapitalization(.characters)
-                            .autocorrectionDisabled()
-                            .font(.system(.body, design: .monospaced))
-                        Text("Ask the host for the code shown on their screen, or type the IP shown under the QR.")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                }
-                Button("Connect", action: tryConnect)
-                    .buttonStyle(.borderedProminent)
-                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty
-                              || rawCode.trimmingCharacters(in: .whitespaces).isEmpty)
+                .padding(.bottom, 28)
+
+                MonoLabel("Your name").padding(.bottom, 8)
+                TextField("", text: $name,
+                          prompt: Text("Display name").foregroundColor(UbappTheme.faint))
+                    .textInputAutocapitalization(.words)
+                    .font(.system(size: 16))
+                    .padding(14)
+                    .ubCard(radius: UbappRadius.button)
+                    .padding(.bottom, 16)
+
+                MonoLabel("App code").padding(.bottom, 8)
+                TextField("", text: $rawCode,
+                          prompt: Text("ABCD-EFG").foregroundColor(UbappTheme.faint))
+                    .textInputAutocapitalization(.characters)
+                    .autocorrectionDisabled()
+                    .font(.system(size: 22, weight: .bold, design: .monospaced))
+                    .tracking(4)
+                    .padding(16)
+                    .ubCard(radius: UbappRadius.button)
+
+                Text("Or paste the IP shown under the host's QR.")
+                    .font(.system(size: 12)).foregroundStyle(UbappTheme.muted)
+                    .padding(.top, 8)
+
                 if !status.isEmpty {
-                    Text(status).foregroundStyle(.red).font(.caption)
+                    Text(status).foregroundStyle(UbappTheme.accent)
+                        .font(.system(size: 13)).padding(.top, 12)
                 }
+
+                Button(canConnect ? "Connect" : "Connect — needs name + code", action: tryConnect)
+                    .buttonStyle(UbPrimaryButtonStyle())
+                    .disabled(!canConnect)
+                    .opacity(canConnect ? 1 : 0.6)
+                    .padding(.top, 24)
             }
-            .padding()
+            .padding(20)
         }
     }
 
     @ViewBuilder private var connectingView: some View {
         VStack(spacing: 16) {
-            ProgressView()
-            Text("Connecting to \(pendingHost ?? "host")…").foregroundStyle(.secondary)
-            if !status.isEmpty { Text(status).foregroundStyle(.red).font(.caption) }
-            Button("Cancel") { reset() }.buttonStyle(.bordered)
+            ProgressView().tint(UbappTheme.accent)
+            Text("Connecting to \(pendingHost ?? "host")…").foregroundStyle(UbappTheme.muted)
+            if !status.isEmpty {
+                Text(status).foregroundStyle(UbappTheme.accent).font(.system(size: 13))
+            }
+            Button("Cancel") { reset() }.buttonStyle(UbSecondaryButtonStyle()).frame(maxWidth: 200)
         }
         .padding()
     }

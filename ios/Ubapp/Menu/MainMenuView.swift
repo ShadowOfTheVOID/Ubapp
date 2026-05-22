@@ -4,143 +4,217 @@ struct MainMenuView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 0) {
+                    header
                     joinCallout
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 14)
 
-                    MenuSection(title: "Party games", subtitle: "Pass the QR — guests play in their browser.") {
-                        gameTile("Mafia", "Hidden roles, find the killer in the dark.") { MafiaView() }
-                        gameTile("Werewolf", "Moonlight whodunit with a hunter twist.") { WerewolfView() }
-                        gameTile("Imposter", "Bluff your way through a secret word.") { ImposterView() }
-                        gameTile("Codenames", "Word association duel for two teams.") { CodenamesView() }
-                        gameTile("Crazy Eights", "Race to empty your hand.") { CrazyEightsView() }
-                        gameTile("Cheat", "Bluff your way out by claiming the right rank — or call BS.") { CheatView() }
-                        gameTile("President", "Shed your hand, win social status, swap cards next round.") { PresidentView() }
-                        gameTile("Bluff Market", "Trade face-down cards. Avoid the Bomb.") { BluffMarketView() }
-                        gameTile("Secret Hitler", "Politics, lies, and hidden roles.") { SecretHitlerView() }
+                    section(title: "Host a game", trailing: "\(partyGames.count + cardGames.count) in library") {
+                        ForEach(cardGames + partyGames) { tile($0) }
                     }
 
-                    MenuSection(title: "On the move", subtitle: "Get up, walk around, use your phone's radios.") {
-                        gameTile("Tag", "BLE proximity tag in the room.", systemImage: "antenna.radiowaves.left.and.right") { TagLobbyView() }
-                        gameTile("Real-time", "Sandbox realtime networking demo.", systemImage: "bolt.fill") { RealtimeView() }
+                    section(title: "On the move", topPadding: 24) {
+                        ForEach(proximityGames) { tile($0) }
                     }
 
-                    MenuSection(title: "Two-player", subtitle: "Quick turn-based classics for one phone.") {
-                        gameTile("Tic-Tac-Toe", "Three in a row.") { TicTacToeView() }
-                        gameTile("Connect Four", "Four in a row, drop tokens.") { ConnectFourView() }
+                    section(title: "Two-player", topPadding: 24) {
+                        ForEach(twoPlayerGames) { tile($0) }
                     }
 
-                    MenuSection(title: "More", subtitle: nil) {
-                        gameTile("Social", "Friends, chat, presence demo.", systemImage: "person.2.fill") { SocialView() }
-                        gameTile("Stat board", "Play counts and recent games.", systemImage: "chart.bar.fill") { StatBoardView() }
+                    section(title: "More", topPadding: 24) {
+                        ForEach(extras) { tile($0) }
                     }
                 }
-                .padding(20)
+                .padding(.bottom, 40)
             }
-            .ubappChrome()
-            .navigationTitle("Ubapp")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink { SettingsView() } label: {
-                        Image(systemName: "gearshape")
-                    }
-                }
-            }
+            .scrollIndicators(.hidden)
+            .background(UbappTheme.canvas.ignoresSafeArea())
+            .toolbar(.hidden, for: .navigationBar)
+            .tint(UbappTheme.accent)
         }
+    }
+
+    // MARK: - Header
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                PipMark(size: 20)
+                Wordmark(size: 17)
+                Spacer()
+                NavigationLink { SettingsView() } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 18, weight: .regular))
+                        .foregroundStyle(UbappTheme.accent)
+                }
+            }
+            Text("ubapp")
+                .font(.system(size: 34, weight: .heavy))
+                .kerning(-1.0)
+                .foregroundStyle(.white)
+            Text("Pass the QR — everyone plays in their browser.")
+                .font(.system(size: 13))
+                .foregroundStyle(UbappTheme.muted)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 16)
+        .padding(.bottom, 16)
     }
 
     private var joinCallout: some View {
         NavigationLink { JoinFlowView() } label: {
-            HStack(spacing: 12) {
-                Image(systemName: "qrcode.viewfinder")
-                    .font(.title)
-                    .frame(width: 44, height: 44)
-                    .background(UbappTheme.accent.opacity(0.2))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Join a game").font(.headline)
-                    Text("Scan a QR or type an app code.")
-                        .font(.caption).foregroundStyle(.secondary)
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(UbappTheme.accent.opacity(0.22))
+                        .frame(width: 44, height: 44)
+                    Image(systemName: "qrcode.viewfinder")
+                        .font(.system(size: 22, weight: .regular))
+                        .foregroundStyle(UbappTheme.accent)
                 }
-                Spacer()
-                Image(systemName: "chevron.right").foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Join a game")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(.white)
+                    Text("Scan the host's QR or enter a code.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(UbappTheme.muted)
+                }
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(UbappTheme.muted)
             }
-            .padding(14)
-            .background(UbappTheme.accent.opacity(0.12))
-            .overlay(RoundedRectangle(cornerRadius: 14)
-                .stroke(UbappTheme.accent.opacity(0.5), lineWidth: 1))
-            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .padding(.vertical, 14)
+            .padding(.horizontal, 16)
+            .ubAccentCard()
         }
         .buttonStyle(.plain)
+    }
+
+    // MARK: - Section + tile
+
+    @ViewBuilder
+    private func section<Content: View>(
+        title: String,
+        trailing: String? = nil,
+        topPadding: CGFloat = 0,
+        @ViewBuilder content: () -> Content,
+    ) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            MonoLabel(title)
+            Spacer()
+            if let trailing { MonoLabel(trailing, size: 10, color: UbappTheme.faint) }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, topPadding == 0 ? 0 : topPadding)
+        .padding(.bottom, 8)
+
+        VStack(spacing: 12) {
+            content()
+        }
+        .padding(.horizontal, 16)
     }
 
     @ViewBuilder
-    private func gameTile<Destination: View>(
-        _ title: String,
-        _ subtitle: String,
-        systemImage: String? = nil,
-        @ViewBuilder destination: @escaping () -> Destination,
-    ) -> some View {
-        NavigationLink(destination: destination) {
-            GameTileRow(title: title, subtitle: subtitle, systemImage: systemImage)
+    private func tile(_ meta: GameMeta) -> some View {
+        NavigationLink { meta.destination } label: {
+            HStack(spacing: 14) {
+                GameGlyphView(glyph: meta.glyph, size: 56)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(meta.title)
+                        .font(.system(size: 17, weight: .bold))
+                        .kerning(-0.3)
+                        .foregroundStyle(.white)
+                    Text(meta.desc)
+                        .font(.system(size: 12))
+                        .foregroundStyle(UbappTheme.muted)
+                        .lineLimit(1)
+                    HStack(spacing: 10) {
+                        MonoLabel(meta.players, size: 9)
+                        if let minutes = meta.minutes { MonoLabel(minutes, size: 9) }
+                    }
+                    .padding(.top, 3)
+                }
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 16, weight: .light))
+                    .foregroundStyle(UbappTheme.faint)
+            }
+            .padding(14)
+            .ubCard()
         }
         .buttonStyle(.plain)
     }
 }
 
-private struct MenuSection<Content: View>: View {
-    let title: String
-    let subtitle: String?
-    @ViewBuilder var content: Content
+// MARK: - Catalog
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.title3.bold())
-                    .foregroundStyle(UbappTheme.foreground)
-                if let subtitle {
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            VStack(spacing: 8) {
-                content
-            }
-        }
+struct GameMeta: Identifiable {
+    let id: String
+    let title: String
+    let desc: String
+    let players: String
+    let minutes: String?
+    let glyph: GameGlyph
+    let destination: AnyView
+
+    init(_ id: String, _ title: String, _ desc: String, players: String,
+         minutes: String? = nil, glyph: GameGlyph, @ViewBuilder destination: () -> some View) {
+        self.id = id
+        self.title = title
+        self.desc = desc
+        self.players = players
+        self.minutes = minutes
+        self.glyph = glyph
+        self.destination = AnyView(destination())
     }
 }
 
-private struct GameTileRow: View {
-    let title: String
-    let subtitle: String
-    let systemImage: String?
+private let cardGames: [GameMeta] = [
+    GameMeta("crazy8s", "Crazy 8s", "Match suit or rank — eights are wild.",
+             players: "2–7", minutes: "8–15 min", glyph: .crazy8s) { CrazyEightsView() },
+    GameMeta("cheat", "Cheat", "Claim what you played; get called and take the pile.",
+             players: "3–8", minutes: "10–20 min", glyph: .cheat) { CheatView() },
+    GameMeta("president", "President", "Shed your hand to climb from Scum to President.",
+             players: "4–7", minutes: "15–30 min", glyph: .president) { PresidentView() },
+    GameMeta("bluffmarket", "Bluff Market", "Trade face-down. One bomb is worth −25.",
+             players: "3–6", minutes: "6–12 min", glyph: .bluffMarket) { BluffMarketView() },
+]
 
-    var body: some View {
-        HStack(spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(UbappTheme.accent.opacity(0.15))
-                    .frame(width: 40, height: 40)
-                Image(systemName: systemImage ?? "gamecontroller.fill")
-                    .foregroundStyle(UbappTheme.accent)
-            }
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.headline).foregroundStyle(UbappTheme.foreground)
-                Text(subtitle).font(.caption).foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
-            Spacer(minLength: 8)
-            Image(systemName: "chevron.right")
-                .font(.caption.weight(.bold))
-                .foregroundStyle(.secondary)
-        }
-        .padding(12)
-        .background(Color.white.opacity(0.04))
-        .overlay(RoundedRectangle(cornerRadius: 12)
-            .stroke(Color.white.opacity(0.08), lineWidth: 1))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-}
+private let partyGames: [GameMeta] = [
+    GameMeta("mafia", "Mafia", "Mafia kill by night; the town hangs by day.",
+             players: "5–12", minutes: "15–30 min", glyph: .mafia) { MafiaView() },
+    GameMeta("werewolf", "Werewolf", "Seer, Doctor, Hunter. Day vote, night kills.",
+             players: "5–14", minutes: "20–40 min", glyph: .werewolf) { WerewolfView() },
+    GameMeta("imposter", "Imposter", "Everyone shares a word — except one. Find the fake.",
+             players: "4–10", minutes: "5–10 min", glyph: .imposter) { ImposterView() },
+    GameMeta("codenames", "Codenames", "Word-association duel for two teams.",
+             players: "4+", glyph: .symbol("square.grid.3x3.fill")) { CodenamesView() },
+    GameMeta("secrethitler", "Secret Hitler", "Politics, lies, and hidden roles.",
+             players: "5–10", glyph: .symbol("person.crop.rectangle.stack.fill")) { SecretHitlerView() },
+]
+
+private let proximityGames: [GameMeta] = [
+    GameMeta("tag", "Tag", "BLE proximity tag in the room.",
+             players: "2+", glyph: .symbol("antenna.radiowaves.left.and.right")) { TagLobbyView() },
+    GameMeta("realtime", "Real-time", "Sandbox realtime networking demo.",
+             players: "2+", glyph: .symbol("bolt.fill")) { RealtimeView() },
+]
+
+private let twoPlayerGames: [GameMeta] = [
+    GameMeta("tictactoe", "Tic-Tac-Toe", "Three in a row.",
+             players: "2", glyph: .symbol("number")) { TicTacToeView() },
+    GameMeta("connectfour", "Connect Four", "Four in a row, drop tokens.",
+             players: "2", glyph: .symbol("circle.grid.3x3.fill")) { ConnectFourView() },
+]
+
+private let extras: [GameMeta] = [
+    GameMeta("social", "Social", "Friends, chat, presence demo.",
+             players: "—", glyph: .symbol("person.2.fill")) { SocialView() },
+    GameMeta("statboard", "Stat board", "Play counts and recent games.",
+             players: "—", glyph: .symbol("chart.bar.fill")) { StatBoardView() },
+]
 
 #Preview { MainMenuView() }
