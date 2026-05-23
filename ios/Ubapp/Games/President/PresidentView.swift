@@ -15,9 +15,14 @@ struct PresidentView: View {
                         VStack(spacing: 0) {
                             Spacer(minLength: 0)
                             VStack(alignment: .center, spacing: 16) {
+                                VStack(spacing: 4) {
+                                    MonoLabel("Hosting · President", color: UbappTheme.accent)
+                                    Text("Waiting for players")
+                                        .font(.system(size: 24, weight: .heavy)).kerning(-0.6)
+                                        .foregroundStyle(.white)
+                                }
                                 HostingChrome(joinUrl: model.joinUrl, onStart: model.startHosting,
                                               onStop: model.stop)
-                                Text("Lobby").font(.headline)
                                 TutorialVoteCard(
                                     state: model.tutorialState, tutorial: GameTutorials.president,
                                     onCall: model.callTutorialVote, onVote: model.tutorialVote,
@@ -38,12 +43,12 @@ struct PresidentView: View {
                 VStack(spacing: 0) {
                     PresidentGuestView(ctx: ctx)
                     if model.phase == .gameOver {
-                        HStack {
-                            Button("Next round") { model.nextRound() }
-                                .buttonStyle(.borderedProminent)
+                        HStack(spacing: 10) {
                             Button("New game") { model.newGame() }
-                                .buttonStyle(.bordered)
-                        }.padding()
+                                .buttonStyle(UbSecondaryButtonStyle())
+                            Button("Next round") { model.nextRound() }
+                                .buttonStyle(UbPrimaryButtonStyle())
+                        }.padding(20)
                     }
                 }
             }
@@ -54,28 +59,48 @@ struct PresidentView: View {
     }
 
     @ViewBuilder private var lobbyView: some View {
-        GroupBox("Players (\(model.players.count))") {
-            ForEach(model.players, id: \.id) { p in
-                HStack {
-                    Text(p.name)
-                    if p.isHost { Text("(host)").foregroundStyle(.secondary).font(.caption) }
+        VStack(alignment: .leading, spacing: 8) {
+            MonoLabel("Players · \(model.players.count)")
+            VStack(spacing: 8) {
+                ForEach(model.players, id: \.id) { p in
+                    HStack(spacing: 12) {
+                        Avatar(name: p.name, host: p.isHost, size: 30)
+                        Text(p.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
+                        Spacer()
+                        if p.isHost { MonoLabel("host", size: 9, color: UbappTheme.faint) }
+                    }
+                    .padding(.vertical, 10).padding(.horizontal, 14)
+                    .ubCard(radius: UbappRadius.row)
                 }
             }
         }
-        GroupBox("Options") {
-            Toggle("Allow President house rules (chat-enforced)", isOn: Binding(
-                get: { model.options.allowHouseRules },
-                set: { model.applyOptions(PresOptions(allowHouseRules: $0,
-                                                     revolution: model.options.revolution)) }))
-            Toggle("Revolution: 4-of-a-kind inverts trick (display only)", isOn: Binding(
-                get: { model.options.revolution },
-                set: { model.applyOptions(PresOptions(allowHouseRules: model.options.allowHouseRules,
-                                                     revolution: $0)) }))
+        .frame(maxWidth: .infinity, alignment: .leading)
+
+        VStack(alignment: .leading, spacing: 10) {
+            MonoLabel("Options")
+            VStack(spacing: 12) {
+                Toggle("Allow President house rules (chat-enforced)", isOn: Binding(
+                    get: { model.options.allowHouseRules },
+                    set: { model.applyOptions(PresOptions(allowHouseRules: $0,
+                                                         revolution: model.options.revolution)) }))
+                Toggle("Revolution: 4-of-a-kind inverts trick (display only)", isOn: Binding(
+                    get: { model.options.revolution },
+                    set: { model.applyOptions(PresOptions(allowHouseRules: model.options.allowHouseRules,
+                                                         revolution: $0)) }))
+            }
+            .font(.system(size: 15))
+            .tint(UbappTheme.accent)
+            .padding(14)
+            .ubCard()
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+
         if model.canStart {
-            Button("Start round") { model.start() }.buttonStyle(.borderedProminent)
+            Button("Start round · \(model.players.count) players") { model.start() }
+                .buttonStyle(UbPrimaryButtonStyle())
         } else {
-            Text("Need 4–7 players to start.").foregroundStyle(.secondary)
+            Text("Need 4–7 players to start.")
+                .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
         }
     }
 }
