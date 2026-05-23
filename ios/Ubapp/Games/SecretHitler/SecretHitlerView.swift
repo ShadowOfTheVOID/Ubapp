@@ -15,9 +15,14 @@ struct SecretHitlerView: View {
                         VStack(spacing: 0) {
                             Spacer(minLength: 0)
                             VStack(alignment: .center, spacing: 16) {
+                                VStack(spacing: 4) {
+                                    MonoLabel("Hosting · Secret Hitler", color: UbappTheme.accent)
+                                    Text("Waiting for players")
+                                        .font(.system(size: 24, weight: .heavy)).kerning(-0.6)
+                                        .foregroundStyle(.white)
+                                }
                                 HostingChrome(joinUrl: model.joinUrl, onStart: model.startHosting,
                                               onStop: model.stop)
-                                Text("Lobby").font(.headline)
                                 TutorialVoteCard(
                                     state: model.tutorialState,
                                     tutorial: GameTutorials.secretHitler,
@@ -47,19 +52,28 @@ struct SecretHitlerView: View {
     }
 
     @ViewBuilder private var lobbyView: some View {
-        GroupBox("Players (\(model.players.count))") {
-            ForEach(model.players, id: \.id) { p in
-                HStack {
-                    Text(p.name)
-                    if p.isHost { Text("(host)").foregroundStyle(.secondary).font(.caption) }
-                    Spacer()
+        VStack(alignment: .leading, spacing: 8) {
+            MonoLabel("Players · \(model.players.count)")
+            VStack(spacing: 8) {
+                ForEach(model.players, id: \.id) { p in
+                    HStack(spacing: 12) {
+                        Avatar(name: p.name, host: p.isHost, size: 30)
+                        Text(p.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
+                        Spacer()
+                        if p.isHost { MonoLabel("host", size: 9, color: UbappTheme.faint) }
+                    }
+                    .padding(.vertical, 10).padding(.horizontal, 14).ubCard(radius: UbappRadius.row)
                 }
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+
         if model.canStart {
-            Button("Start round") { model.start() }.buttonStyle(.borderedProminent)
+            Button("Start round · \(model.players.count) players") { model.start() }
+                .buttonStyle(UbPrimaryButtonStyle())
         } else {
-            Text("Need 5–10 players to start.").foregroundStyle(.secondary)
+            Text("Need 5–10 players to start.")
+                .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
         }
     }
 }

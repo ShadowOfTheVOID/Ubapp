@@ -8,145 +8,196 @@ struct CodenamesGuestView: View {
     @State private var clueNumber: Int = 1
 
     var body: some View {
-        GeometryReader { proxy in
-            ScrollView {
-                VStack(spacing: 0) {
-                    Spacer(minLength: 0)
-                    VStack(alignment: .center, spacing: 12) {
-                        Text("Playing as \(ctx.yourName)").font(.caption).foregroundStyle(.secondary)
-                        SeriesBanner(state: model.series)
-                        switch model.phase {
-                        case "lobby":    lobby
-                        case "gameOver": board
-                        default:         board
-                        }
-                    }
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 480)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding()
-                    Spacer(minLength: 0)
-                }
-                .frame(minHeight: proxy.size.height)
-                .frame(maxWidth: .infinity)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                SeriesBanner(state: model.series)
+                if model.phase == "lobby" { lobby } else { board }
             }
-            .navigationTitle("Codenames")
-            .onAppear { model.attach(ctx: ctx) }
-            .onDisappear { ctx.client.onMessage = nil }
+            .frame(maxWidth: 560, alignment: .leading)
+            .frame(maxWidth: .infinity)
+            .padding(20)
         }
+        .scrollIndicators(.hidden)
+        .navigationTitle("Codenames")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear { model.attach(ctx: ctx) }
+        .onDisappear { ctx.client.onMessage = nil }
         .ubappChrome()
     }
 
     @ViewBuilder private var lobby: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            MonoLabel("Codenames · lobby", color: UbappTheme.accent)
+            Text("Pick your team")
+                .font(.system(size: 26, weight: .heavy)).kerning(-0.8).foregroundStyle(.white)
+            Text("Playing as \(ctx.yourName)")
+                .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+        }
         TutorialGuestCard(state: model.tutorialState, content: model.tutorialContent,
                           myVote: model.myTutorialVote,
                           onCall: { model.send(["type": "call_tutorial_vote"]) },
                           onVote: { yes in model.myTutorialVote = yes
                               model.send(["type": "tutorial_vote", "yes": yes]) })
-        GroupBox("Pick a team") {
-            HStack {
-                Button("Join Red") { model.send(["type": "team", "team": "red"]) }
-                    .buttonStyle(.borderedProminent).tint(.red)
-                Button("Join Blue") { model.send(["type": "team", "team": "blue"]) }
-                    .buttonStyle(.borderedProminent).tint(.blue)
-            }
-            Button(model.isSpymaster ? "Step down as spymaster" : "Be Spymaster") {
-                model.send(["type": "spymaster", "on": !model.isSpymaster])
-            }
-            .buttonStyle(.bordered).disabled(model.myTeam == nil)
+        HStack(spacing: 10) {
+            teamPickButton("Join Red", team: "red", color: CN.red)
+            teamPickButton("Join Blue", team: "blue", color: CN.blue)
         }
-        GroupBox("Players") {
-            ForEach(model.players, id: \.id) { p in
-                HStack {
-                    Text(p.name).fontWeight(p.id == ctx.yourId ? .bold : .regular)
-                    if let t = p.team {
-                        Text(t).font(.caption).padding(.horizontal, 6).padding(.vertical, 2)
-                            .background(t == "red" ? Color.red.opacity(0.2) : Color.blue.opacity(0.2))
-                            .cornerRadius(4)
+        Button(model.isSpymaster ? "Step down as spymaster" : "Become spymaster ★") {
+            model.send(["type": "spymaster", "on": !model.isSpymaster])
+        }
+        .buttonStyle(UbSecondaryButtonStyle())
+        .disabled(model.myTeam == nil).opacity(model.myTeam == nil ? 0.5 : 1)
+
+        VStack(alignment: .leading, spacing: 8) {
+            MonoLabel("In the room · \(model.players.count)")
+            VStack(spacing: 8) {
+                ForEach(model.players, id: \.id) { p in
+                    HStack(spacing: 12) {
+                        Avatar(name: p.name, host: p.isHost, size: 30)
+                        Text(p.name).font(.system(size: 15, weight: p.id == ctx.yourId ? .bold : .semibold))
+                            .foregroundStyle(.white)
+                        if p.isSpymaster { MonoLabel("spy ★", size: 9, color: CN.color(p.team ?? "")) }
+                        Spacer()
+                        if let t = p.team {
+                            MonoLabel(t, size: 9, color: t == "red" ? CN.red : CN.blue)
+                        }
                     }
-                    if p.isSpymaster {
-                        Text("spy").font(.caption).foregroundStyle(.secondary)
-                    }
-                    Spacer()
+                    .padding(.vertical, 10).padding(.horizontal, 14)
+                    .ubCard(radius: UbappRadius.row)
                 }
             }
         }
         Text("Need ≥2 per team and a spymaster each. Host starts when ready.")
-            .font(.caption).foregroundStyle(.secondary)
+            .font(.system(size: 12)).foregroundStyle(UbappTheme.muted)
+    }
+
+    private func teamPickButton(_ title: String, team: String, color: Color) -> some View {
+        Button { model.send(["type": "team", "team": team]) } label: {
+            Text(title)
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(model.myTeam == team ? .white : color)
+                .frame(maxWidth: .infinity).padding(.vertical, 14)
+                .background(model.myTeam == team ? color : color.opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: UbappRadius.button, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: UbappRadius.button, style: .continuous)
+                    .stroke(color.opacity(0.5), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder private var board: some View {
+        header
         scoreboard
-        turnBanner
         clueArea
         boardGrid
         if model.phase != "gameOver",
            !model.isSpymaster, model.currentTeam == model.myTeam, model.currentClue != nil {
-            Button("End turn") { model.send(["type": "end_turn"]) }.buttonStyle(.bordered)
+            Button("End turn") { model.send(["type": "end_turn"]) }
+                .buttonStyle(UbSecondaryButtonStyle())
         }
-        if !model.lastEvent.isEmpty {
-            Text(model.lastEvent).font(.caption).foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .center)
-        }
+        if !model.lastEvent.isEmpty { MonoLabel(model.lastEvent, size: 10, color: UbappTheme.muted) }
     }
 
-    @ViewBuilder private var scoreboard: some View {
-        HStack(spacing: 8) {
-            VStack { Text("RED").font(.caption.bold()); Text("\(model.redLeft)").font(.title2.bold()) }
-                .frame(maxWidth: .infinity).padding(8).background(Color.red).cornerRadius(8)
-                .foregroundStyle(.white)
-            VStack { Text("BLUE").font(.caption.bold()); Text("\(model.blueLeft)").font(.title2.bold()) }
-                .frame(maxWidth: .infinity).padding(8).background(Color.blue).cornerRadius(8)
-                .foregroundStyle(.white)
-        }
-    }
-
-    @ViewBuilder private var turnBanner: some View {
+    @ViewBuilder private var header: some View {
         if model.phase == "gameOver" {
-            let w = (model.winner ?? "").uppercased()
-            Text("\(w) wins. \(model.endReason)").font(.headline)
-                .frame(maxWidth: .infinity).padding()
-                .background((model.winner == "red" ? Color.red : Color.blue).opacity(0.2))
-                .cornerRadius(8)
+            let w = model.winner ?? ""
+            VStack(alignment: .leading, spacing: 6) {
+                MonoLabel("Game over · assassin or sweep", color: CN.color(w))
+                Text("\(w.capitalized) wins")
+                    .font(.system(size: 28, weight: .heavy)).kerning(-0.8)
+                    .foregroundStyle(CN.color(w))
+                if !model.endReason.isEmpty {
+                    Text(model.endReason).font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                }
+            }
         } else {
-            let team = (model.currentTeam ?? "").uppercased()
+            let team = model.currentTeam ?? ""
             let mine = model.currentTeam == model.myTeam
-            Text("\(team)'s turn\(mine ? " — you" : "")\(model.isSpymaster ? " (spymaster)" : "")")
-                .font(.headline)
-                .frame(maxWidth: .infinity).padding()
-                .background((model.currentTeam == "red" ? Color.red : Color.blue).opacity(0.2))
-                .cornerRadius(8)
+            VStack(alignment: .leading, spacing: 4) {
+                MonoLabel("Codenames", color: UbappTheme.accent)
+                Text(mine ? (model.isSpymaster ? "Your clue" : "Your team guesses")
+                          : "\(team.capitalized)'s turn")
+                    .font(.system(size: 24, weight: .heavy)).kerning(-0.7)
+                    .foregroundStyle(mine ? CN.color(team) : .white)
+            }
         }
+    }
+
+    private var scoreboard: some View {
+        HStack(spacing: 10) {
+            teamScore("Red", left: model.redLeft, color: CN.red)
+            teamScore("Blue", left: model.blueLeft, color: CN.blue)
+        }
+    }
+
+    private func teamScore(_ name: String, left: Int, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            MonoLabel("\(name) · left", size: 10, color: color)
+            Text("\(left)").font(.system(size: 28, weight: .heavy)).kerning(-0.6).foregroundStyle(color)
+        }
+        .padding(.vertical, 12).padding(.horizontal, 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(color.opacity(0.10))
+        .clipShape(RoundedRectangle(cornerRadius: UbappRadius.row, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: UbappRadius.row, style: .continuous)
+            .stroke(color.opacity(0.35), lineWidth: 1))
     }
 
     @ViewBuilder private var clueArea: some View {
         if let clue = model.currentClue, model.phase != "gameOver" {
-            Text("Clue: \"\(clue)\" · \(model.currentNumber) · \(model.guessesLeft) guesses left")
-                .padding().frame(maxWidth: .infinity).background(.thinMaterial).cornerRadius(8)
-        } else if model.isSpymaster, model.currentTeam == model.myTeam, model.phase != "gameOver" {
-            GroupBox("Your clue (one word + number)") {
-                HStack {
-                    TextField("WORD", text: $clueText).textInputAutocapitalization(.characters)
-                        .autocorrectionDisabled()
-                    Stepper("\(clueNumber)", value: $clueNumber, in: 0...9)
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    MonoLabel("Clue", size: 9, color: CN.color(model.currentTeam ?? ""))
+                    Text("“\(clue)”")
+                        .font(.system(size: 22, weight: .bold, design: .serif)).foregroundStyle(.white)
                 }
-                Button("Submit clue") {
+                Spacer()
+                Text("\(model.currentNumber)")
+                    .font(.system(size: 22, weight: .heavy)).foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .background(CN.color(model.currentTeam ?? ""))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                MonoLabel("\(model.guessesLeft) left", size: 9, color: UbappTheme.faint)
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity)
+            .ubCard(radius: UbappRadius.panel)
+        } else if model.isSpymaster, model.currentTeam == model.myTeam, model.phase != "gameOver" {
+            VStack(alignment: .leading, spacing: 10) {
+                MonoLabel("Compose clue · one word + a number")
+                HStack(spacing: 10) {
+                    TextField("", text: $clueText,
+                              prompt: Text("WORD").foregroundColor(UbappTheme.faint))
+                        .textInputAutocapitalization(.characters).autocorrectionDisabled()
+                        .font(.system(size: 18, weight: .bold, design: .serif))
+                        .padding(12).ubCard(radius: UbappRadius.button)
+                    Stepper("\(clueNumber)", value: $clueNumber, in: 0...9)
+                        .fixedSize().tint(UbappTheme.accent)
+                }
+                Button("Give clue →") {
                     let c = clueText.trimmingCharacters(in: .whitespaces)
                     guard !c.isEmpty else { return }
                     model.send(["type": "clue", "clue": c, "number": clueNumber])
                     clueText = ""
-                }.buttonStyle(.borderedProminent)
+                }
+                .buttonStyle(UbPrimaryButtonStyle())
+                .disabled(clueText.trimmingCharacters(in: .whitespaces).isEmpty)
             }
         }
     }
 
-    @ViewBuilder private var boardGrid: some View {
-        let cols = Array(repeating: GridItem(.flexible(), spacing: 4), count: 5)
-        LazyVGrid(columns: cols, spacing: 4) {
+    private var boardGrid: some View {
+        let cols = Array(repeating: GridItem(.flexible(), spacing: 5), count: 5)
+        return LazyVGrid(columns: cols, spacing: 5) {
             ForEach(Array(model.board.enumerated()), id: \.offset) { i, card in
                 tile(card: card, index: i)
             }
         }
+        .padding(8)
+        .background(Color(hex: 0x1A1A1A))
+        .clipShape(RoundedRectangle(cornerRadius: UbappRadius.card, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: UbappRadius.card, style: .continuous)
+            .stroke(UbappTheme.line, lineWidth: 1))
     }
 
     @ViewBuilder
@@ -160,37 +211,60 @@ struct CodenamesGuestView: View {
         let smKind: String? = model.isSpymaster
             ? (index < model.smView.count ? model.smView[index] : nil)
             : nil
-        let bg = tileBackground(card: card, smKind: smKind)
-        let fg: Color = card.revealed && (card.kind == "red" || card.kind == "blue" || card.kind == "assassin")
-            ? .white : .black
+        // Resolve appearance: revealed/gameOver show true color; spymaster sees key; else paper.
+        let showColor = card.revealed || model.phase == "gameOver" || smKind != nil
+        let kind = card.revealed || model.phase == "gameOver" ? card.kind : (smKind ?? "")
+        let bg = showColor && !kind.isEmpty ? CN.color(kind) : CN.paper
+        let fg = showColor && !kind.isEmpty ? CN.ink(kind) : CN.paperInk
         Button {
             guard canGuess else { return }
             model.send(["type": "guess", "index": index])
         } label: {
-            Text(card.word).font(.caption.bold())
-                .multilineTextAlignment(.center)
-                .padding(4)
-                .frame(maxWidth: .infinity, minHeight: 56)
-                .background(bg)
-                .foregroundStyle(fg)
-                .opacity(card.revealed ? 0.5 : 1.0)
-                .cornerRadius(6)
+            Text(card.word)
+                .font(.system(size: 11, weight: .bold, design: .serif))
+                .kerning(0.4)
+                .multilineTextAlignment(.center).lineLimit(1).minimumScaleFactor(0.7)
+                .padding(3)
+                .frame(maxWidth: .infinity, minHeight: 50)
+                .background(bg).foregroundStyle(fg)
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .strokeBorder(Color.black.opacity(0.25), lineWidth: 1),
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .strokeBorder(canGuess ? CN.color(model.myTeam ?? "") : Color.clear, lineWidth: 2),
+                )
+                .opacity(card.revealed ? 0.72 : 1.0)
         }
         .buttonStyle(.plain)
         .disabled(!canGuess)
     }
+}
 
-    private func tileBackground(card: CodenamesGuestModel.Tile, smKind: String?) -> Color {
-        if card.revealed {
-            return tileColor(card.kind)
-        }
-        if let k = smKind { return tileColor(k).opacity(0.35) }
-        return Color(red: 0.85, green: 0.78, blue: 0.61)
-    }
-    private func tileColor(_ kind: String) -> Color {
+private enum CN {
+    static let red = Color(hex: 0xFF5A4A)
+    static let redInk = Color(hex: 0x3A0A04)
+    static let blue = Color(hex: 0x4F9EFF)
+    static let blueInk = Color(hex: 0x02152E)
+    static let bystander = Color(hex: 0xD8C590)
+    static let bystanderInk = Color(hex: 0x2A2410)
+    static let assassin = Color(hex: 0x0E0E10)
+    static let assassinInk = Color.white
+    static let paper = Color(hex: 0xF3ECD6)
+    static let paperInk = Color(hex: 0x1C1C1F)
+
+    static func color(_ kind: String) -> Color {
         switch kind {
-        case "red": .red; case "blue": .blue; case "neutral": Color(.systemGray); case "assassin": .black
-        default: Color(.systemGray4)
+        case "red": red; case "blue": blue; case "assassin": assassin
+        case "neutral", "bystander": bystander; default: bystander
+        }
+    }
+    static func ink(_ kind: String) -> Color {
+        switch kind {
+        case "red": redInk; case "blue": blueInk; case "assassin": assassinInk
+        default: bystanderInk
         }
     }
 }
