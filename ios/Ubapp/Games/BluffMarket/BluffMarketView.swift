@@ -14,9 +14,14 @@ struct BluffMarketView: View {
                         VStack(spacing: 0) {
                             Spacer(minLength: 0)
                             VStack(alignment: .center, spacing: 16) {
+                                VStack(spacing: 4) {
+                                    MonoLabel("Hosting · Bluff Market", color: UbappTheme.accent)
+                                    Text("Waiting for players")
+                                        .font(.system(size: 24, weight: .heavy)).kerning(-0.6)
+                                        .foregroundStyle(.white)
+                                }
                                 HostingChrome(joinUrl: model.joinUrl, onStart: model.startHosting,
                                               onStop: model.stop)
-                                Text("Lobby").font(.headline)
                                 TutorialVoteCard(
                                     state: model.tutorialState, tutorial: GameTutorials.bluffMarket,
                                     onCall: model.callTutorialVote, onVote: model.tutorialVote,
@@ -39,11 +44,11 @@ struct BluffMarketView: View {
                     HStack {
                         if model.phase == .scoring {
                             Button("Reveal final scores") { model.finalize() }
-                                .buttonStyle(.borderedProminent).padding()
+                                .buttonStyle(UbPrimaryButtonStyle()).padding(20)
                         }
                         if model.phase == .gameOver {
-                            Button("New game") { model.newGame() }
-                                .buttonStyle(.borderedProminent).padding()
+                            Button("Rematch · same room") { model.newGame() }
+                                .buttonStyle(UbPrimaryButtonStyle()).padding(20)
                         }
                     }
                 }
@@ -55,38 +60,58 @@ struct BluffMarketView: View {
     }
 
     @ViewBuilder private var lobbyView: some View {
-        GroupBox("Players (\(model.players.count))") {
-            ForEach(model.players, id: \.id) { p in
-                HStack {
-                    Text(p.name)
-                    if p.isHost { Text("(host)").foregroundStyle(.secondary).font(.caption) }
+        VStack(alignment: .leading, spacing: 8) {
+            MonoLabel("Players · \(model.players.count)")
+            VStack(spacing: 8) {
+                ForEach(model.players, id: \.id) { p in
+                    HStack(spacing: 12) {
+                        Avatar(name: p.name, host: p.isHost, size: 30)
+                        Text(p.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
+                        Spacer()
+                        if p.isHost { MonoLabel("host", size: 9, color: UbappTheme.faint) }
+                    }
+                    .padding(.vertical, 10).padding(.horizontal, 14)
+                    .ubCard(radius: UbappRadius.row)
                 }
             }
         }
-        GroupBox("Options") {
-            Stepper(value: $model.turnsPerPlayer, in: 2...8) {
-                Text("Turns per player: \(model.turnsPerPlayer)")
+        .frame(maxWidth: .infinity, alignment: .leading)
+
+        VStack(alignment: .leading, spacing: 10) {
+            MonoLabel("Options")
+            VStack(spacing: 12) {
+                Stepper(value: $model.turnsPerPlayer, in: 2...8) {
+                    Text("Turns per player: \(model.turnsPerPlayer)")
+                }
+                .onChange(of: model.turnsPerPlayer) { _, v in
+                    model.applyOptions(BluffMarketOptions(turnsPerPlayer: v,
+                                                         twoBombs: model.options.twoBombs,
+                                                         wildcard: model.options.wildcard))
+                }
+                Toggle("Two Bombs (larger groups)", isOn: Binding(
+                    get: { model.options.twoBombs },
+                    set: { model.applyOptions(BluffMarketOptions(turnsPerPlayer: model.turnsPerPlayer,
+                                                                 twoBombs: $0,
+                                                                 wildcard: model.options.wildcard)) }))
+                Toggle("Include Wildcard", isOn: Binding(
+                    get: { model.options.wildcard },
+                    set: { model.applyOptions(BluffMarketOptions(turnsPerPlayer: model.turnsPerPlayer,
+                                                                 twoBombs: model.options.twoBombs,
+                                                                 wildcard: $0)) }))
             }
-            .onChange(of: model.turnsPerPlayer) { _, v in
-                model.applyOptions(BluffMarketOptions(turnsPerPlayer: v,
-                                                     twoBombs: model.options.twoBombs,
-                                                     wildcard: model.options.wildcard))
-            }
-            Toggle("Two Bombs (larger groups)", isOn: Binding(
-                get: { model.options.twoBombs },
-                set: { model.applyOptions(BluffMarketOptions(turnsPerPlayer: model.turnsPerPlayer,
-                                                             twoBombs: $0,
-                                                             wildcard: model.options.wildcard)) }))
-            Toggle("Include Wildcard", isOn: Binding(
-                get: { model.options.wildcard },
-                set: { model.applyOptions(BluffMarketOptions(turnsPerPlayer: model.turnsPerPlayer,
-                                                             twoBombs: model.options.twoBombs,
-                                                             wildcard: $0)) }))
+            .font(.system(size: 15))
+            .tint(UbappTheme.accent)
+            .padding(14)
+            .ubCard()
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+
         if model.canStart {
-            Button("Start round") { model.start() }.buttonStyle(.borderedProminent)
+            Button("Start round · \(model.players.count) players") { model.start() }
+                .buttonStyle(UbPrimaryButtonStyle())
         } else {
-            Text("Need 3–6 players to start.").foregroundStyle(.secondary)
+            Text("Need 3–6 players to start.")
+                .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
         }
     }
 }

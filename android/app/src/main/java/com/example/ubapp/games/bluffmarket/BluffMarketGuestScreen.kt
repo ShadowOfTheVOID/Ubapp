@@ -16,10 +16,20 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.ubapp.theme.Avatar
+import com.example.ubapp.theme.LobbyPlayerRow
+import com.example.ubapp.theme.MonoLabel
+import com.example.ubapp.theme.Ub
+import com.example.ubapp.theme.UbPrimaryButton
+import com.example.ubapp.theme.UbSecondaryButton
 import com.example.ubapp.theme.UbappTheme
+import com.example.ubapp.theme.ubCard
 import com.example.ubapp.join.GuestContext
 import com.example.ubapp.join.GuestSeriesState
 import com.example.ubapp.join.GuestTutorialContent
@@ -42,26 +52,32 @@ fun BluffMarketGuestScreen(ctx: GuestContext) {
     @Suppress("UNUSED_EXPRESSION") tick
 
     UbappTheme {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
             Column(
                 Modifier
                     .verticalScroll(rememberScrollState())
-                    .widthIn(max = 480.dp)
+                    .statusBarsPadding()
+                    .widthIn(max = 520.dp)
                     .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                    .padding(20.dp),
+                horizontalAlignment = Alignment.Start,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Text("Playing as ${ctx.yourName}", style = MaterialTheme.typography.bodySmall)
                 SeriesBannerCard(s.series)
                 when (s.phase) {
                     "lobby" -> {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            MonoLabel("Bluff Market · lobby", color = Ub.Accent)
+                            Text("Waiting for the deal", fontSize = 26.sp, fontWeight = FontWeight.ExtraBold,
+                                 letterSpacing = (-0.8).sp, color = Ub.Foreground)
+                            Text("Playing as ${ctx.yourName}", fontSize = 13.sp, color = Ub.Muted)
+                        }
                         TutorialGuestCard(s.tutorialState, s.tutorialContent, s.myTutorialVote,
                             onCall = { ctx.client.send(JSONObject().put("type", "call_tutorial_vote")) },
                             onVote = { yes -> s.myTutorialVote = yes
                                 ctx.client.send(JSONObject().put("type", "tutorial_vote").put("yes", yes)) })
-                        Text("Players (${s.players.size})", style = MaterialTheme.typography.titleSmall)
-                        for (p in s.players) Text(p.name + if (p.isHost) " (host)" else "")
+                        MonoLabel("In the room · ${s.players.size}")
+                        for (p in s.players) LobbyPlayerRow(p.name, p.isHost)
                     }
                     "scoring" -> ScoringPhase(s, finalized = false)
                     "gameOver" -> ScoringPhase(s, finalized = true)
@@ -80,56 +96,58 @@ private fun TablePhase(
     setSelected: (String?) -> Unit,
 ) {
     val isMyTurn = s.currentId == ctx.yourId
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        MonoLabel("Bluff Market", color = Ub.Accent)
+        Text(if (isMyTurn && s.phase == "playing") "Your turn"
+             else "${s.players.firstOrNull { it.id == s.currentId }?.name ?: ""}'s turn",
+             fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.8).sp,
+             color = if (isMyTurn && s.phase == "playing") Ub.Accent else Ub.Foreground)
+        Text("Trade face-down, buy, or sell. One bomb is worth −25.",
+             fontSize = 13.sp, color = Ub.Muted)
+    }
     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         for (p in s.players) {
             val isCurrent = s.currentId == p.id
-            Column(Modifier
-                .background(
-                    if (isCurrent) MaterialTheme.colorScheme.primary else Color(0xFF373D45),
-                    RoundedCornerShape(8.dp))
-                .padding(8.dp)) {
-                Text(p.name + if (p.id == ctx.yourId) " (you)" else "",
-                     style = MaterialTheme.typography.labelMedium,
-                     color = if (isCurrent) Color.White else Color(0xFFE6EDF3))
-                Text("${p.handCount}c · ${p.coins}\$",
-                     style = MaterialTheme.typography.labelSmall,
-                     color = if (isCurrent) Color.White else Color(0xFFA0A8B0))
-                Text("turn ${p.turnsTaken}/${s.turnsPerPlayer}",
-                     style = MaterialTheme.typography.labelSmall,
-                     color = if (isCurrent) Color.White else Color(0xFFA0A8B0))
-                if (!p.guaranteeUsed) Text("Guar",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = Color(0xFFFACC15))
+            Row(Modifier.ubCard(radius = Ub.Radius.button,
+                    fill = if (isCurrent) Ub.AccentSoft else Ub.Surface,
+                    stroke = if (isCurrent) Ub.AccentLine else Ub.Line)
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Avatar(p.name, host = p.isHost, size = 26.dp)
+                Spacer(Modifier.width(8.dp))
+                Column {
+                    Text(p.name, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Ub.Foreground)
+                    MonoLabel("${p.handCount}c·${p.coins}¢", size = 9, color = Ub.Faint)
+                    if (!p.guaranteeUsed) MonoLabel("guar", size = 8, color = Ub.Accent)
+                }
             }
         }
     }
-    ElevatedCard(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            if (s.marketSize > 0) {
-                Box(modifier = Modifier.size(96.dp, 108.dp),
-                    contentAlignment = Alignment.Center) {
-                    for (i in 0 until minOf(s.marketSize, 4)) {
-                        Box(modifier = Modifier.offset(x = (i * 1.5f).dp, y = (i * 1.5f).dp)) {
-                            com.example.ubapp.games.cards.GridCardBack(width = 70.dp)
-                        }
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(Ub.Radius.hero))
+            .background(Brush.radialGradient(
+                listOf(Ub.Accent.copy(alpha = 0.12f), Color.Transparent), radius = 420f))
+            .padding(vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        if (s.marketSize > 0) {
+            Box(Modifier.size(96.dp, 108.dp), contentAlignment = Alignment.Center) {
+                for (i in 0 until minOf(s.marketSize, 4)) {
+                    Box(Modifier.offset(x = (i * 1.5f).dp, y = (i * 1.5f).dp)) {
+                        com.example.ubapp.games.cards.GridCardBack(width = 70.dp)
                     }
                 }
             }
-            Text("Market: ${s.marketSize} card${if (s.marketSize == 1) "" else "s"} face down",
-                 style = MaterialTheme.typography.bodyMedium)
-            Text(if (isMyTurn) "Your turn — Trade, Buy, or Sell"
-                 else "${s.players.firstOrNull { it.id == s.currentId }?.name ?: ""}'s turn",
-                 style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold,
-                 color = if (isMyTurn) Color(0xFF7BD389) else Color(0xFFA0A8B0))
-            if (s.lastEvent.isNotEmpty())
-                Text(s.lastEvent, style = MaterialTheme.typography.bodySmall)
         }
+        MonoLabel("Market · ${s.marketSize} face down", size = 10)
     }
+    if (s.lastEvent.isNotEmpty()) MonoLabel(s.lastEvent, size = 10)
 
     s.trade?.let { TradeCard(s, ctx, it, selectedId) { setSelected(null) } }
 
-    Text("Your hand (${s.hand.size})", style = MaterialTheme.typography.titleSmall)
+    MonoLabel("Your hand · ${s.hand.size}")
     LazyVerticalGrid(
         columns = GridCells.Adaptive(86.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -140,45 +158,35 @@ private fun TablePhase(
             val sel = selectedId == c.id
             Box(Modifier
                 .clickable { setSelected(if (sel) null else c.id) }
-                .then(if (sel) Modifier.border(3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
+                .then(if (sel) Modifier.border(3.dp, Ub.Accent, RoundedCornerShape(8.dp))
                       else Modifier)) { BluffCardFace(c) }
         }
     }
 
     if (s.trade == null && isMyTurn && s.phase == "playing") {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(
-                enabled = s.marketSize > 0,
-                onClick = { ctx.client.send(JSONObject().put("type", "buy")) },
-                modifier = Modifier.weight(1f),
-            ) { Text("Buy market") }
-            OutlinedButton(
-                enabled = selectedId != null,
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            UbSecondaryButton("Buy market", modifier = Modifier.weight(1f), enabled = s.marketSize > 0,
+                onClick = { ctx.client.send(JSONObject().put("type", "buy")) })
+            UbSecondaryButton("Sell selected (+2)", modifier = Modifier.weight(1f), enabled = selectedId != null,
                 onClick = {
-                    selectedId?.let {
-                        ctx.client.send(JSONObject().put("type", "sell").put("cardId", it))
-                    }
+                    selectedId?.let { ctx.client.send(JSONObject().put("type", "sell").put("cardId", it)) }
                     setSelected(null)
-                },
-                modifier = Modifier.weight(1f),
-            ) { Text("Sell selected (+2)") }
+                })
         }
-        ElevatedCard(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Propose trade (offer selected)", style = MaterialTheme.typography.titleSmall)
-                val candidates = s.players.filter { it.id != ctx.yourId }
+        val candidates = s.players.filter { it.id != ctx.yourId }
+        if (s.hand.isNotEmpty() && candidates.isNotEmpty()) {
+            Column(Modifier.fillMaxWidth().ubCard().padding(14.dp),
+                   verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                MonoLabel("Propose trade")
                 for (p in candidates) {
-                    OutlinedButton(
-                        enabled = selectedId != null,
+                    UbSecondaryButton("Trade with ${p.name} — offer selected", enabled = selectedId != null,
                         onClick = {
                             selectedId?.let {
                                 ctx.client.send(JSONObject().put("type", "propose_trade")
                                     .put("targetId", p.id).put("cardId", it))
                             }
                             setSelected(null)
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text("Trade with ${p.name}") }
+                        })
                 }
             }
         }
@@ -200,96 +208,81 @@ private fun TradeCard(
     val targetName = s.players.firstOrNull { it.id == t.targetId }?.name ?: "?"
     val myGuar = s.players.firstOrNull { it.id == ctx.yourId }?.guaranteeUsed == true
 
-    ElevatedCard(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Trade: $proposerName ↔ $targetName",
-                 style = MaterialTheme.typography.titleSmall)
-            if (t.revealed) {
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(proposerName, style = MaterialTheme.typography.bodySmall)
-                        t.proposerCard?.let { BluffCardFace(it) }
+    Column(Modifier.fillMaxWidth().ubCard(radius = Ub.Radius.panel,
+            fill = Ub.AccentSoft, stroke = Ub.AccentLine).padding(16.dp),
+           verticalArrangement = Arrangement.spacedBy(10.dp),
+           horizontalAlignment = Alignment.CenterHorizontally) {
+        MonoLabel("Trade · $proposerName ↔ $targetName", color = Ub.Accent)
+        if (t.revealed) {
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    MonoLabel(proposerName, size = 9)
+                    t.proposerCard?.let { BluffCardFace(it) }
+                }
+                Text("⇄", fontSize = 28.sp, color = Ub.Muted)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    MonoLabel(targetName, size = 9)
+                    t.targetCard?.let { BluffCardFace(it) }
+                }
+            }
+            if (imParty) {
+                val answered = if (imProposer) t.proposerAccept != null else t.targetAccept != null
+                if (answered) {
+                    Text("You answered. Waiting for the other side…", fontSize = 12.sp, color = Ub.Muted)
+                } else {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        UbPrimaryButton("Accept", modifier = Modifier.weight(1f),
+                            onClick = { ctx.client.send(JSONObject().put("type", "respond_trade").put("accept", true)) })
+                        UbSecondaryButton("Reject", modifier = Modifier.weight(1f),
+                            onClick = { ctx.client.send(JSONObject().put("type", "respond_trade").put("accept", false)) })
                     }
-                    Text("⇄", style = MaterialTheme.typography.headlineMedium)
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(targetName, style = MaterialTheme.typography.bodySmall)
-                        t.targetCard?.let { BluffCardFace(it) }
+                    if (!myGuar) {
+                        UbSecondaryButton("Guarantee the trade",
+                            onClick = { ctx.client.send(JSONObject().put("type", "guarantee")) })
                     }
                 }
-                if (imParty) {
-                    val answered = if (imProposer) t.proposerAccept != null else t.targetAccept != null
-                    if (answered) {
-                        Text("You answered. Waiting for the other side…",
-                             style = MaterialTheme.typography.bodySmall)
-                    } else {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { ctx.client.send(JSONObject().put("type", "respond_trade").put("accept", true)) },
-                                   modifier = Modifier.weight(1f),
-                                   colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
-                            ) { Text("Accept") }
-                            Button(onClick = { ctx.client.send(JSONObject().put("type", "respond_trade").put("accept", false)) },
-                                   modifier = Modifier.weight(1f),
-                                   colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC62828)),
-                            ) { Text("Reject") }
-                            if (!myGuar) {
-                                OutlinedButton(onClick = { ctx.client.send(JSONObject().put("type", "guarantee")) },
-                                               modifier = Modifier.weight(1f)) { Text("Guarantee") }
-                            }
-                        }
+            }
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    MonoLabel(proposerName, size = 9)
+                    Box(Modifier.alpha(if (t.proposerCommitted) 1f else 0.3f)) {
+                        com.example.ubapp.games.cards.GridCardBack(width = 70.dp)
                     }
+                }
+                Text("?", fontSize = 28.sp, color = Ub.Muted)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    MonoLabel(targetName, size = 9)
+                    Box(Modifier.alpha(if (t.targetCommitted) 1f else 0.3f)) {
+                        com.example.ubapp.games.cards.GridCardBack(width = 70.dp)
+                    }
+                }
+            }
+            if (imTarget) {
+                Text("$proposerName is proposing a trade. Commit a card to counter.",
+                     fontSize = 12.sp, color = Ub.Foreground)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    UbPrimaryButton("Commit selected", modifier = Modifier.weight(1f), enabled = selectedId != null,
+                        onClick = {
+                            selectedId?.let { ctx.client.send(JSONObject().put("type", "counter_trade").put("cardId", it)) }
+                            clearSelected()
+                        })
+                    UbSecondaryButton("Decline", modifier = Modifier.weight(1f),
+                        onClick = { ctx.client.send(JSONObject().put("type", "decline_trade")) })
                 }
             } else {
-                // Pre-reveal: face-down placeholders so the table can see
-                // who's committed without revealing the cards.
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(proposerName, style = MaterialTheme.typography.bodySmall)
-                        Box(modifier = Modifier.alpha(if (t.proposerCommitted) 1f else 0.3f)) {
-                            com.example.ubapp.games.cards.GridCardBack(width = 70.dp)
-                        }
-                    }
-                    Text("?", style = MaterialTheme.typography.headlineMedium)
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(targetName, style = MaterialTheme.typography.bodySmall)
-                        Box(modifier = Modifier.alpha(if (t.targetCommitted) 1f else 0.3f)) {
-                            com.example.ubapp.games.cards.GridCardBack(width = 70.dp)
-                        }
-                    }
-                }
-                if (imTarget) {
-                    Text("$proposerName is proposing a trade. Commit a card to counter.",
-                         style = MaterialTheme.typography.bodySmall)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(
-                            enabled = selectedId != null,
-                            onClick = {
-                                selectedId?.let {
-                                    ctx.client.send(JSONObject().put("type", "counter_trade").put("cardId", it))
-                                }
-                                clearSelected()
-                            },
-                            modifier = Modifier.weight(1f),
-                        ) { Text("Commit selected") }
-                        OutlinedButton(
-                            onClick = { ctx.client.send(JSONObject().put("type", "decline_trade")) },
-                            modifier = Modifier.weight(1f),
-                        ) { Text("Decline") }
-                    }
-                } else {
-                    Text("$proposerName committed. Waiting for $targetName to counter…",
-                         style = MaterialTheme.typography.bodySmall)
-                    if (imProposer) {
-                        OutlinedButton(onClick = { ctx.client.send(JSONObject().put("type", "decline_trade")) })
-                        { Text("Cancel proposal") }
-                    }
+                Text("$proposerName committed. Waiting for $targetName to counter…",
+                     fontSize = 12.sp, color = Ub.Muted)
+                if (imProposer) {
+                    UbSecondaryButton("Cancel proposal",
+                        onClick = { ctx.client.send(JSONObject().put("type", "decline_trade")) })
                 }
             }
-            if (t.proposerGuarantee || t.targetGuarantee) {
-                Text("Guarantee invoked — trade will be forced.",
-                     style = MaterialTheme.typography.bodySmall, color = Color(0xFFFACC15))
-            }
+        }
+        if (t.proposerGuarantee || t.targetGuarantee) {
+            MonoLabel("Guarantee invoked — trade forced", size = 9, color = Ub.Accent)
         }
     }
 }
@@ -297,24 +290,30 @@ private fun TradeCard(
 @Composable
 private fun ScoringPhase(s: BluffMarketGuestState, finalized: Boolean) {
     val sorted = s.scoreRows.sortedByDescending { it.total }
-    Text(if (finalized) "Game over" else "Final scores — pending host reveal",
-         style = MaterialTheme.typography.headlineSmall)
-    if (finalized) {
-        val winner = sorted.firstOrNull { it.id == s.winnerId } ?: sorted.firstOrNull()
-        winner?.let {
-            Text("${it.name} wins!", style = MaterialTheme.typography.titleLarge)
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        MonoLabel(if (finalized) "Game over" else "Final scores · pending host reveal", color = Ub.Accent)
+        if (finalized) {
+            val winner = sorted.firstOrNull { it.id == s.winnerId } ?: sorted.firstOrNull()
+            Text("${winner?.name ?: "?"} wins", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold,
+                 letterSpacing = (-0.8).sp, color = Ub.Foreground)
         }
     }
     for (r in sorted) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(r.name + (if (r.hasBomb) " 💣" else "") + (if (r.id == s.winnerId) " 🏆" else ""))
-            Text("${r.total}  (sum ${r.sum} + coins ${r.coins})",
-                 style = MaterialTheme.typography.bodySmall)
+        Row(Modifier.fillMaxWidth().ubCard(radius = Ub.Radius.row)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Avatar(r.name, size = 30.dp)
+            Spacer(Modifier.width(12.dp))
+            Column {
+                Text(r.name + (if (r.id == s.winnerId) " 🏆" else "") + (if (r.hasBomb) " 💣" else ""),
+                     fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Ub.Foreground)
+                MonoLabel("sum ${r.sum} + coins ${r.coins}", size = 9, color = Ub.Faint)
+            }
+            Spacer(Modifier.weight(1f))
+            Text("${r.total}", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = Ub.Foreground)
         }
     }
-    if (!finalized) Text("Waiting for the host…",
-                          style = MaterialTheme.typography.bodySmall,
-                          color = Color(0xFFA0A8B0))
+    if (!finalized) Text("Waiting for the host…", fontSize = 12.sp, color = Ub.Muted)
 }
 
 @Composable

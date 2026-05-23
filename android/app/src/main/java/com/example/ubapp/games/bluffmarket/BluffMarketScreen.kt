@@ -9,7 +9,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.ubapp.theme.LobbyHeader
+import com.example.ubapp.theme.LobbyPlayerRow
+import com.example.ubapp.theme.MonoLabel
+import com.example.ubapp.theme.Ub
+import com.example.ubapp.theme.UbPrimaryButton
+import com.example.ubapp.theme.UbSecondaryButton
 import com.example.ubapp.theme.UbappTheme
+import com.example.ubapp.theme.ubCard
 import com.example.ubapp.join.GuestContext
 import com.example.ubapp.shared.HostingChrome
 import com.example.ubapp.settings.AppSettings
@@ -40,34 +48,32 @@ fun BluffMarketScreen() {
                 Column(
                     Modifier
                         .verticalScroll(rememberScrollState())
-                        .widthIn(max = 480.dp)
+                        .statusBarsPadding()
+                        .widthIn(max = 520.dp)
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
+                    LobbyHeader("Bluff Market")
                     HostingChrome(
                         joinUrl = joinUrl,
                         onStart = { joinUrl = server.start() },
                         onStop = { server.stop(); joinUrl = null },
                     )
-                    Text("Lobby", style = MaterialTheme.typography.titleMedium)
                     TutorialVoteCard(
                         state = e.tutorialVote.snapshot(), tutorial = GameTutorials.bluffMarket,
                         onCall = server::hostCallTutorialVote, onVote = server::hostTutorialVote,
                         onDismiss = server::hostDismissTutorial,
                     )
-                    ElevatedCard(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(16.dp)) {
-                            Text("Players (${e.players.size})", style = MaterialTheme.typography.titleSmall)
-                            for (p in e.players.values.sortedBy { it.id }) {
-                                Text(p.name + if (p.isHost) " (host)" else "")
-                            }
-                        }
+                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        MonoLabel("Players · ${e.players.size}")
+                        for (p in e.players.values.sortedBy { it.id }) LobbyPlayerRow(p.name, p.isHost)
                     }
-                    ElevatedCard(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text("Options", style = MaterialTheme.typography.titleSmall)
+                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        MonoLabel("Options")
+                        Column(Modifier.fillMaxWidth().ubCard().padding(14.dp),
+                               verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             val turns = e.options.turnsPerPlayer
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text("Turns/player: $turns", Modifier.weight(1f))
@@ -90,24 +96,26 @@ fun BluffMarketScreen() {
                             }
                         }
                     }
-                    Button(onClick = { server.hostStart() }, enabled = e.canStart) {
-                        Text(if (e.canStart) "Start round" else "Need 3–6 players")
+                    if (e.canStart) {
+                        UbPrimaryButton("Start round · ${e.players.size} players",
+                                        onClick = { server.hostStart() })
+                    } else {
+                        Text("Need 3–6 players to start.", fontSize = 13.sp, color = Ub.Muted)
                     }
                 }
             }
         } else {
             Column(Modifier.fillMaxSize()) {
                 Box(Modifier.weight(1f)) { BluffMarketGuestScreen(loopCtx) }
-                Row(modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (e.phase == BluffMarketPhase.SCORING) {
-                        Button(onClick = { server.hostFinalize() }, modifier = Modifier.weight(1f))
-                        { Text("Reveal final scores") }
-                    }
-                    if (e.phase == BluffMarketPhase.GAME_OVER) {
-                        Button(onClick = { server.hostNewGame() }, modifier = Modifier.weight(1f))
-                        { Text("New game") }
-                    }
+                if (e.phase == BluffMarketPhase.SCORING) {
+                    UbPrimaryButton("Reveal final scores",
+                                    modifier = Modifier.fillMaxWidth().padding(20.dp),
+                                    onClick = { server.hostFinalize() })
+                }
+                if (e.phase == BluffMarketPhase.GAME_OVER) {
+                    UbPrimaryButton("Rematch · same room",
+                                    modifier = Modifier.fillMaxWidth().padding(20.dp),
+                                    onClick = { server.hostNewGame() })
                 }
             }
         }

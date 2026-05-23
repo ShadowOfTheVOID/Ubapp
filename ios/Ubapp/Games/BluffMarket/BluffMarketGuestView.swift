@@ -8,113 +8,125 @@ struct BluffMarketGuestView: View {
     @State private var tradeTargetId: String?
 
     var body: some View {
-        GeometryReader { proxy in
-            ScrollView {
-                VStack(spacing: 0) {
-                    Spacer(minLength: 0)
-                    VStack(alignment: .center, spacing: 12) {
-                        Text("Playing as \(ctx.yourName)").font(.caption).foregroundStyle(.secondary)
-                        SeriesBanner(state: model.series)
-                        switch model.phase {
-                        case "lobby":    lobby
-                        case "scoring":  scoringView
-                        case "gameOver": overView
-                        default:         table
-                        }
-                    }
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 480)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding()
-                    Spacer(minLength: 0)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                SeriesBanner(state: model.series)
+                switch model.phase {
+                case "lobby":    lobby
+                case "scoring":  scoringView
+                case "gameOver": overView
+                default:         table
                 }
-                .frame(minHeight: proxy.size.height)
-                .frame(maxWidth: .infinity)
             }
-            .navigationTitle("Bluff Market")
-            .onAppear { model.attach(ctx: ctx) }
-            .onDisappear { ctx.client.onMessage = nil }
+            .frame(maxWidth: 520, alignment: .leading)
+            .frame(maxWidth: .infinity)
+            .padding(20)
         }
+        .scrollIndicators(.hidden)
+        .navigationTitle("Bluff Market")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear { model.attach(ctx: ctx) }
+        .onDisappear { ctx.client.onMessage = nil }
         .ubappChrome()
     }
 
     @ViewBuilder private var lobby: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            MonoLabel("Bluff Market · lobby", color: UbappTheme.accent)
+            Text("Waiting for the deal")
+                .font(.system(size: 26, weight: .heavy)).kerning(-0.8).foregroundStyle(.white)
+            Text("Playing as \(ctx.yourName)")
+                .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+        }
         TutorialGuestCard(state: model.tutorialState, content: model.tutorialContent,
                           myVote: model.myTutorialVote,
                           onCall: { model.send(["type": "call_tutorial_vote"]) },
                           onVote: { yes in model.myTutorialVote = yes
                               model.send(["type": "tutorial_vote", "yes": yes]) })
-        GroupBox("Players (\(model.players.count))") {
-            ForEach(model.players, id: \.id) { p in
-                HStack {
-                    Text(p.name).fontWeight(p.id == ctx.yourId ? .bold : .regular)
-                    if p.isHost { Text("host").font(.caption).foregroundStyle(.secondary) }
-                    Spacer()
+        VStack(alignment: .leading, spacing: 8) {
+            MonoLabel("In the room · \(model.players.count)")
+            VStack(spacing: 8) {
+                ForEach(model.players, id: \.id) { p in
+                    HStack(spacing: 12) {
+                        Avatar(name: p.name, host: p.isHost, size: 30)
+                        Text(p.name).font(.system(size: 15, weight: p.id == ctx.yourId ? .bold : .semibold))
+                            .foregroundStyle(.white)
+                        Spacer()
+                        if p.isHost { MonoLabel("host", size: 9, color: UbappTheme.faint) }
+                    }
+                    .padding(.vertical, 10).padding(.horizontal, 14)
+                    .ubCard(radius: UbappRadius.row)
                 }
             }
         }
-        Text("Waiting for the host to deal…").foregroundStyle(.secondary).font(.caption)
     }
 
     @ViewBuilder private var table: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            MonoLabel("Bluff Market", color: UbappTheme.accent)
+            Text(isMyTurn && model.phase == "playing" ? "Your turn" : "\(currentName)'s turn")
+                .font(.system(size: 26, weight: .heavy)).kerning(-0.8)
+                .foregroundStyle(isMyTurn && model.phase == "playing" ? UbappTheme.accent : .white)
+            Text("Trade face-down, buy, or sell. One bomb is worth −25.")
+                .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+        }
         playersStrip
         marketCard
-        if !model.lastEvent.isEmpty {
-            Text(model.lastEvent).font(.caption).foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .center)
-        }
+        if !model.lastEvent.isEmpty { MonoLabel(model.lastEvent, size: 10, color: UbappTheme.muted) }
         if let t = model.trade { tradeView(t) }
         hand
-        if model.trade == nil && isMyTurn && model.phase == "playing" {
-            actionRow
-        }
+        if model.trade == nil && isMyTurn && model.phase == "playing" { actionRow }
     }
 
-    @ViewBuilder private var playersStrip: some View {
+    private var playersStrip: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(model.players, id: \.id) { p in
-                    VStack(spacing: 4) {
-                        Text(p.name).font(.caption.bold())
-                        Text("\(p.handCount) cards · \(p.coins)c").font(.caption2)
-                        Text("turn \(p.turnsTaken)/\(model.turnsPerPlayer)").font(.caption2)
-                            .foregroundStyle(.secondary)
-                        if !p.guaranteeUsed { Text("Guar").font(.caption2).foregroundStyle(.yellow) }
+                    let current = model.currentId == p.id
+                    HStack(spacing: 8) {
+                        Avatar(name: p.name, host: p.isHost, size: 26)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(p.name).font(.system(size: 12, weight: .semibold)).foregroundStyle(.white)
+                            MonoLabel("\(p.handCount)c·\(p.coins)¢", size: 9, color: UbappTheme.faint)
+                            if !p.guaranteeUsed { MonoLabel("guar", size: 8, color: UbappTheme.accent) }
+                        }
                     }
-                    .padding(8).frame(minWidth: 86)
-                    .background(model.currentId == p.id ? Color.accentColor : Color.white.opacity(0.04))
-                    .foregroundStyle(model.currentId == p.id ? .white : .primary)
-                    .cornerRadius(8)
+                    .padding(.vertical, 8).padding(.horizontal, 10)
+                    .ubCard(radius: UbappRadius.button,
+                            fill: current ? UbappTheme.accentSoft : UbappTheme.surface,
+                            stroke: current ? UbappTheme.accentLine : UbappTheme.line)
                 }
             }
         }
     }
 
-    @ViewBuilder private var marketCard: some View {
-        GroupBox {
-            VStack(spacing: 4) {
-                ZStack {
-                    if model.marketSize > 0 {
-                        ForEach(0..<min(model.marketSize, 4), id: \.self) { i in
-                            GridCardBack(width: 70)
-                                .offset(x: CGFloat(i) * 1.5, y: CGFloat(i) * 1.5)
-                        }
-                    } else {
-                        Color.clear.frame(width: 70, height: 98)
+    private var marketCard: some View {
+        VStack(spacing: 10) {
+            ZStack {
+                if model.marketSize > 0 {
+                    ForEach(0..<min(model.marketSize, 4), id: \.self) { i in
+                        GridCardBack(width: 70)
+                            .offset(x: CGFloat(i) * 1.5, y: CGFloat(i) * 1.5)
                     }
+                } else {
+                    Color.clear.frame(width: 70, height: 98)
                 }
-                .frame(height: 104)
-                Text("Market: \(model.marketSize) card\(model.marketSize == 1 ? "" : "s") face down")
-                    .font(.subheadline)
-                Text(isMyTurn ? "Your turn — Trade, Buy, or Sell" : "\(currentName)'s turn")
-                    .font(.subheadline.bold())
-                    .foregroundStyle(isMyTurn ? .green : .secondary)
-            }.padding(.vertical, 4)
+            }
+            .frame(height: 104)
+            MonoLabel("Market · \(model.marketSize) face down", size: 10)
         }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+        .background(
+            RadialGradient(colors: [UbappTheme.accent.opacity(0.12), .clear],
+                           center: .center, startRadius: 0, endRadius: 180),
+        )
+        .clipShape(RoundedRectangle(cornerRadius: UbappRadius.hero, style: .continuous))
     }
 
-    @ViewBuilder private var hand: some View {
-        GroupBox("Your hand (\(model.hand.count))") {
+    private var hand: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            MonoLabel("Your hand · \(model.hand.count)")
             let cols = [GridItem(.adaptive(minimum: 80), spacing: 8)]
             LazyVGrid(columns: cols, spacing: 8) {
                 ForEach(model.hand, id: \.id) { card in
@@ -123,8 +135,8 @@ struct BluffMarketGuestView: View {
                     } label: {
                         bluffCardChip(card)
                             .overlay(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .stroke(selectedCardId == card.id ? Color.accentColor : Color.clear, lineWidth: 3)
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .stroke(selectedCardId == card.id ? UbappTheme.accent : Color.clear, lineWidth: 3),
                             )
                             .offset(y: selectedCardId == card.id ? -8 : 0)
                     }
@@ -135,46 +147,35 @@ struct BluffMarketGuestView: View {
     }
 
     @ViewBuilder private var actionRow: some View {
-        VStack(spacing: 8) {
-            HStack {
-                Button { model.send(["type": "buy"]) } label: {
-                    Text("Buy market").frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered).disabled(model.marketSize == 0)
-                Button {
+        VStack(spacing: 10) {
+            HStack(spacing: 10) {
+                Button("Buy market") { model.send(["type": "buy"]) }
+                    .buttonStyle(UbSecondaryButtonStyle())
+                    .disabled(model.marketSize == 0).opacity(model.marketSize == 0 ? 0.5 : 1)
+                Button("Sell selected (+2)") {
                     guard let cid = selectedCardId else { return }
-                    model.send(["type": "sell", "cardId": cid])
-                    selectedCardId = nil
-                } label: {
-                    Text("Sell selected (+2)").frame(maxWidth: .infinity)
+                    model.send(["type": "sell", "cardId": cid]); selectedCardId = nil
                 }
-                .buttonStyle(.bordered).disabled(selectedCardId == nil)
+                .buttonStyle(UbSecondaryButtonStyle())
+                .disabled(selectedCardId == nil).opacity(selectedCardId == nil ? 0.5 : 1)
             }
-            GroupBox("Propose trade") {
-                if model.hand.isEmpty {
-                    Text("No cards to offer.").font(.caption).foregroundStyle(.secondary)
-                } else {
-                    let candidates = model.players.filter { $0.id != ctx.yourId }
-                    if candidates.isEmpty {
-                        Text("No-one to trade with.").font(.caption).foregroundStyle(.secondary)
-                    } else {
-                        VStack(alignment: .leading, spacing: 4) {
-                            ForEach(candidates, id: \.id) { p in
-                                Button {
-                                    guard let cid = selectedCardId else { return }
-                                    model.send(["type": "propose_trade",
-                                                "targetId": p.id, "cardId": cid])
-                                    selectedCardId = nil
-                                } label: {
-                                    Text("Trade with \(p.name) (offer selected)")
-                                        .frame(maxWidth: .infinity)
-                                }
-                                .buttonStyle(.bordered)
-                                .disabled(selectedCardId == nil)
-                            }
+            let candidates = model.players.filter { $0.id != ctx.yourId }
+            if !model.hand.isEmpty && !candidates.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    MonoLabel("Propose trade")
+                    ForEach(candidates, id: \.id) { p in
+                        Button("Trade with \(p.name) — offer selected") {
+                            guard let cid = selectedCardId else { return }
+                            model.send(["type": "propose_trade", "targetId": p.id, "cardId": cid])
+                            selectedCardId = nil
                         }
+                        .buttonStyle(UbSecondaryButtonStyle())
+                        .disabled(selectedCardId == nil).opacity(selectedCardId == nil ? 0.5 : 1)
                     }
                 }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .ubCard()
             }
         }
     }
@@ -186,117 +187,126 @@ struct BluffMarketGuestView: View {
         let imParty = imProposer || imTarget
         let proposerName = model.players.first { $0.id == t.proposerId }?.name ?? "?"
         let targetName = model.players.first { $0.id == t.targetId }?.name ?? "?"
-        GroupBox("Trade: \(proposerName) ↔ \(targetName)") {
-            VStack(spacing: 8) {
-                if t.revealed {
-                    HStack(spacing: 16) {
-                        VStack {
-                            Text(proposerName).font(.caption)
-                            if let c = t.proposerCard { bluffCardChip(c) }
-                        }
-                        Text("⇄").font(.title)
-                        VStack {
-                            Text(targetName).font(.caption)
-                            if let c = t.targetCard { bluffCardChip(c) }
-                        }
+        VStack(spacing: 12) {
+            MonoLabel("Trade · \(proposerName) ↔ \(targetName)", color: UbappTheme.accent)
+            if t.revealed {
+                HStack(spacing: 16) {
+                    VStack(spacing: 4) {
+                        MonoLabel(proposerName, size: 9)
+                        if let c = t.proposerCard { bluffCardChip(c) }
                     }
-                    if imParty {
-                        let answered = imProposer ? t.proposerAccept != nil : t.targetAccept != nil
-                        if answered {
-                            Text("You answered. Waiting for the other side…")
-                                .font(.caption).foregroundStyle(.secondary)
-                        } else {
-                            HStack {
-                                Button("Accept") { model.send(["type": "respond_trade", "accept": true]) }
-                                    .buttonStyle(.borderedProminent).tint(.green)
-                                Button("Reject") { model.send(["type": "respond_trade", "accept": false]) }
-                                    .buttonStyle(.borderedProminent).tint(.red)
-                                if !guaranteeUsedByMe(t) {
-                                    Button("Guarantee") { model.send(["type": "guarantee"]) }
-                                        .buttonStyle(.bordered).tint(.yellow)
-                                }
-                            }
-                        }
+                    Text("⇄").font(.title).foregroundStyle(UbappTheme.muted)
+                    VStack(spacing: 4) {
+                        MonoLabel(targetName, size: 9)
+                        if let c = t.targetCard { bluffCardChip(c) }
                     }
-                } else {
-                    // Pre-reveal: show face-down placeholders so players can
-                    // see who's committed without revealing the cards.
-                    HStack(spacing: 16) {
-                        VStack(spacing: 4) {
-                            Text(proposerName).font(.caption)
-                            GridCardBack(width: 70)
-                                .opacity(t.proposerCommitted ? 1.0 : 0.3)
-                        }
-                        Text("?").font(.title)
-                        VStack(spacing: 4) {
-                            Text(targetName).font(.caption)
-                            GridCardBack(width: 70)
-                                .opacity(t.targetCommitted ? 1.0 : 0.3)
-                        }
-                    }
-                    if imTarget && t.targetCardId == nil {
-                        Text("\(proposerName) is proposing a trade. Commit a card to counter.")
-                            .font(.caption)
-                        Button {
-                            guard let cid = selectedCardId else { return }
-                            model.send(["type": "counter_trade", "cardId": cid])
-                            selectedCardId = nil
-                        } label: {
-                            Text("Commit selected").frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(selectedCardId == nil)
-                        Button("Decline") { model.send(["type": "decline_trade"]) }
-                            .buttonStyle(.bordered)
+                }
+                if imParty {
+                    let answered = imProposer ? t.proposerAccept != nil : t.targetAccept != nil
+                    if answered {
+                        Text("You answered. Waiting for the other side…")
+                            .font(.system(size: 12)).foregroundStyle(UbappTheme.muted)
                     } else {
-                        Text("\(proposerName) committed. Waiting for \(targetName) to counter…")
-                            .font(.caption).foregroundStyle(.secondary)
-                        if imProposer {
-                            Button("Cancel proposal") { model.send(["type": "decline_trade"]) }
-                                .buttonStyle(.bordered)
+                        HStack(spacing: 10) {
+                            Button("Accept") { model.send(["type": "respond_trade", "accept": true]) }
+                                .buttonStyle(UbPrimaryButtonStyle())
+                            Button("Reject") { model.send(["type": "respond_trade", "accept": false]) }
+                                .buttonStyle(UbSecondaryButtonStyle())
+                        }
+                        if !guaranteeUsedByMe(t) {
+                            Button("Guarantee the trade") { model.send(["type": "guarantee"]) }
+                                .buttonStyle(UbSecondaryButtonStyle())
                         }
                     }
                 }
-                if t.proposerGuarantee || t.targetGuarantee {
-                    Text("Guarantee invoked — trade will be forced.")
-                        .font(.caption).foregroundStyle(.yellow)
+            } else {
+                HStack(spacing: 16) {
+                    VStack(spacing: 4) {
+                        MonoLabel(proposerName, size: 9)
+                        GridCardBack(width: 70).opacity(t.proposerCommitted ? 1.0 : 0.3)
+                    }
+                    Text("?").font(.title).foregroundStyle(UbappTheme.muted)
+                    VStack(spacing: 4) {
+                        MonoLabel(targetName, size: 9)
+                        GridCardBack(width: 70).opacity(t.targetCommitted ? 1.0 : 0.3)
+                    }
+                }
+                if imTarget && t.targetCardId == nil {
+                    Text("\(proposerName) is proposing a trade. Commit a card to counter.")
+                        .font(.system(size: 12)).foregroundStyle(.white)
+                    Button("Commit selected") {
+                        guard let cid = selectedCardId else { return }
+                        model.send(["type": "counter_trade", "cardId": cid]); selectedCardId = nil
+                    }
+                    .buttonStyle(UbPrimaryButtonStyle())
+                    .disabled(selectedCardId == nil).opacity(selectedCardId == nil ? 0.5 : 1)
+                    Button("Decline") { model.send(["type": "decline_trade"]) }
+                        .buttonStyle(UbSecondaryButtonStyle())
+                } else {
+                    Text("\(proposerName) committed. Waiting for \(targetName) to counter…")
+                        .font(.system(size: 12)).foregroundStyle(UbappTheme.muted)
+                    if imProposer {
+                        Button("Cancel proposal") { model.send(["type": "decline_trade"]) }
+                            .buttonStyle(UbSecondaryButtonStyle())
+                    }
                 }
             }
+            if t.proposerGuarantee || t.targetGuarantee {
+                MonoLabel("Guarantee invoked — trade forced", size: 9, color: UbappTheme.accent)
+            }
         }
+        .padding(16)
+        .frame(maxWidth: .infinity)
+        .ubCard(radius: UbappRadius.panel,
+                fill: UbappTheme.accentSoft, stroke: UbappTheme.accentLine)
     }
 
     private func guaranteeUsedByMe(_ t: BluffMarketGuestModel.Trade) -> Bool {
         if ctx.yourId == t.proposerId && t.proposerGuarantee { return true }
         if ctx.yourId == t.targetId && t.targetGuarantee { return true }
-        // Or already used my one-shot Guarantee earlier this round.
         return model.players.first { $0.id == ctx.yourId }?.guaranteeUsed ?? false
     }
 
     @ViewBuilder private var scoringView: some View {
-        GroupBox("Final scores — pending host reveal") {
-            ForEach(model.scoreRows, id: \.id) { r in
-                HStack {
-                    Text(r.name)
-                    Spacer()
-                    Text("\(r.total)\(r.hasBomb ? " 💣" : "")")
-                        .font(.headline)
+        VStack(alignment: .leading, spacing: 8) {
+            MonoLabel("Final scores · pending host reveal", color: UbappTheme.accent)
+            VStack(spacing: 8) {
+                ForEach(model.scoreRows, id: \.id) { r in
+                    HStack {
+                        Text(r.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
+                        Spacer()
+                        Text("\(r.total)\(r.hasBomb ? " 💣" : "")")
+                            .font(.system(size: 16, weight: .bold)).foregroundStyle(.white)
+                    }
+                    .padding(.vertical, 12).padding(.horizontal, 14)
+                    .ubCard(radius: UbappRadius.row)
                 }
             }
-            Text("Waiting for the host…").font(.caption).foregroundStyle(.secondary)
+            Text("Waiting for the host…").font(.system(size: 12)).foregroundStyle(UbappTheme.muted)
         }
     }
 
     @ViewBuilder private var overView: some View {
         let winner = model.players.first { $0.id == model.winnerId }
-        GroupBox("Game over") {
-            Text("\(winner?.name ?? "?") wins!").font(.title2.bold())
+        VStack(alignment: .leading, spacing: 6) {
+            MonoLabel("Game over", color: UbappTheme.accent)
+            Text("\(winner?.name ?? "?") wins")
+                .font(.system(size: 28, weight: .heavy)).kerning(-0.8).foregroundStyle(.white)
+        }
+        VStack(spacing: 8) {
             ForEach(model.scoreRows.sorted(by: { $0.total > $1.total }), id: \.id) { r in
-                HStack {
-                    Text(r.name + (r.hasBomb ? " 💣" : "") + (r.id == model.winnerId ? " 🏆" : ""))
+                HStack(spacing: 12) {
+                    Avatar(name: r.name, size: 30)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(r.name + (r.id == model.winnerId ? " 🏆" : "") + (r.hasBomb ? " 💣" : ""))
+                            .font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
+                        MonoLabel("sum \(r.sum) + coins \(r.coins)", size: 9, color: UbappTheme.faint)
+                    }
                     Spacer()
-                    Text("\(r.total)  (sum \(r.sum) + coins \(r.coins))")
-                        .font(.footnote).foregroundStyle(.secondary)
+                    Text("\(r.total)").font(.system(size: 18, weight: .heavy)).foregroundStyle(.white)
                 }
+                .padding(.vertical, 10).padding(.horizontal, 14)
+                .ubCard(radius: UbappRadius.row)
             }
         }
     }
@@ -307,9 +317,6 @@ struct BluffMarketGuestView: View {
         case "bomb":
             BluffBombCard(width: 80)
         case "wildcard":
-            // Wildcard reuses the bomb framing in magenta but with a "WILD"
-            // hero label — the shared component set doesn't have one yet so
-            // we render a minimal placeholder until the design lands.
             BluffPointCard(value: 0, width: 80)
         default:
             BluffPointCard(value: c.value, width: 80)
