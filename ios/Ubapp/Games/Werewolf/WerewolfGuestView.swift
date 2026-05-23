@@ -6,63 +6,83 @@ struct WerewolfGuestView: View {
     @StateObject private var model = WerewolfGuestModel()
 
     var body: some View {
-        GeometryReader { proxy in
-            ScrollView {
-                VStack(spacing: 0) {
-                    Spacer(minLength: 0)
-                    VStack(alignment: .center, spacing: 16) {
-                        HStack {
-                            Text("Playing as \(ctx.yourName)").font(.caption).foregroundStyle(.secondary)
-                            Spacer()
-                            if model.phase != "lobby" {
-                                Text("Day \(model.day)").font(.caption).foregroundStyle(.secondary)
-                            }
-                        }
-                        if let err = model.error {
-                            Text(err).foregroundStyle(.white).padding().frame(maxWidth: .infinity)
-                                .background(Color.red).cornerRadius(12)
-                        }
-                        switch model.phase {
-                        case "lobby":      lobby
-                        case "night":      night
-                        case "dayReveal":  dayReveal
-                        case "dayVote":    dayVote
-                        case "hunterShot": hunterShot
-                        case "gameOver":   gameOver
-                        default:           Text("Waiting…").foregroundStyle(.secondary)
-                        }
-                        seerFindings
-                        playersSection
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .firstTextBaseline) {
+                    MonoLabel(phaseLabel, color: UbappTheme.accent)
+                    Spacer()
+                    if model.phase != "lobby" {
+                        MonoLabel(iAmAlive ? "alive" : "out",
+                                  size: 9, color: iAmAlive ? UbappTheme.online : UbappTheme.faint)
                     }
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 480)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding()
-                    Spacer(minLength: 0)
                 }
-                .frame(minHeight: proxy.size.height)
-                .frame(maxWidth: .infinity)
+                if let err = model.error {
+                    Text(err).font(.system(size: 13, weight: .semibold)).foregroundStyle(UbappTheme.accent)
+                        .padding(.vertical, 12).padding(.horizontal, 14)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .ubAccentCard(radius: UbappRadius.row)
+                }
+                switch model.phase {
+                case "lobby":      lobby
+                case "night":      night
+                case "dayReveal":  dayReveal
+                case "dayVote":    dayVote
+                case "hunterShot": hunterShot
+                case "gameOver":   gameOver
+                default:           infoBanner("Waiting…")
+                }
+                seerFindings
+                playersSection
             }
-            .navigationTitle("Werewolf")
-            .onAppear { model.attach(ctx: ctx) }
-            .onDisappear { ctx.client.onMessage = nil }
+            .frame(maxWidth: 520, alignment: .leading)
+            .frame(maxWidth: .infinity)
+            .padding(20)
         }
+        .scrollIndicators(.hidden)
+        .navigationTitle("Werewolf")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear { model.attach(ctx: ctx) }
+        .onDisappear { ctx.client.onMessage = nil }
         .ubappChrome()
     }
 
+    private var phaseLabel: String {
+        switch model.phase {
+        case "night": "Werewolf · night \(max(model.day, 1))"
+        case "dayReveal": "Werewolf · dawn"
+        case "dayVote": "Werewolf · day \(model.day)"
+        case "hunterShot": "Werewolf · revenge"
+        case "gameOver": "Werewolf · over"
+        default: "Werewolf · lobby"
+        }
+    }
+
     @ViewBuilder private var lobby: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Waiting for the host")
+                .font(.system(size: 26, weight: .heavy)).kerning(-0.8).foregroundStyle(.white)
+            Text("Playing as \(ctx.yourName)")
+                .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+        }
         TutorialGuestCard(state: model.tutorialState, content: model.tutorialContent,
                           myVote: model.myTutorialVote,
                           onCall: { model.send(["type": "call_tutorial_vote"]) },
                           onVote: { yes in model.myTutorialVote = yes
                               model.send(["type": "tutorial_vote", "yes": yes]) })
-        GroupBox("Players (\(model.lobby.count))") {
-            ForEach(model.lobby, id: \.id) { p in
-                HStack {
-                    Text(p.name).fontWeight(p.id == ctx.yourId ? .bold : .regular)
-                    if p.isHost { Text("host").font(.caption).foregroundStyle(.secondary) }
-                    Spacer()
-                    if p.id == ctx.yourId { Text("you").font(.caption).foregroundStyle(.blue) }
+        VStack(alignment: .leading, spacing: 8) {
+            MonoLabel("In the room · \(model.lobby.count)")
+            VStack(spacing: 8) {
+                ForEach(model.lobby, id: \.id) { p in
+                    HStack(spacing: 12) {
+                        Avatar(name: p.name, host: p.isHost, size: 30)
+                        Text(p.name).font(.system(size: 15, weight: p.id == ctx.yourId ? .bold : .semibold))
+                            .foregroundStyle(.white)
+                        if p.id == ctx.yourId { MonoLabel("you", size: 9, color: UbappTheme.accent) }
+                        Spacer()
+                        if p.isHost { MonoLabel("host", size: 9, color: UbappTheme.faint) }
+                    }
+                    .padding(.vertical, 10).padding(.horizontal, 14)
+                    .ubCard(radius: UbappRadius.row)
                 }
             }
         }
@@ -73,13 +93,13 @@ struct WerewolfGuestView: View {
         if !iAmAlive { spectator }
         else if model.role == "werewolf" {
             let targets = model.alive.filter { $0.id != ctx.yourId && !model.wolfIds.contains($0.id) }
-            targetPicker(prompt: "Choose a victim", targets: targets, kind: "night")
+            targetPicker(prompt: "Choose a victim", targets: targets, kind: "night", verb: "Lock in kill")
         } else if model.role == "seer" {
             targetPicker(prompt: "Investigate a player",
                          targets: model.alive.filter { $0.id != ctx.yourId },
-                         kind: "night")
+                         kind: "night", verb: "Investigate")
         } else {
-            Text("The wolves and the seer are acting…").foregroundStyle(.secondary)
+            infoBanner("The wolves and the seer are acting in the dark…")
         }
     }
 
@@ -95,73 +115,128 @@ struct WerewolfGuestView: View {
             lastNightSummary
             targetPicker(prompt: "Vote to lynch",
                          targets: model.alive.filter { $0.id != ctx.yourId },
-                         kind: "vote", allowSkip: true)
+                         kind: "vote", verb: "Lock in vote", allowSkip: true)
         }
     }
 
     @ViewBuilder private var hunterShot: some View {
         if model.hunterId == ctx.yourId {
-            GroupBox("Take one with you") {
-                ForEach(model.alive.filter { $0.id != ctx.yourId }, id: \.id) { p in
-                    Button { model.picked = p.id } label: {
-                        HStack {
-                            Text(p.name); Spacer()
-                            if model.picked == p.id { Image(systemName: "checkmark.circle.fill") }
-                        }.padding(.vertical, 6)
+            VStack(alignment: .leading, spacing: 10) {
+                MonoLabel("Take one with you", color: UbappTheme.accent)
+                let cols = [GridItem(.flexible()), GridItem(.flexible())]
+                LazyVGrid(columns: cols, spacing: 8) {
+                    ForEach(model.alive.filter { $0.id != ctx.yourId }, id: \.id) { p in
+                        pickCell(id: p.id, name: p.name, submitted: false)
                     }
                 }
                 Button("Fire") {
                     model.send(["type": "hunter_shot", "targetId": model.picked ?? ""])
                     model.picked = nil
                 }
-                .disabled(model.picked == nil).buttonStyle(.borderedProminent).tint(.red)
+                .buttonStyle(UbPrimaryButtonStyle())
+                .disabled(model.picked == nil).opacity(model.picked == nil ? 0.5 : 1)
             }
         } else {
-            Text("\(playerName(model.hunterId ?? "")) is taking their last shot…")
-                .foregroundStyle(.secondary)
+            infoBanner("\(playerName(model.hunterId ?? "")) is taking their last shot…")
         }
     }
 
     @ViewBuilder private var gameOver: some View {
-        GroupBox(model.winner == "werewolves" ? "Werewolves win" : "Village wins") {
-            ForEach(model.rolesReveal, id: \.id) { entry in
-                HStack { Text(entry.name); Spacer()
-                    Text(entry.role.capitalized).foregroundStyle(.secondary) }
+        let wolvesWin = model.winner == "werewolves"
+        VStack(alignment: .leading, spacing: 6) {
+            MonoLabel("Game over", color: UbappTheme.accent)
+            Text(wolvesWin ? "Werewolves win" : "Village wins")
+                .font(.system(size: 30, weight: .heavy)).kerning(-1)
+                .foregroundStyle(wolvesWin ? UbappTheme.accent : .white)
+        }
+        VStack(alignment: .leading, spacing: 8) {
+            MonoLabel("Full reveal")
+            VStack(spacing: 8) {
+                ForEach(model.rolesReveal, id: \.id) { entry in
+                    let isWolf = entry.role == "werewolf"
+                    HStack(spacing: 12) {
+                        Avatar(name: entry.name, size: 30)
+                        Text(entry.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
+                        Spacer()
+                        Text(entry.role.capitalized)
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(isWolf ? UbappTheme.onAccent : UbappTheme.muted)
+                            .padding(.vertical, 5).padding(.horizontal, 10)
+                            .background(isWolf ? UbappTheme.accent : Color.white.opacity(0.06))
+                            .clipShape(Capsule())
+                    }
+                    .padding(.vertical, 10).padding(.horizontal, 14)
+                    .ubCard(radius: UbappRadius.row)
+                }
             }
         }
     }
 
     @ViewBuilder private var spectator: some View {
-        GroupBox("You're out") {
-            Text("Watching from the sidelines.").foregroundStyle(.secondary)
-        }
+        infoBanner("You're out — watching from the sidelines.")
+    }
+
+    private func infoBanner(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 14)).foregroundStyle(UbappTheme.muted)
+            .padding(.vertical, 14).padding(.horizontal, 16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .ubCard(radius: UbappRadius.row)
     }
 
     @ViewBuilder private var roleCard: some View {
         if let role = model.role {
-            let (label, blurb, color) = werewolfRoleStyle(role)
-            GroupBox(label) {
-                Text(blurb).font(.callout).foregroundStyle(.secondary)
+            let m = roleMeta(role)
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 14) {
+                    Text(m.letter)
+                        .font(.system(size: 24, weight: .heavy))
+                        .foregroundStyle(m.accent ? UbappTheme.onAccent : .white)
+                        .frame(width: 48, height: 48)
+                        .background(m.accent ? UbappTheme.accent : UbappTheme.surfaceHi)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    VStack(alignment: .leading, spacing: 2) {
+                        MonoLabel("Your role", size: 9,
+                                  color: m.accent ? UbappTheme.accent : UbappTheme.muted)
+                        Text(m.name).font(.system(size: 20, weight: .heavy)).foregroundStyle(.white)
+                    }
+                }
+                Text(m.blurb).font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
                 if role == "werewolf", model.wolfIds.count > 1 {
-                    let others = model.wolfIds.filter { $0 != ctx.yourId }
-                        .map { playerName($0) }
-                    Text("Your pack: \(others.joined(separator: ", "))")
-                        .font(.footnote).foregroundStyle(.secondary)
+                    let others = model.wolfIds.filter { $0 != ctx.yourId }.map { playerName($0) }
+                    if !others.isEmpty {
+                        VStack(alignment: .leading, spacing: 2) {
+                            MonoLabel("Your pack", size: 9)
+                            Text(others.joined(separator: ", "))
+                                .font(.system(size: 13, weight: .semibold)).foregroundStyle(.white)
+                        }
+                    }
                 }
             }
-            .background(color.opacity(0.15)).cornerRadius(12)
+            .padding(18)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .ubCard(radius: UbappRadius.panel,
+                    fill: m.accent ? UbappTheme.accentSoft : UbappTheme.surface,
+                    stroke: m.accent ? UbappTheme.accentLine : UbappTheme.line)
         }
     }
 
     @ViewBuilder private var seerFindings: some View {
         if model.role == "seer", !model.seerHistory.isEmpty {
-            GroupBox("Seer findings") {
-                ForEach(model.seerHistory, id: \.day) { r in
-                    HStack {
-                        Text("Night \(r.day): \(playerName(r.targetId))")
-                        Spacer()
-                        Text(r.isWerewolf ? "IS a werewolf" : "is not a werewolf")
-                            .foregroundStyle(r.isWerewolf ? .red : .green).font(.footnote)
+            VStack(alignment: .leading, spacing: 8) {
+                MonoLabel("Seer findings")
+                VStack(spacing: 8) {
+                    ForEach(model.seerHistory, id: \.day) { r in
+                        HStack {
+                            Text("Night \(r.day) · \(playerName(r.targetId))")
+                                .font(.system(size: 13)).foregroundStyle(.white)
+                            Spacer()
+                            Text(r.isWerewolf ? "WEREWOLF" : "not a wolf")
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .foregroundStyle(r.isWerewolf ? UbappTheme.accent : UbappTheme.online)
+                        }
+                        .padding(.vertical, 10).padding(.horizontal, 14)
+                        .ubCard(radius: UbappRadius.row)
                     }
                 }
             }
@@ -170,49 +245,54 @@ struct WerewolfGuestView: View {
 
     @ViewBuilder private var lastNightSummary: some View {
         if let k = model.lastNightKilled {
-            Text("\(playerName(k)) was killed in the night.")
-                .padding().frame(maxWidth: .infinity).background(.thinMaterial).cornerRadius(12)
+            infoBanner("\(playerName(k)) was killed in the night.")
         } else if model.nightResolved {
-            Text("A quiet night.")
-                .padding().frame(maxWidth: .infinity).background(.thinMaterial).cornerRadius(12)
+            infoBanner("A quiet night. No one died.")
         }
     }
 
     @ViewBuilder private var playersSection: some View {
         if model.phase != "lobby" && (model.alive.count + model.dead.count) > 0 {
-            GroupBox("Players") {
-                ForEach(model.alive, id: \.id) { p in
-                    HStack { Text(p.name); Spacer()
-                        Text("alive").font(.caption).foregroundStyle(.green) }
-                }
-                ForEach(model.dead, id: \.id) { p in
-                    HStack { Text(p.name); Spacer()
-                        Text("dead").font(.caption).foregroundStyle(.red) }
+            VStack(alignment: .leading, spacing: 8) {
+                MonoLabel("Players · \(model.alive.count) alive")
+                let cols = [GridItem(.flexible()), GridItem(.flexible())]
+                LazyVGrid(columns: cols, spacing: 8) {
+                    ForEach(model.alive, id: \.id) { p in playerCell(p, alive: true) }
+                    ForEach(model.dead, id: \.id) { p in playerCell(p, alive: false) }
                 }
             }
         }
     }
 
+    private func playerCell(_ p: WerewolfGuestModel.Player, alive: Bool) -> some View {
+        HStack(spacing: 10) {
+            Avatar(name: p.name, host: p.isHost, size: 28)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(p.name).font(.system(size: 12, weight: .semibold))
+                    .strikethrough(!alive).foregroundStyle(alive ? .white : UbappTheme.muted)
+                MonoLabel(alive ? "alive" : "dead", size: 9,
+                          color: alive ? UbappTheme.faint : UbappTheme.accent)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 8).padding(.horizontal, 10)
+        .ubCard(radius: UbappRadius.button,
+                fill: alive ? UbappTheme.surface : UbappTheme.accentSoft,
+                stroke: alive ? UbappTheme.line : UbappTheme.accentLine)
+    }
+
     @ViewBuilder
     private func targetPicker(prompt: String, targets: [WerewolfGuestModel.Player],
-                              kind: String, allowSkip: Bool = false) -> some View {
+                              kind: String, verb: String, allowSkip: Bool = false) -> some View {
         let submitted = model.submittedKind == kind && model.submittedDay == model.day
-        GroupBox(prompt) {
-            ForEach(targets, id: \.id) { p in
-                Button { model.picked = p.id } label: {
-                    HStack {
-                        Text(p.name); Spacer()
-                        if model.picked == p.id { Image(systemName: "checkmark.circle.fill") }
-                    }.padding(.vertical, 6)
-                }.disabled(submitted)
+        VStack(alignment: .leading, spacing: 10) {
+            MonoLabel(prompt)
+            let cols = [GridItem(.flexible()), GridItem(.flexible())]
+            LazyVGrid(columns: cols, spacing: 8) {
+                ForEach(targets, id: \.id) { p in pickCell(id: p.id, name: p.name, submitted: submitted) }
+                if allowSkip { pickCell(id: "__skip", name: "Skip vote", submitted: submitted) }
             }
-            if allowSkip {
-                Button { model.picked = "__skip" } label: {
-                    HStack { Text("Skip vote"); Spacer()
-                        if model.picked == "__skip" { Image(systemName: "checkmark.circle.fill") } }
-                }.disabled(submitted)
-            }
-            Button(submitted ? "Submitted" : "Confirm") {
+            Button(submitted ? "Submitted" : verb) {
                 if kind == "night" {
                     model.send(["type": "night_action", "targetId": model.picked ?? ""])
                 } else {
@@ -223,9 +303,30 @@ struct WerewolfGuestView: View {
                 }
                 model.submittedKind = kind; model.submittedDay = model.day
             }
+            .buttonStyle(UbPrimaryButtonStyle())
             .disabled(submitted || model.picked == nil)
-            .buttonStyle(.borderedProminent)
+            .opacity(submitted || model.picked == nil ? 0.5 : 1)
         }
+    }
+
+    private func pickCell(id: String, name: String, submitted: Bool) -> some View {
+        let selected = model.picked == id
+        return Button { if !submitted { model.picked = id } } label: {
+            HStack(spacing: 8) {
+                if id != "__skip" { Avatar(name: name, size: 24) }
+                Text(name).font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(selected ? UbappTheme.onAccent : .white)
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, 9).padding(.horizontal, 10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(selected ? UbappTheme.accent : Color.white.opacity(0.05))
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(selected ? Color.clear : UbappTheme.lineStrong, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .disabled(submitted)
     }
 
     private var iAmAlive: Bool { model.alive.contains { $0.id == ctx.yourId } }
@@ -237,13 +338,13 @@ struct WerewolfGuestView: View {
     }
 }
 
-private func werewolfRoleStyle(_ role: String) -> (String, String, Color) {
+private func roleMeta(_ role: String) -> (name: String, blurb: String, letter: String, accent: Bool) {
     switch role {
-    case "werewolf": return ("Your role: Werewolf", "Hunt the village. You can see your pack.", .red)
-    case "seer":     return ("Your role: Seer", "Each night, learn if one player is a werewolf.", .purple)
-    case "hunter":   return ("Your role: Hunter", "When you die you take one player down with you.", .orange)
-    case "villager": return ("Your role: Villager", "Survive and vote wisely.", .gray)
-    default:         return ("Your role", role, .gray)
+    case "werewolf": return ("Werewolf", "Hunt the village by night. You can see your pack.", "W", true)
+    case "seer":     return ("Seer", "Each night, learn whether one player is a werewolf.", "?", false)
+    case "hunter":   return ("Hunter", "When you die you take one player down with you.", "H", false)
+    case "villager": return ("Villager", "No night power — survive and vote wisely.", "V", false)
+    default:         return (role.capitalized, role, "•", false)
     }
 }
 
