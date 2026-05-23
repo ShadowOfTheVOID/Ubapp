@@ -1,15 +1,28 @@
 package com.example.ubapp.games.imposter
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.ubapp.theme.Avatar
+import com.example.ubapp.theme.LobbyPlayerRow
+import com.example.ubapp.theme.MonoLabel
+import com.example.ubapp.theme.Ub
+import com.example.ubapp.theme.UbPrimaryButton
 import com.example.ubapp.theme.UbappTheme
+import com.example.ubapp.theme.ubCard
 import com.example.ubapp.join.GuestContext
 import com.example.ubapp.join.GuestSeriesState
 import com.example.ubapp.join.GuestTutorialContent
@@ -30,125 +43,158 @@ fun ImposterGuestScreen(ctx: GuestContext) {
     @Suppress("UNUSED_EXPRESSION") tick
 
     UbappTheme {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
     Column(
         Modifier
             .verticalScroll(rememberScrollState())
-            .widthIn(max = 480.dp)
+            .statusBarsPadding()
+            .widthIn(max = 520.dp)
             .fillMaxWidth()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(20.dp),
+        horizontalAlignment = Alignment.Start,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text("Playing as ${ctx.yourName}", style = MaterialTheme.typography.bodySmall)
+        MonoLabel(phaseLabel(s), color = Ub.Accent)
+        if (s.error != null) InfoBanner(s.error!!, accent = true)
         SeriesBannerCard(s.series)
-        if (s.error != null) Text(s.error!!, color = MaterialTheme.colorScheme.error)
         when (s.phase) {
             "lobby" -> {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Waiting for the host", fontSize = 26.sp, fontWeight = FontWeight.ExtraBold,
+                         letterSpacing = (-0.8).sp, color = Ub.Foreground)
+                    Text("Playing as ${ctx.yourName}", fontSize = 13.sp, color = Ub.Muted)
+                }
                 TutorialGuestCard(s.tutorialState, s.tutorialContent, s.myTutorialVote,
                     onCall = { ctx.client.send(JSONObject().put("type", "call_tutorial_vote")) },
                     onVote = { yes -> s.myTutorialVote = yes
                         ctx.client.send(JSONObject().put("type", "tutorial_vote").put("yes", yes)) })
-                Text("Players (${s.players.size})", style = MaterialTheme.typography.titleSmall)
-                for (p in s.players) Text(p.name + if (p.isHost) " (host)" else "")
+                MonoLabel("In the room · ${s.players.size}")
+                for (p in s.players) LobbyPlayerRow(p.name, p.isHost)
             }
             "playing" -> {
-                ElevatedCard(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(16.dp),
-                           horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("YOUR ROLE", style = MaterialTheme.typography.labelSmall)
-                        if (s.isImposter) {
-                            Text("IMPOSTER",
-                                 style = MaterialTheme.typography.displayMedium,
-                                 color = Color(0xFFC62828))
-                            if (!s.hideCategory) {
-                                Text("Category: ${s.category}",
-                                     style = MaterialTheme.typography.bodyMedium)
-                            }
-                            val decoy = s.word
-                            if (s.isDecoy && decoy != null) {
-                                Text("Decoy word: $decoy",
-                                     style = MaterialTheme.typography.titleLarge)
-                                Text("This isn't the real word — bluff carefully.",
-                                     style = MaterialTheme.typography.bodySmall)
-                            } else {
-                                Text("Bluff your way through.",
-                                     style = MaterialTheme.typography.bodySmall)
-                            }
+                if (s.isImposter) {
+                    Column(Modifier.fillMaxWidth().ubCard(radius = Ub.Radius.panel,
+                            fill = Ub.AccentSoft, stroke = Ub.AccentLine).padding(20.dp),
+                           verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        MonoLabel("Your secret role", color = Ub.Accent)
+                        Text("You are the Imposter.", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold,
+                             letterSpacing = (-1).sp, color = Ub.Accent)
+                        if (!s.hideCategory) MonoLabel("Category · ${s.category}", size = 10)
+                        val decoy = s.word
+                        if (s.isDecoy && decoy != null) {
+                            Text("Decoy word: $decoy", fontSize = 22.sp, fontWeight = FontWeight.Bold,
+                                 color = Ub.Foreground)
+                            Text("This isn't the real word — bluff carefully.",
+                                 fontSize = 13.sp, color = Ub.Muted)
                         } else {
-                            Text("SECRET WORD",
-                                 style = MaterialTheme.typography.labelSmall)
-                            Text(s.word ?: "—",
-                                 style = MaterialTheme.typography.displaySmall)
-                            Text("Category: ${s.category}",
-                                 style = MaterialTheme.typography.bodyMedium)
-                            Text("Find the imposter.",
-                                 style = MaterialTheme.typography.bodySmall)
+                            Text("Blend in. Give a clue vague enough to survive.",
+                                 fontSize = 13.sp, color = Ub.Muted)
                         }
+                    }
+                } else {
+                    Column(Modifier.fillMaxWidth().ubCard(radius = Ub.Radius.panel).padding(20.dp),
+                           verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        MonoLabel("Secret word", color = Ub.Accent)
+                        Text(s.word ?: "—", fontSize = 36.sp, fontWeight = FontWeight.ExtraBold,
+                             letterSpacing = (-1).sp, color = Ub.Foreground)
+                        MonoLabel("Category · ${s.category}", size = 10)
+                        Text("Drop a clue that proves you know it — without giving it away.",
+                             fontSize = 13.sp, color = Ub.Muted)
                     }
                 }
                 if (s.firstPlayerName.isNotEmpty()) {
-                    ElevatedCard(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(16.dp),
-                               horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("TURN ORDER", style = MaterialTheme.typography.labelSmall)
-                            val who = if (s.firstPlayerId == ctx.yourId) "You go first"
-                                      else "${s.firstPlayerName} goes first"
-                            val dir = if (s.direction == "counterclockwise") "counter-clockwise"
-                                      else "clockwise"
-                            Text("$who — then continue $dir.",
-                                 style = MaterialTheme.typography.bodyMedium)
-                        }
+                    Column(Modifier.fillMaxWidth().ubCard().padding(16.dp),
+                           verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        MonoLabel("Speaking order")
+                        val who = if (s.firstPlayerId == ctx.yourId) "You go first"
+                                  else "${s.firstPlayerName} goes first"
+                        val dir = if (s.direction == "counterclockwise") "counter-clockwise" else "clockwise"
+                        Text("$who — then continue $dir.", fontSize = 14.sp, color = Ub.Foreground)
                     }
                 }
-                Text("Waiting for the host to call a vote…",
-                     style = MaterialTheme.typography.bodySmall)
+                InfoBanner("Waiting for the host to call a vote…")
             }
             "voting" -> {
-                Text("Pick the imposter", style = MaterialTheme.typography.titleSmall)
-                val others = s.players.filter { it.id != ctx.yourId }
-                for (p in others) OutlinedButton(
-                    onClick = { s.picked = p.id }, modifier = Modifier.fillMaxWidth(),
-                    enabled = !s.voted,
-                ) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween)
-                    { Text(p.name); if (s.picked == p.id) Text("✓") }
+                MonoLabel("Pick the imposter")
+                val cells = s.players.filter { it.id != ctx.yourId }.map { it.id to it.name } +
+                    listOf("__skip" to "Skip")
+                cells.chunked(2).forEach { row ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for ((id, name) in row) Box(Modifier.weight(1f)) { PickCell(s, id, name) }
+                        if (row.size == 1) Spacer(Modifier.weight(1f))
+                    }
                 }
-                OutlinedButton(onClick = { s.picked = "__skip" }, modifier = Modifier.fillMaxWidth(),
-                               enabled = !s.voted) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween)
-                    { Text("Skip"); if (s.picked == "__skip") Text("✓") }
-                }
-                Button(onClick = {
-                    val payload = JSONObject().put("type", "vote")
-                    if (s.picked == "__skip") payload.put("targetId", JSONObject.NULL)
-                    else payload.put("targetId", s.picked ?: "")
-                    ctx.client.send(payload); s.voted = true
-                }, enabled = !s.voted && s.picked != null) {
-                    Text(if (s.voted) "Vote in ✓" else "Lock in vote")
-                }
+                Spacer(Modifier.height(2.dp))
+                UbPrimaryButton(if (s.voted) "Vote in ✓" else "Lock in vote",
+                    enabled = !s.voted && s.picked != null,
+                    onClick = {
+                        val payload = JSONObject().put("type", "vote")
+                        if (s.picked == "__skip") payload.put("targetId", JSONObject.NULL)
+                        else payload.put("targetId", s.picked ?: "")
+                        ctx.client.send(payload); s.voted = true
+                    })
             }
             "result" -> {
-                val winner = if (s.winner == "town") "Town wins" else "Imposter wins"
-                Text(winner, style = MaterialTheme.typography.headlineSmall)
-                val names = s.imposterIds.mapNotNull { id ->
-                    s.players.firstOrNull { it.id == id }?.name
+                val townWins = s.winner == "town"
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    MonoLabel("Result", color = Ub.Accent)
+                    Text(if (townWins) "Town wins" else "Imposter wins", fontSize = 30.sp,
+                         fontWeight = FontWeight.ExtraBold, letterSpacing = (-1).sp,
+                         color = if (townWins) Ub.Foreground else Ub.Accent)
                 }
-                if (names.isNotEmpty()) {
-                    val label = if (names.size == 1) "imposter was" else "imposters were"
-                    Text("The $label ${names.joinToString(", ")}.")
+                Column(Modifier.fillMaxWidth().ubCard(radius = Ub.Radius.panel).padding(16.dp),
+                       verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    val names = s.imposterIds.mapNotNull { id -> s.players.firstOrNull { it.id == id }?.name }
+                    if (names.isNotEmpty()) {
+                        val label = if (names.size == 1) "imposter was" else "imposters were"
+                        Text("The $label ${names.joinToString(", ")}.",
+                             fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Ub.Foreground)
+                    }
+                    val mv = s.mostVotedId
+                    if (mv != null) {
+                        val mvName = s.players.firstOrNull { it.id == mv }?.name ?: mv
+                        Text("You voted out $mvName — ${if (s.imposterCaught) "correct!" else "wrong."}",
+                             fontSize = 13.sp, color = Ub.Muted)
+                    } else Text("The vote tied — no one was eliminated.", fontSize = 13.sp, color = Ub.Muted)
+                    MonoLabel("Word · ${s.resultWord} (${s.category})", size = 10)
                 }
-                val mv = s.mostVotedId
-                if (mv != null) {
-                    val mvName = s.players.firstOrNull { it.id == mv }?.name ?: mv
-                    Text("You voted out $mvName — ${if (s.imposterCaught) "correct!" else "wrong."}")
-                } else Text("The vote tied — no one was eliminated.")
-                Text("Secret word was ${s.resultWord} (${s.category}).",
-                     style = MaterialTheme.typography.bodySmall)
             }
         }
     }
     }
+    }
+}
+
+private fun phaseLabel(s: ImposterGuestState): String = when (s.phase) {
+    "playing" -> "Imposter · clue round"
+    "voting" -> "Imposter · vote"
+    "result" -> "Imposter · result"
+    else -> "Imposter · lobby"
+}
+
+@Composable
+private fun InfoBanner(text: String, accent: Boolean = false) {
+    Box(Modifier.fillMaxWidth().ubCard(radius = Ub.Radius.row,
+            fill = if (accent) Ub.AccentSoft else Ub.Surface,
+            stroke = if (accent) Ub.AccentLine else Ub.Line)
+        .padding(horizontal = 16.dp, vertical = 14.dp)) {
+        Text(text, fontSize = 14.sp, color = if (accent) Ub.Accent else Ub.Muted)
+    }
+}
+
+@Composable
+private fun PickCell(s: ImposterGuestState, id: String, name: String) {
+    val selected = s.picked == id
+    Row(Modifier.fillMaxWidth()
+        .clip(RoundedCornerShape(10.dp))
+        .background(if (selected) Ub.Accent else Color.White.copy(alpha = 0.05f))
+        .then(if (selected) Modifier else Modifier.border(1.dp, Ub.LineStrong, RoundedCornerShape(10.dp)))
+        .clickable(enabled = !s.voted) { s.picked = id }
+        .padding(horizontal = 10.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        if (id != "__skip") { Avatar(name, size = 24.dp); Spacer(Modifier.width(8.dp)) }
+        Text(name, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+             color = if (selected) Ub.OnAccent else Color.White)
     }
 }
 

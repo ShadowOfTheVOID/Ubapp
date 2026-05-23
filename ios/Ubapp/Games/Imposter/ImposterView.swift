@@ -17,9 +17,14 @@ struct ImposterView: View {
                         VStack(spacing: 0) {
                             Spacer(minLength: 0)
                             VStack(alignment: .center, spacing: 16) {
+                                VStack(spacing: 4) {
+                                    MonoLabel("Hosting · Imposter", color: UbappTheme.accent)
+                                    Text("Waiting for players")
+                                        .font(.system(size: 24, weight: .heavy)).kerning(-0.6)
+                                        .foregroundStyle(.white)
+                                }
                                 HostingChrome(joinUrl: model.joinUrl, onStart: model.startHosting,
                                               onStop: model.stop)
-                                Text("Lobby").font(.headline)
                                 TutorialVoteCard(
                                     state: model.tutorialState, tutorial: GameTutorials.imposter,
                                     onCall: model.callTutorialVote, onVote: model.tutorialVote,
@@ -40,13 +45,11 @@ struct ImposterView: View {
                 VStack(spacing: 0) {
                     ImposterGuestView(ctx: ctx)
                     if model.phase == .playing {
-                        Divider()
                         Button("Call vote") { model.beginVoting() }
-                            .buttonStyle(.borderedProminent).padding()
+                            .buttonStyle(UbPrimaryButtonStyle()).padding(20)
                     } else if model.phase == .result || model.phase == .gameOver {
-                        Divider()
-                        Button("New round") { model.newRound() }
-                            .buttonStyle(.borderedProminent).padding()
+                        Button("Next round · same room") { model.newRound() }
+                            .buttonStyle(UbPrimaryButtonStyle()).padding(20)
                     }
                 }
             }
@@ -57,15 +60,25 @@ struct ImposterView: View {
     }
 
     @ViewBuilder private var lobbyView: some View {
-        GroupBox("Players (\(model.players.count))") {
-            ForEach(model.players, id: \.id) { p in
-                HStack {
-                    Text(p.name)
-                    if p.isHost { Text("(host)").foregroundStyle(.secondary).font(.caption) }
+        VStack(alignment: .leading, spacing: 8) {
+            MonoLabel("Players · \(model.players.count)")
+            VStack(spacing: 8) {
+                ForEach(model.players, id: \.id) { p in
+                    HStack(spacing: 12) {
+                        Avatar(name: p.name, host: p.isHost, size: 30)
+                        Text(p.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
+                        Spacer()
+                        if p.isHost { MonoLabel("host", size: 9, color: UbappTheme.faint) }
+                    }
+                    .padding(.vertical, 10).padding(.horizontal, 14)
+                    .ubCard(radius: UbappRadius.row)
                 }
             }
         }
-        GroupBox("Category") {
+        .frame(maxWidth: .infinity, alignment: .leading)
+
+        VStack(alignment: .leading, spacing: 10) {
+            MonoLabel("Category")
             Picker("Category", selection: $model.selectedCategory) {
                 Text("Random").tag(Optional<String>.none)
                 ForEach(model.availableCategories, id: \.self) { c in
@@ -75,20 +88,33 @@ struct ImposterView: View {
             .pickerStyle(.segmented)
             .disabled(model.options.mixedPool)
         }
-        GroupBox("Options") {
-            Stepper(value: $model.options.imposterCount,
-                    in: 1...max(1, model.maxImposterCount)) {
-                Text("Imposters: \(model.options.imposterCount)")
+        .frame(maxWidth: .infinity, alignment: .leading)
+
+        VStack(alignment: .leading, spacing: 10) {
+            MonoLabel("Options")
+            VStack(spacing: 12) {
+                Stepper(value: $model.options.imposterCount,
+                        in: 1...max(1, model.maxImposterCount)) {
+                    Text("Imposters: \(model.options.imposterCount)")
+                }
+                Toggle("Decoy word for imposters", isOn: $model.options.decoyWord)
+                Toggle("Hide category from imposters", isOn: $model.options.hideCategory)
+                Toggle("Mixed-category pool", isOn: $model.options.mixedPool)
             }
-            Toggle("Decoy word for imposters", isOn: $model.options.decoyWord)
-            Toggle("Hide category from imposters", isOn: $model.options.hideCategory)
-            Toggle("Mixed-category pool", isOn: $model.options.mixedPool)
+            .font(.system(size: 15))
+            .tint(UbappTheme.accent)
+            .padding(14)
+            .ubCard()
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .onChange(of: model.options) { _, new in model.applyOptions(new) }
+
         if model.canStart {
-            Button("Start round") { model.start() }.buttonStyle(.borderedProminent)
+            Button("Start round · \(model.players.count) players") { model.start() }
+                .buttonStyle(UbPrimaryButtonStyle())
         } else {
-            Text("Need at least 3 players to start.").foregroundStyle(.secondary)
+            Text("Need at least 3 players to start.")
+                .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
         }
     }
 
