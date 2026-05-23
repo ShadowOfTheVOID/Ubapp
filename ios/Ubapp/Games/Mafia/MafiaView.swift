@@ -17,9 +17,14 @@ struct MafiaView: View {
                         VStack(spacing: 0) {
                             Spacer(minLength: 0)
                             VStack(alignment: .center, spacing: 16) {
+                                VStack(spacing: 4) {
+                                    MonoLabel("Hosting · Mafia", color: UbappTheme.accent)
+                                    Text("Waiting for players")
+                                        .font(.system(size: 24, weight: .heavy)).kerning(-0.6)
+                                        .foregroundStyle(.white)
+                                }
                                 HostingChrome(joinUrl: model.joinUrl, onStart: model.startHosting,
                                               onStop: model.stop)
-                                Text("Lobby").font(.headline)
                                 TutorialVoteCard(
                                     state: model.tutorialState,
                                     tutorial: GameTutorials.mafia,
@@ -43,10 +48,9 @@ struct MafiaView: View {
                 VStack(spacing: 0) {
                     MafiaGuestView(ctx: ctx)
                     if model.phase == .dayReveal {
-                        Divider()
                         Button("Continue to day vote") { model.advanceFromReveal() }
-                            .buttonStyle(.borderedProminent)
-                            .padding()
+                            .buttonStyle(UbPrimaryButtonStyle())
+                            .padding(20)
                     }
                 }
             }
@@ -57,42 +61,61 @@ struct MafiaView: View {
     }
 
     @ViewBuilder private var lobbyView: some View {
-        GroupBox("Players (\(model.players.count))") {
-            ForEach(model.players, id: \.id) { p in
-                HStack {
-                    Text(p.name)
-                    if p.isHost { Text("(host)").foregroundStyle(.secondary).font(.caption) }
-                    Spacer()
+        VStack(alignment: .leading, spacing: 8) {
+            MonoLabel("Players · \(model.players.count)")
+            VStack(spacing: 8) {
+                ForEach(model.players, id: \.id) { p in
+                    HStack(spacing: 12) {
+                        Avatar(name: p.name, host: p.isHost, size: 30)
+                        Text(p.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
+                        Spacer()
+                        if p.isHost { MonoLabel("host", size: 9, color: UbappTheme.faint) }
+                    }
+                    .padding(.vertical, 10).padding(.horizontal, 14)
+                    .ubCard(radius: UbappRadius.row)
                 }
             }
         }
-        GroupBox("Options") {
-            Toggle("Auto-balance mafia count", isOn: $model.autoMafiaCount)
-                .onChange(of: model.autoMafiaCount) { _, on in
-                    model.applyOptions(MafiaOptions(
-                        mafiaCount: on ? nil : model.mafiaCountValue,
-                        doctorEnabled: model.options.doctorEnabled))
+        .frame(maxWidth: .infinity, alignment: .leading)
+
+        VStack(alignment: .leading, spacing: 10) {
+            MonoLabel("Options")
+            VStack(spacing: 12) {
+                Toggle("Auto-balance mafia count", isOn: $model.autoMafiaCount)
+                    .onChange(of: model.autoMafiaCount) { _, on in
+                        model.applyOptions(MafiaOptions(
+                            mafiaCount: on ? nil : model.mafiaCountValue,
+                            doctorEnabled: model.options.doctorEnabled))
+                    }
+                if !model.autoMafiaCount {
+                    Stepper(value: $model.mafiaCountValue,
+                            in: 1...max(1, model.maxMafiaCount)) {
+                        Text("Mafia: \(model.mafiaCountValue)")
+                    }
+                    .onChange(of: model.mafiaCountValue) { _, v in
+                        model.applyOptions(MafiaOptions(
+                            mafiaCount: v, doctorEnabled: model.options.doctorEnabled))
+                    }
                 }
-            if !model.autoMafiaCount {
-                Stepper(value: $model.mafiaCountValue,
-                        in: 1...max(1, model.maxMafiaCount)) {
-                    Text("Mafia: \(model.mafiaCountValue)")
-                }
-                .onChange(of: model.mafiaCountValue) { _, v in
-                    model.applyOptions(MafiaOptions(
-                        mafiaCount: v, doctorEnabled: model.options.doctorEnabled))
-                }
+                Toggle("Doctor", isOn: Binding(
+                    get: { model.options.doctorEnabled },
+                    set: { model.applyOptions(MafiaOptions(
+                        mafiaCount: model.autoMafiaCount ? nil : model.mafiaCountValue,
+                        doctorEnabled: $0)) }))
             }
-            Toggle("Doctor", isOn: Binding(
-                get: { model.options.doctorEnabled },
-                set: { model.applyOptions(MafiaOptions(
-                    mafiaCount: model.autoMafiaCount ? nil : model.mafiaCountValue,
-                    doctorEnabled: $0)) }))
+            .font(.system(size: 15))
+            .tint(UbappTheme.accent)
+            .padding(14)
+            .ubCard()
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+
         if model.canStart {
-            Button("Start round") { model.start() }.buttonStyle(.borderedProminent)
+            Button("Start round · \(model.players.count) players") { model.start() }
+                .buttonStyle(UbPrimaryButtonStyle())
         } else {
-            Text("Need at least 4 players to start.").foregroundStyle(.secondary)
+            Text("Need at least 4 players to start.")
+                .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
         }
     }
 

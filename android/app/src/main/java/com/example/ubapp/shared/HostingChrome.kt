@@ -3,31 +3,38 @@ package com.example.ubapp.shared
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ubapp.join.JoinCode
 import com.example.ubapp.settings.AppSettings
 import com.example.ubapp.social.HostDiagnostics
+import com.example.ubapp.theme.MonoLabel
+import com.example.ubapp.theme.Ub
+import com.example.ubapp.theme.UbPrimaryButton
+import com.example.ubapp.theme.UbSecondaryButton
+import com.example.ubapp.theme.ubCard
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
 
@@ -35,90 +42,79 @@ import com.google.zxing.MultiFormatWriter
 @Composable
 fun HostingChrome(joinUrl: String?, onStart: () -> Unit, onStop: (() -> Unit)? = null) {
     if (joinUrl == null) {
-        Button(
-            onClick = onStart,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-        ) {
-            Text("Start hosting", style = MaterialTheme.typography.titleMedium)
-        }
-    } else {
+        UbPrimaryButton("Start hosting", onClick = onStart)
+        return
+    }
+
+    val clipboard = LocalClipboardManager.current
+    var copied by remember { mutableStateOf(false) }
+    val uri = remember(joinUrl) { runCatching { java.net.URI(joinUrl) }.getOrNull() }
+    val host = uri?.host
+    val code = host?.let { JoinCode.encode(it) }
+    val ipLine = host?.let { "$it:${uri.port.takeIf { p -> p > 0 } ?: JoinCode.DEFAULT_PORT}" } ?: joinUrl
+
+    Column(
+        Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
         Column(
-            Modifier.fillMaxWidth(),
+            Modifier.fillMaxWidth().ubCard(radius = Ub.Radius.hero).padding(22.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            ElevatedCard(Modifier.fillMaxWidth()) {
-                Column(
-                    Modifier.fillMaxWidth().padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Text("Guests join here", style = MaterialTheme.typography.titleMedium)
-                    QRCode(
-                        joinUrl,
-                        size = 220,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color.White)
-                            .padding(8.dp),
-                    )
-                    val host = runCatching { java.net.URI(joinUrl).host }.getOrNull()
-                    val code = host?.let { JoinCode.encode(it) }
-                    if (code != null) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("App code",
-                                 style = MaterialTheme.typography.bodySmall,
-                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(
-                                code,
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 28.sp,
-                                style = MaterialTheme.typography.titleLarge,
-                            )
-                        }
+            QRCode(
+                joinUrl,
+                size = 210,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color.White)
+                    .padding(10.dp),
+            )
+            if (code != null) {
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    MonoLabel("Code")
+                    Text(code, fontFamily = FontFamily.Monospace, fontSize = 26.sp,
+                         fontWeight = FontWeight.Bold, letterSpacing = 3.sp, color = Color.White)
+                    Box(
+                        Modifier.size(28.dp).clip(RoundedCornerShape(8.dp))
+                            .background(Color.White.copy(alpha = 0.08f))
+                            .clickable {
+                                clipboard.setText(AnnotatedString(code))
+                                copied = true
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(if (copied) "✓" else "⧉", fontSize = 13.sp,
+                             color = if (copied) Ub.Online else Ub.Muted)
                     }
-                    Text(
-                        joinUrl,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontFamily = FontFamily.Monospace,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                    )
-                    Text(
-                        "Browser guests scan the QR. App guests open \"Join a game\" and type the code or IP.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                    )
                 }
             }
-            val ctx = LocalContext.current
-            if (AppSettings.diagnosticsEnabled(ctx) && HostDiagnostics.lines.isNotEmpty()) {
-                ElevatedCard(Modifier.fillMaxWidth()) {
-                    Text(
-                        HostDiagnostics.lines.joinToString("\n"),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 240.dp)
-                            .verticalScroll(rememberScrollState())
-                            .padding(12.dp),
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 10.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            if (onStop != null) {
-                OutlinedButton(
-                    onClick = onStop,
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error,
-                    ),
-                ) {
-                    Text("Stop hosting", style = MaterialTheme.typography.titleMedium)
-                }
-            }
+            Text(ipLine, fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = Ub.Faint)
+            Text(
+                "Browser guests scan the QR. App guests open \"Join a game\" and type the code.",
+                fontSize = 12.sp, color = Ub.Muted, textAlign = TextAlign.Center,
+            )
+        }
+
+        val ctx = LocalContext.current
+        if (AppSettings.diagnosticsEnabled(ctx) && HostDiagnostics.lines.isNotEmpty()) {
+            Text(
+                HostDiagnostics.lines.joinToString("\n"),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .ubCard()
+                    .heightIn(max = 200.dp)
+                    .verticalScroll(rememberScrollState())
+                    .padding(14.dp),
+                fontFamily = FontFamily.Monospace,
+                fontSize = 10.sp,
+                color = Ub.Muted,
+            )
+        }
+        if (onStop != null) {
+            UbSecondaryButton("Stop hosting", onClick = onStop)
         }
     }
 }

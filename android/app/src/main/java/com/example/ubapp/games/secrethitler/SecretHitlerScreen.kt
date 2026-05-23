@@ -9,6 +9,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.ubapp.theme.LobbyHeader
+import com.example.ubapp.theme.LobbyPlayerRow
+import com.example.ubapp.theme.MonoLabel
+import com.example.ubapp.theme.Ub
+import com.example.ubapp.theme.UbPrimaryButton
 import com.example.ubapp.theme.UbappTheme
 import com.example.ubapp.join.GuestContext
 import com.example.ubapp.shared.HostingChrome
@@ -46,18 +52,19 @@ fun SecretHitlerScreen() {
         Column(
             Modifier
                 .verticalScroll(rememberScrollState())
-                .widthIn(max = 480.dp)
+                .statusBarsPadding()
+                .widthIn(max = 520.dp)
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            LobbyHeader("Secret Hitler")
             HostingChrome(
                 joinUrl = joinUrl,
                 onStart = { joinUrl = server.start() },
                 onStop = { server.stop(); joinUrl = null },
             )
-            Text("Lobby", style = MaterialTheme.typography.titleMedium)
             TutorialVoteCard(
                 state = engine.tutorialVote.snapshot(),
                 tutorial = GameTutorials.secretHitler,
@@ -65,18 +72,18 @@ fun SecretHitlerScreen() {
                 onVote = server::hostTutorialVote,
                 onDismiss = server::hostDismissTutorial,
             )
-            ElevatedCard(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("Players (${engine.players.size})",
-                         style = MaterialTheme.typography.titleSmall)
-                    for (id in engine.seatOrder) {
-                        val p = engine.players[id] ?: continue
-                        Text(p.name + if (p.isHost) " (host)" else "")
-                    }
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                MonoLabel("Players · ${engine.players.size}")
+                for (id in engine.seatOrder) {
+                    val p = engine.players[id] ?: continue
+                    LobbyPlayerRow(p.name, p.isHost)
                 }
             }
-            Button(onClick = { server.hostStart() }, enabled = engine.canStart) {
-                Text(if (engine.canStart) "Start round" else "Need 5–10 players")
+            if (engine.canStart) {
+                UbPrimaryButton("Start round · ${engine.players.size} players",
+                                onClick = { server.hostStart() })
+            } else {
+                Text("Need 5–10 players to start.", fontSize = 13.sp, color = Ub.Muted)
             }
         }
         }

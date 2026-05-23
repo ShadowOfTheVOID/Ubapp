@@ -17,9 +17,14 @@ struct CodenamesView: View {
                         VStack(spacing: 0) {
                             Spacer(minLength: 0)
                             VStack(alignment: .center, spacing: 16) {
+                                VStack(spacing: 4) {
+                                    MonoLabel("Hosting · Codenames", color: UbappTheme.accent)
+                                    Text("Waiting for players")
+                                        .font(.system(size: 24, weight: .heavy)).kerning(-0.6)
+                                        .foregroundStyle(.white)
+                                }
                                 HostingChrome(joinUrl: model.joinUrl, onStart: model.startHosting,
                                               onStop: model.stop)
-                                Text("Lobby").font(.headline)
                                 TutorialVoteCard(
                                     state: model.tutorialState, tutorial: GameTutorials.codenames,
                                     onCall: model.callTutorialVote, onVote: model.tutorialVote,
@@ -40,9 +45,8 @@ struct CodenamesView: View {
                 VStack(spacing: 0) {
                     CodenamesGuestView(ctx: ctx)
                     if model.phase == .gameOver {
-                        Divider()
-                        Button("New game") { model.newGame() }
-                            .buttonStyle(.borderedProminent).padding()
+                        Button("Rematch · swap teams") { model.newGame() }
+                            .buttonStyle(UbPrimaryButtonStyle()).padding(20)
                     }
                 }
             }
@@ -52,50 +56,84 @@ struct CodenamesView: View {
         .onDisappear { model.stop() }
     }
 
+    private var cnRed: Color { Color(hex: 0xFF5A4A) }
+    private var cnBlue: Color { Color(hex: 0x4F9EFF) }
+
     @ViewBuilder private var lobbyView: some View {
-        GroupBox("Your team") {
-            HStack {
-                Button("Join Red") { model.joinTeam(.red) }
-                    .buttonStyle(.borderedProminent).tint(.red)
-                Button("Join Blue") { model.joinTeam(.blue) }
-                    .buttonStyle(.borderedProminent).tint(.blue)
+        VStack(alignment: .leading, spacing: 10) {
+            MonoLabel("Your team")
+            HStack(spacing: 10) {
+                teamButton("Join Red", team: .red, color: cnRed)
+                teamButton("Join Blue", team: .blue, color: cnBlue)
             }
-            Toggle("I'm spymaster", isOn: $model.hostIsSpymaster)
+            Toggle("I'm spymaster ★", isOn: $model.hostIsSpymaster)
                 .onChange(of: model.hostIsSpymaster) { _, on in model.setSpymaster(on) }
+                .font(.system(size: 15)).tint(UbappTheme.accent)
+                .padding(.horizontal, 14).padding(.vertical, 10).ubCard()
         }
-        GroupBox("Players") {
-            ForEach(model.players, id: \.id) { p in
-                HStack {
-                    Text(p.name)
-                    Spacer()
-                    Text(p.team?.name2.capitalized ?? "—")
-                        .foregroundStyle(p.team == .red ? .red : p.team == .blue ? .blue : .secondary)
-                    if p.isSpymaster { Text("(SM)").font(.caption).foregroundStyle(.secondary) }
+        .frame(maxWidth: .infinity, alignment: .leading)
+
+        VStack(alignment: .leading, spacing: 8) {
+            MonoLabel("Players · \(model.players.count)")
+            VStack(spacing: 8) {
+                ForEach(model.players, id: \.id) { p in
+                    HStack(spacing: 12) {
+                        Avatar(name: p.name, host: p.isHost, size: 30)
+                        Text(p.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
+                        if p.isSpymaster {
+                            MonoLabel("spy ★", size: 9,
+                                      color: p.team == .red ? cnRed : p.team == .blue ? cnBlue : UbappTheme.faint)
+                        }
+                        Spacer()
+                        if let t = p.team {
+                            MonoLabel(t.name2, size: 9, color: t == .red ? cnRed : cnBlue)
+                        }
+                    }
+                    .padding(.vertical, 10).padding(.horizontal, 14).ubCard(radius: UbappRadius.row)
                 }
             }
         }
-        GroupBox("Options") {
-            Picker("Board size", selection: $model.boardSize) {
-                ForEach(CodenamesOptions.allowedSizes, id: \.self) { n in
-                    Text("\(n)").tag(n)
+        .frame(maxWidth: .infinity, alignment: .leading)
+
+        VStack(alignment: .leading, spacing: 10) {
+            MonoLabel("Options")
+            VStack(spacing: 12) {
+                Picker("Board size", selection: $model.boardSize) {
+                    ForEach(CodenamesOptions.allowedSizes, id: \.self) { n in Text("\(n)").tag(n) }
+                }.pickerStyle(.segmented)
+                .onChange(of: model.boardSize) { _, v in
+                    model.applyOptions(CodenamesOptions(boardSize: v, assassinCount: model.assassinCount))
                 }
-            }.pickerStyle(.segmented)
-            .onChange(of: model.boardSize) { _, v in
-                model.applyOptions(CodenamesOptions(boardSize: v, assassinCount: model.assassinCount))
+                Stepper(value: $model.assassinCount, in: 1...3) {
+                    Text("Assassins: \(model.assassinCount)")
+                }
+                .onChange(of: model.assassinCount) { _, v in
+                    model.applyOptions(CodenamesOptions(boardSize: model.boardSize, assassinCount: v))
+                }
             }
-            Stepper(value: $model.assassinCount, in: 1...3) {
-                Text("Assassins: \(model.assassinCount)")
-            }
-            .onChange(of: model.assassinCount) { _, v in
-                model.applyOptions(CodenamesOptions(boardSize: model.boardSize, assassinCount: v))
-            }
+            .font(.system(size: 15)).tint(UbappTheme.accent).padding(14).ubCard()
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+
         if model.canStart {
-            Button("Start round") { model.start() }.buttonStyle(.borderedProminent)
+            Button("Start round") { model.start() }.buttonStyle(UbPrimaryButtonStyle())
         } else {
             Text("Need ≥2 per team with a spymaster on each side.")
-                .foregroundStyle(.secondary).font(.callout)
+                .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
         }
+    }
+
+    private func teamButton(_ title: String, team: Team, color: Color) -> some View {
+        Button { model.joinTeam(team) } label: {
+            Text(title)
+                .font(.system(size: 15, weight: .bold)).foregroundStyle(color)
+                .frame(maxWidth: .infinity).padding(.vertical, 14)
+                .background(color.opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: UbappRadius.button, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: UbappRadius.button, style: .continuous)
+                    .stroke(color.opacity(0.5), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
     }
 }
 

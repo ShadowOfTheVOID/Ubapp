@@ -1,17 +1,28 @@
 package com.example.ubapp.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.ubapp.theme.MonoLabel
+import com.example.ubapp.theme.Ub
 import com.example.ubapp.theme.UbappTheme
+import com.example.ubapp.theme.ubCard
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(onBack: () -> Unit) {
     val ctx = LocalContext.current
@@ -19,69 +30,72 @@ fun SettingsScreen(onBack: () -> Unit) {
     var diagnostics by remember { mutableStateOf(AppSettings.diagnosticsEnabled(ctx)) }
 
     UbappTheme {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("Settings") },
-                    navigationIcon = {
-                        TextButton(onClick = onBack) { Text("‹ Back") }
-                    },
-                )
-            },
-        ) { pad ->
-            Column(
-                Modifier
-                    .padding(pad)
-                    .padding(horizontal = 20.dp, vertical = 16.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(24.dp),
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Hosting", style = MaterialTheme.typography.titleMedium,
-                         fontWeight = FontWeight.Bold)
-                    OutlinedTextField(
+        Column(
+            Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("‹", color = Ub.Accent, fontSize = 26.sp,
+                     modifier = Modifier.clickable(onClick = onBack))
+                Spacer(Modifier.width(10.dp))
+                Text("Settings", fontSize = 22.sp, color = Ub.Foreground)
+            }
+
+            Group("Hosting",
+                  "The name other players see when you host. Defaults to \"Host\" if left blank.") {
+                Row(
+                    Modifier.fillMaxWidth().ubCard().padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Host name", fontSize = 15.sp, color = Ub.Foreground)
+                    Spacer(Modifier.weight(1f))
+                    BasicTextField(
                         value = hostName,
-                        onValueChange = {
-                            hostName = it
-                            AppSettings.setHostName(ctx, it)
-                        },
-                        label = { Text("Host name") },
+                        onValueChange = { hostName = it; AppSettings.setHostName(ctx, it) },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Text(
-                        "The name other players see when you host a game. " +
-                            "Defaults to \"Host\" if left blank.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        textStyle = TextStyle(color = Ub.Accent, fontSize = 15.sp, textAlign = TextAlign.End),
+                        cursorBrush = SolidColor(Ub.Accent),
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+                        modifier = Modifier.weight(1f),
+                        decorationBox = { inner ->
+                            Box(contentAlignment = Alignment.CenterEnd) {
+                                if (hostName.isEmpty()) {
+                                    Text("Host", color = Ub.Faint, fontSize = 15.sp,
+                                         modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.End)
+                                }
+                                inner()
+                            }
+                        },
                     )
                 }
+            }
 
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Developer", style = MaterialTheme.typography.titleMedium,
-                         fontWeight = FontWeight.Bold)
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                    ) {
-                        Text("Diagnostics", Modifier.weight(1f),
-                             style = MaterialTheme.typography.bodyLarge)
-                        Switch(
-                            checked = diagnostics,
-                            onCheckedChange = {
-                                diagnostics = it
-                                AppSettings.setDiagnostics(ctx, it)
-                            },
-                        )
-                    }
-                    Text(
-                        "Shows the host connection log on the hosting screen. " +
-                            "Useful for debugging join issues.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+            Group("Developer",
+                  "Shows the host connection log on the hosting screen. Useful for debugging join issues.") {
+                Row(
+                    Modifier.fillMaxWidth().ubCard().padding(horizontal = 16.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Diagnostics", Modifier.weight(1f), fontSize = 15.sp, color = Ub.Foreground)
+                    Switch(
+                        checked = diagnostics,
+                        onCheckedChange = { diagnostics = it; AppSettings.setDiagnostics(ctx, it) },
                     )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun Group(title: String, footer: String, content: @Composable () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        MonoLabel(title)
+        content()
+        Text(footer, fontSize = 12.sp, color = Ub.Muted)
     }
 }

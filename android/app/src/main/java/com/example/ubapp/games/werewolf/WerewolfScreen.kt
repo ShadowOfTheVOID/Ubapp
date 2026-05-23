@@ -9,7 +9,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.ubapp.theme.LobbyHeader
+import com.example.ubapp.theme.LobbyPlayerRow
+import com.example.ubapp.theme.MonoLabel
+import com.example.ubapp.theme.Ub
+import com.example.ubapp.theme.UbPrimaryButton
 import com.example.ubapp.theme.UbappTheme
+import com.example.ubapp.theme.ubCard
 import com.example.ubapp.join.GuestContext
 import com.example.ubapp.shared.HostingChrome
 import com.example.ubapp.settings.AppSettings
@@ -46,34 +53,34 @@ fun WerewolfScreen() {
         Column(
             Modifier
                 .verticalScroll(rememberScrollState())
-                .widthIn(max = 480.dp)
+                .statusBarsPadding()
+                .widthIn(max = 520.dp)
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            LobbyHeader("Werewolf")
             HostingChrome(
                 joinUrl = joinUrl,
                 onStart = { joinUrl = server.start() },
                 onStop = { server.stop(); joinUrl = null },
             )
-            Text("Lobby", style = MaterialTheme.typography.titleMedium)
             TutorialVoteCard(
                 state = e.tutorialVote.snapshot(), tutorial = GameTutorials.werewolf,
                 onCall = server::hostCallTutorialVote, onVote = server::hostTutorialVote,
                 onDismiss = server::hostDismissTutorial,
             )
-            ElevatedCard(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("Players (${e.players.size})", style = MaterialTheme.typography.titleSmall)
-                    for (p in e.players.values.sortedBy { it.id }) {
-                        Text(p.name + if (p.isHost) " (host)" else "")
-                    }
-                }
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                MonoLabel("Players · ${e.players.size}")
+                for (p in e.players.values.sortedBy { it.id }) LobbyPlayerRow(p.name, p.isHost)
             }
             WerewolfOptionsCard(e, server)
-            Button(onClick = { server.hostStart() }, enabled = e.canStart) {
-                Text(if (e.canStart) "Start round" else "Need 5+ players")
+            if (e.canStart) {
+                UbPrimaryButton("Start round · ${e.players.size} players",
+                                onClick = { server.hostStart() })
+            } else {
+                Text("Need at least 5 players to start.", fontSize = 13.sp, color = Ub.Muted)
             }
         }
         }
@@ -81,10 +88,9 @@ fun WerewolfScreen() {
         Column(Modifier.fillMaxSize()) {
             Box(Modifier.weight(1f)) { WerewolfGuestScreen(loopCtx) }
             if (e.phase == WerewolfPhase.DAY_REVEAL) {
-                Button(
-                    onClick = { server.advanceFromReveal() },
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                ) { Text("Continue to day vote") }
+                UbPrimaryButton("Continue to day vote",
+                                modifier = Modifier.fillMaxWidth().padding(20.dp),
+                                onClick = { server.advanceFromReveal() })
             }
         }
     }
@@ -97,9 +103,10 @@ private fun WerewolfOptionsCard(engine: WerewolfEngine, server: WerewolfServer) 
     val maxCount = engine.maxWolfCount
     val current = engine.options.wolfCount
         ?: (engine.players.size / 5).coerceIn(1, maxOf(1, engine.players.size - 3))
-    ElevatedCard(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Options", style = MaterialTheme.typography.titleSmall)
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        MonoLabel("Options")
+        Column(Modifier.fillMaxWidth().ubCard().padding(14.dp),
+               verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Switch(checked = auto, onCheckedChange = { on ->
                     server.hostSetOptions(engine.options.copy(

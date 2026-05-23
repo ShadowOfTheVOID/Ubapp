@@ -15,10 +15,20 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.ubapp.theme.Avatar
+import com.example.ubapp.theme.LobbyPlayerRow
+import com.example.ubapp.theme.MonoLabel
+import com.example.ubapp.theme.Ub
+import com.example.ubapp.theme.UbPrimaryButton
+import com.example.ubapp.theme.UbSecondaryButton
 import com.example.ubapp.theme.UbappTheme
+import com.example.ubapp.theme.ubCard
 import com.example.ubapp.join.GuestContext
 import com.example.ubapp.join.GuestSeriesState
 import com.example.ubapp.join.GuestTutorialContent
@@ -41,38 +51,62 @@ fun PresidentGuestScreen(ctx: GuestContext) {
     @Suppress("UNUSED_EXPRESSION") tick
 
     UbappTheme {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
             Column(
                 Modifier
                     .verticalScroll(rememberScrollState())
-                    .widthIn(max = 480.dp)
+                    .statusBarsPadding()
+                    .widthIn(max = 520.dp)
                     .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                    .padding(20.dp),
+                horizontalAlignment = Alignment.Start,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Text("Playing as ${ctx.yourName}", style = MaterialTheme.typography.bodySmall)
                 SeriesBannerCard(s.series)
                 when (s.phase) {
                     "lobby" -> {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            MonoLabel("President · lobby", color = Ub.Accent)
+                            Text("Waiting for the deal", fontSize = 26.sp, fontWeight = FontWeight.ExtraBold,
+                                 letterSpacing = (-0.8).sp, color = Ub.Foreground)
+                            Text("Playing as ${ctx.yourName}", fontSize = 13.sp, color = Ub.Muted)
+                        }
                         TutorialGuestCard(s.tutorialState, s.tutorialContent, s.myTutorialVote,
                             onCall = { ctx.client.send(JSONObject().put("type", "call_tutorial_vote")) },
                             onVote = { yes -> s.myTutorialVote = yes
                                 ctx.client.send(JSONObject().put("type", "tutorial_vote").put("yes", yes)) })
-                        Text("Players (${s.players.size})", style = MaterialTheme.typography.titleSmall)
-                        for (p in s.players) Text(p.name + if (p.isHost) " (host)" else "")
+                        MonoLabel("In the room · ${s.players.size}")
+                        for (p in s.players) LobbyPlayerRow(p.name, p.isHost)
                     }
                     "swapping" -> SwapPhase(s, ctx, selected)
                     "gameOver" -> {
                         val sorted = s.players.sortedBy { if (it.finishOrder == 0) Int.MAX_VALUE else it.finishOrder }
-                        Text("Round over", style = MaterialTheme.typography.headlineSmall)
-                        for (p in sorted) Row(Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("${if (p.finishOrder == 0) "?" else p.finishOrder.toString()}. ${p.name}")
-                            Text(rankLabel(p.rank), color = Color(0xFFFACC15))
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            MonoLabel("Round over", color = Ub.Accent)
+                            Text("Final tiers", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold,
+                                 letterSpacing = (-0.8).sp, color = Ub.Foreground)
                         }
-                        Text("Waiting for the host to start the next round…",
-                             style = MaterialTheme.typography.bodySmall)
+                        for (p in sorted) {
+                            val isPres = p.rank == "president"
+                            Row(Modifier.fillMaxWidth().ubCard(radius = Ub.Radius.row)
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically) {
+                                Text(if (p.finishOrder == 0) "?" else p.finishOrder.toString(),
+                                     fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Ub.Faint)
+                                Spacer(Modifier.width(10.dp))
+                                Avatar(p.name, host = p.isHost, size = 30.dp)
+                                Spacer(Modifier.width(12.dp))
+                                Text(p.name, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Ub.Foreground)
+                                Spacer(Modifier.weight(1f))
+                                Box(Modifier.clip(RoundedCornerShape(50))
+                                    .background(if (isPres) Ub.Accent else Color.White.copy(alpha = 0.06f))
+                                    .padding(horizontal = 10.dp, vertical = 5.dp)) {
+                                    Text(rankLabel(p.rank), fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                                         color = if (isPres) Ub.OnAccent else Ub.Muted)
+                                }
+                            }
+                        }
+                        Text("Waiting for the host to start the next round…", fontSize = 12.sp, color = Ub.Muted)
                     }
                     else -> TablePhase(s, ctx, selected)
                 }
@@ -84,54 +118,63 @@ fun PresidentGuestScreen(ctx: GuestContext) {
 @Composable
 private fun TablePhase(s: PresidentGuestState, ctx: GuestContext, selected: SnapshotStateListOfString) {
     val isMyTurn = s.currentId == ctx.yourId
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        MonoLabel("President · round ${s.roundNumber}", color = Ub.Accent)
+        Text(if (isMyTurn) "Your turn"
+             else "${s.players.firstOrNull { it.id == s.currentId }?.name ?: ""}'s turn",
+             fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.8).sp,
+             color = if (isMyTurn) Ub.Accent else Ub.Foreground)
+        Text(if (s.trick == null) (if (isMyTurn) "Your lead — play anything." else "Awaiting the lead.")
+             else "Beat the open trick or pass.", fontSize = 13.sp, color = Ub.Muted)
+    }
     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         for (p in s.players) {
             val isCurrent = s.currentId == p.id
-            val passed = s.passed.contains(p.id)
-            Column(Modifier
-                .background(
-                    if (isCurrent) MaterialTheme.colorScheme.primary else Color(0xFF373D45),
-                    RoundedCornerShape(8.dp))
-                .padding(8.dp)) {
-                Text(p.name + if (p.id == ctx.yourId) " (you)" else "",
-                     style = MaterialTheme.typography.labelMedium,
-                     color = if (isCurrent) Color.White else Color(0xFFE6EDF3))
-                Text("${p.handCount} cards",
-                     style = MaterialTheme.typography.labelSmall,
-                     color = if (isCurrent) Color.White else Color(0xFFA0A8B0))
-                if (p.finished) Text(rankLabel(p.rank),
-                                     style = MaterialTheme.typography.labelSmall,
-                                     color = Color(0xFFFACC15))
-                else if (passed) Text("passed",
-                                      style = MaterialTheme.typography.labelSmall,
-                                      color = Color(0xFFA0A8B0))
+            Row(Modifier.ubCard(radius = Ub.Radius.button,
+                    fill = if (isCurrent) Ub.AccentSoft else Ub.Surface,
+                    stroke = if (isCurrent) Ub.AccentLine else Ub.Line)
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Avatar(p.name, host = p.isHost, size = 26.dp)
+                Spacer(Modifier.width(8.dp))
+                Column {
+                    Text(p.name, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Ub.Foreground)
+                    when {
+                        p.finished -> MonoLabel(rankLabel(p.rank), size = 9, color = Ub.Accent)
+                        s.passed.contains(p.id) -> MonoLabel("passed", size = 9, color = Ub.Faint)
+                        else -> MonoLabel("${p.handCount} cards", size = 9, color = Ub.Faint)
+                    }
+                }
             }
         }
     }
-    ElevatedCard(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp),
-               horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Round ${s.roundNumber}", style = MaterialTheme.typography.bodySmall)
-            val t = s.trick
-            if (t != null) {
-                Text("Open trick: ${t.kind}${if (t.length > 0) " (${t.length})" else ""}",
-                     style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                Text("Must beat power ${t.topPower}", style = MaterialTheme.typography.bodySmall)
-            } else {
-                Text(if (isMyTurn) "Your lead — play anything" else "Awaiting lead",
-                     style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-            }
-            s.lastPlay?.let { lp ->
-                val pname = s.players.firstOrNull { it.id == lp.playerId }?.name ?: "?"
-                val cards = lp.cards.joinToString(" ") { rankShort(it.rank) + suitGlyph(it.suit) }
-                Text("Last: $pname — $cards", style = MaterialTheme.typography.bodySmall)
-            }
-            if (s.lastEvent.isNotEmpty())
-                Text(s.lastEvent, style = MaterialTheme.typography.bodySmall)
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(Ub.Radius.hero))
+            .background(Brush.radialGradient(
+                listOf(Ub.Accent.copy(alpha = 0.12f), Color.Transparent), radius = 420f))
+            .padding(vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        MonoLabel(if (s.trick == null) "Open lead" else "To beat", size = 10, color = Ub.Accent)
+        val t = s.trick
+        if (t != null) {
+            Text("${t.kind.replaceFirstChar { it.uppercase() }}${if (t.length > 0) " · ${t.length}" else ""}",
+                 fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Ub.Foreground)
+            MonoLabel("Beat power ${t.topPower}", size = 9)
+        } else {
+            Text(if (isMyTurn) "Play anything" else "Awaiting lead",
+                 fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Ub.Foreground)
+        }
+        s.lastPlay?.let { lp ->
+            val pname = s.players.firstOrNull { it.id == lp.playerId }?.name ?: "?"
+            val cards = lp.cards.joinToString(" ") { rankShort(it.rank) + suitGlyph(it.suit) }
+            Text("$pname: $cards", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Ub.Muted)
         }
     }
-    Text("Your hand (${s.hand.size})", style = MaterialTheme.typography.titleSmall)
+    if (s.lastEvent.isNotEmpty()) MonoLabel(s.lastEvent, size = 10)
+    MonoLabel("Your hand · ${s.hand.size}")
     LazyVerticalGrid(
         columns = GridCells.Adaptive(70.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -143,71 +186,63 @@ private fun TablePhase(s: PresidentGuestState, ctx: GuestContext, selected: Snap
             val sel = selected.contains(key)
             Box(Modifier
                 .clickable { if (sel) selected.remove(key) else selected.add(key) }
-                .then(if (sel) Modifier.border(3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
+                .then(if (sel) Modifier.border(3.dp, Ub.Accent, RoundedCornerShape(8.dp))
                       else Modifier)) { CardFace(c) }
         }
     }
     if (isMyTurn) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.fillMaxWidth()) {
-            Button(
+            if (s.trick != null) {
+                UbSecondaryButton("Pass", modifier = Modifier.weight(1f),
+                    onClick = { ctx.client.send(JSONObject().put("type", "pass")); selected.clear() })
+            }
+            UbPrimaryButton("Play ${selected.size}", modifier = Modifier.weight(1f),
                 enabled = selected.isNotEmpty(),
                 onClick = {
                     val picked = s.hand.filter { selected.contains("${it.suit}-${it.rank}") }
-                    if (picked.isEmpty()) return@Button
+                    if (picked.isEmpty()) return@UbPrimaryButton
                     val arr = JSONArray()
                     for (c in picked) arr.put(JSONObject().put("suit", c.suit).put("rank", c.rank))
                     ctx.client.send(JSONObject().put("type", "play").put("cards", arr))
                     selected.clear()
-                },
-                modifier = Modifier.weight(1f),
-            ) { Text("Play ${selected.size}") }
-            if (s.trick != null) {
-                OutlinedButton(
-                    onClick = { ctx.client.send(JSONObject().put("type", "pass")); selected.clear() },
-                    modifier = Modifier.weight(1f),
-                ) { Text("Pass") }
-            }
+                })
         }
     }
 }
 
 @Composable
 private fun SwapPhase(s: PresidentGuestState, ctx: GuestContext, selected: SnapshotStateListOfString) {
+    MonoLabel("Round ${s.roundNumber} · swap", color = Ub.Accent)
     if (s.swapPrompts.isEmpty()) {
-        Text("Waiting for others to swap cards…", style = MaterialTheme.typography.bodyMedium)
+        Text("Waiting for others to swap cards…", fontSize = 13.sp, color = Ub.Muted)
         return
     }
     for (p in s.swapPrompts) {
-        ElevatedCard(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (p.giverChooses) {
-                    Text("Give ${p.count} card${if (p.count == 1) "" else "s"} to ${p.toName}",
-                         style = MaterialTheme.typography.titleSmall)
-                    Text("Pick ${p.count} below, then tap Send.", style = MaterialTheme.typography.bodySmall)
-                    Button(
-                        enabled = selected.size == p.count,
-                        onClick = {
-                            val picked = s.hand.filter { selected.contains("${it.suit}-${it.rank}") }
-                            val arr = JSONArray()
-                            for (c in picked) arr.put(JSONObject().put("suit", c.suit).put("rank", c.rank))
-                            ctx.client.send(JSONObject().put("type", "swap").put("cards", arr))
-                            selected.clear()
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text("Send ${selected.size}/${p.count} → ${p.toName}") }
-                } else {
-                    Text("Auto-send your top ${p.count} card${if (p.count == 1) "" else "s"} to ${p.toName}.",
-                         style = MaterialTheme.typography.titleSmall)
-                    Button(
-                        onClick = { ctx.client.send(JSONObject().put("type", "swap").put("cards", JSONArray())) },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text("Send best ${p.count} → ${p.toName}") }
-                }
+        Column(Modifier.fillMaxWidth().ubCard(radius = Ub.Radius.panel).padding(16.dp),
+               verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (p.giverChooses) {
+                Text("Give ${p.count} card${if (p.count == 1) "" else "s"} of your choice to ${p.toName}",
+                     fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Ub.Foreground)
+                Text("Pick ${p.count} below, then send.", fontSize = 12.sp, color = Ub.Muted)
+                UbPrimaryButton("Send ${selected.size}/${p.count} → ${p.toName}",
+                    enabled = selected.size == p.count,
+                    onClick = {
+                        val picked = s.hand.filter { selected.contains("${it.suit}-${it.rank}") }
+                        val arr = JSONArray()
+                        for (c in picked) arr.put(JSONObject().put("suit", c.suit).put("rank", c.rank))
+                        ctx.client.send(JSONObject().put("type", "swap").put("cards", arr))
+                        selected.clear()
+                    })
+            } else {
+                Text("Auto-sending your top ${p.count} card${if (p.count == 1) "" else "s"} to ${p.toName}",
+                     fontSize = 14.sp, color = Ub.Foreground)
+                UbPrimaryButton("Send best ${p.count} → ${p.toName}",
+                    onClick = { ctx.client.send(JSONObject().put("type", "swap").put("cards", JSONArray())) })
             }
         }
     }
-    Text("Your hand (${s.hand.size})", style = MaterialTheme.typography.titleSmall)
+    MonoLabel("Your hand · ${s.hand.size}")
     LazyVerticalGrid(
         columns = GridCells.Adaptive(70.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -219,7 +254,7 @@ private fun SwapPhase(s: PresidentGuestState, ctx: GuestContext, selected: Snaps
             val sel = selected.contains(key)
             Box(Modifier
                 .clickable { if (sel) selected.remove(key) else selected.add(key) }
-                .then(if (sel) Modifier.border(3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
+                .then(if (sel) Modifier.border(3.dp, Ub.Accent, RoundedCornerShape(8.dp))
                       else Modifier)) { CardFace(c) }
         }
     }

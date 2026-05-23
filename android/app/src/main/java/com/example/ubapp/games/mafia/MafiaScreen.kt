@@ -8,8 +8,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.ubapp.theme.Avatar
+import com.example.ubapp.theme.MonoLabel
+import com.example.ubapp.theme.Ub
+import com.example.ubapp.theme.UbPrimaryButton
 import com.example.ubapp.theme.UbappTheme
+import com.example.ubapp.theme.ubCard
 import com.example.ubapp.join.GuestContext
 import com.example.ubapp.shared.HostingChrome
 import com.example.ubapp.settings.AppSettings
@@ -47,18 +54,24 @@ fun MafiaScreen() {
         Column(
             Modifier
                 .verticalScroll(rememberScrollState())
-                .widthIn(max = 480.dp)
+                .statusBarsPadding()
+                .widthIn(max = 520.dp)
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally,
+                   verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                MonoLabel("Hosting · Mafia", color = Ub.Accent)
+                Text("Waiting for players", fontSize = 24.sp,
+                     fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.6).sp, color = Ub.Foreground)
+            }
             HostingChrome(
                 joinUrl = joinUrl,
                 onStart = { joinUrl = server.start() },
                 onStop = { server.stop(); joinUrl = null },
             )
-            Text("Lobby", style = MaterialTheme.typography.titleMedium)
             TutorialVoteCard(
                 state = engine.tutorialVote.snapshot(),
                 tutorial = GameTutorials.mafia,
@@ -66,18 +79,26 @@ fun MafiaScreen() {
                 onVote = server::hostTutorialVote,
                 onDismiss = server::hostDismissTutorial,
             )
-            ElevatedCard(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("Players (${engine.players.size})",
-                         style = MaterialTheme.typography.titleSmall)
-                    for (p in engine.players.values.sortedBy { it.id }) {
-                        Text(p.name + if (p.isHost) " (host)" else "")
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                MonoLabel("Players · ${engine.players.size}")
+                for (p in engine.players.values.sortedBy { it.id }) {
+                    Row(Modifier.fillMaxWidth().ubCard(radius = Ub.Radius.row)
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Avatar(p.name, host = p.isHost, size = 30.dp)
+                        Spacer(Modifier.width(12.dp))
+                        Text(p.name, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Ub.Foreground)
+                        Spacer(Modifier.weight(1f))
+                        if (p.isHost) MonoLabel("host", size = 9, color = Ub.Faint)
                     }
                 }
             }
             MafiaOptionsCard(engine, server)
-            Button(onClick = { server.hostStart() }, enabled = engine.canStart) {
-                Text(if (engine.canStart) "Start round" else "Need 4+ players")
+            if (engine.canStart) {
+                UbPrimaryButton("Start round · ${engine.players.size} players",
+                                onClick = { server.hostStart() })
+            } else {
+                Text("Need at least 4 players to start.", fontSize = 13.sp, color = Ub.Muted)
             }
         }
         }
@@ -85,10 +106,9 @@ fun MafiaScreen() {
         Column(Modifier.fillMaxSize()) {
             Box(Modifier.weight(1f)) { MafiaGuestScreen(loopCtx) }
             if (engine.phase == MafiaPhase.DAY_REVEAL) {
-                Button(
-                    onClick = { server.advanceFromReveal() },
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                ) { Text("Continue to day vote") }
+                UbPrimaryButton("Continue to day vote",
+                                modifier = Modifier.fillMaxWidth().padding(20.dp),
+                                onClick = { server.advanceFromReveal() })
             }
         }
     }
@@ -101,9 +121,10 @@ private fun MafiaOptionsCard(engine: MafiaEngine, server: MafiaServer) {
     val maxCount = engine.maxMafiaCount
     val current = engine.options.mafiaCount
         ?: (engine.players.size / 4).coerceIn(1, maxOf(1, engine.players.size - 2))
-    ElevatedCard(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Options", style = MaterialTheme.typography.titleSmall)
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        MonoLabel("Options")
+        Column(Modifier.fillMaxWidth().ubCard().padding(14.dp),
+               verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Switch(checked = auto, onCheckedChange = { on ->
                     server.hostSetOptions(engine.options.copy(

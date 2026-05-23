@@ -20,7 +20,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.ubapp.theme.Avatar
+import com.example.ubapp.theme.MonoLabel
+import com.example.ubapp.theme.Ub
+import com.example.ubapp.theme.UbPrimaryButton
 import com.example.ubapp.theme.UbappTheme
+import com.example.ubapp.theme.ubCard
 import com.example.ubapp.join.GuestContext
 import com.example.ubapp.shared.HostingChrome
 import com.example.ubapp.settings.AppSettings
@@ -57,34 +63,49 @@ fun CrazyEightsScreen() {
         Column(
             Modifier
                 .verticalScroll(rememberScrollState())
-                .widthIn(max = 480.dp)
+                .statusBarsPadding()
+                .widthIn(max = 520.dp)
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally,
+                   verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                MonoLabel("Hosting · Crazy 8s", color = Ub.Accent)
+                Text("Waiting for players", fontSize = 24.sp,
+                     fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.6).sp, color = Ub.Foreground)
+            }
             HostingChrome(
                 joinUrl = joinUrl,
                 onStart = { joinUrl = server.start() },
                 onStop = { server.stop(); joinUrl = null },
             )
-            Text("Lobby", style = MaterialTheme.typography.titleMedium)
             TutorialVoteCard(
                 state = e.tutorialVote.snapshot(), tutorial = GameTutorials.crazyEights,
                 onCall = server::hostCallTutorialVote, onVote = server::hostTutorialVote,
                 onDismiss = server::hostDismissTutorial,
             )
-            ElevatedCard(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("Players (${e.players.size})", style = MaterialTheme.typography.titleSmall)
-                    for (p in e.players.values.sortedBy { it.id }) {
-                        Text(p.name + if (p.isHost) " (host)" else "")
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                MonoLabel("Players · ${e.players.size}")
+                for (p in e.players.values.sortedBy { it.id }) {
+                    Row(Modifier.fillMaxWidth().ubCard(radius = Ub.Radius.row)
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Avatar(p.name, host = p.isHost, size = 30.dp)
+                        Spacer(Modifier.width(12.dp))
+                        Text(p.name, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Ub.Foreground)
+                        Spacer(Modifier.weight(1f))
+                        if (p.isHost) MonoLabel("host", size = 9, color = Ub.Faint)
                     }
                 }
             }
             CrazyEightsOptionsCard(e, server)
-            Button(onClick = { server.hostStart() }, enabled = e.canStart) {
-                Text(if (e.canStart) "Start round" else "Need 2–8 players")
+            if (e.canStart) {
+                UbPrimaryButton("Start round · ${e.players.size} players",
+                                onClick = { server.hostStart() })
+            } else {
+                Text("Need 2–8 players to start.", fontSize = 13.sp, color = Ub.Muted)
             }
         }
         }
@@ -92,8 +113,9 @@ fun CrazyEightsScreen() {
         Column(Modifier.fillMaxSize()) {
             Box(Modifier.weight(1f)) { CrazyEightsGuestScreen(loopCtx) }
             if (e.phase == CrazyEightsPhase.GAME_OVER) {
-                Button(onClick = { server.hostNewGame() },
-                       modifier = Modifier.fillMaxWidth().padding(16.dp)) { Text("New game") }
+                UbPrimaryButton("Rematch · same room",
+                                modifier = Modifier.fillMaxWidth().padding(20.dp),
+                                onClick = { server.hostNewGame() })
             }
         }
     }
@@ -105,9 +127,10 @@ private fun CrazyEightsOptionsCard(engine: CrazyEightsEngine, server: CrazyEight
     val custom = engine.options.startingHandSize != null
     val current = engine.options.startingHandSize
         ?: if (engine.players.size == 2) 7 else 5
-    ElevatedCard(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Options", style = MaterialTheme.typography.titleSmall)
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        MonoLabel("Options")
+        Column(Modifier.fillMaxWidth().ubCard().padding(14.dp),
+               verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Switch(checked = custom, onCheckedChange = { on ->
                     server.hostSetOptions(engine.options.copy(

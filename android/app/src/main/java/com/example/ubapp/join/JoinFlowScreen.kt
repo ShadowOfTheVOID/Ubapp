@@ -4,14 +4,26 @@ import android.app.Activity
 import android.view.WindowManager
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.ubapp.theme.MonoLabel
+import com.example.ubapp.theme.Ub
+import com.example.ubapp.theme.UbPrimaryButton
+import com.example.ubapp.theme.UbSecondaryButton
+import com.example.ubapp.theme.ubCard
 import com.example.ubapp.games.bluffmarket.BluffMarketGuestScreen
 import com.example.ubapp.games.cheat.CheatGuestScreen
 import com.example.ubapp.games.codenames.CodenamesGuestScreen
@@ -78,29 +90,62 @@ fun JoinFlowScreen() {
 
     UbappTheme {
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(20.dp),
     ) {
-        Text("Join a game", style = MaterialTheme.typography.headlineSmall)
         if (client == null) {
-            OutlinedTextField(
-                value = name, onValueChange = { name = it },
-                label = { Text("Your name") },
-                singleLine = true, modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
-            )
-            OutlinedTextField(
-                value = rawCode, onValueChange = { rawCode = it },
-                label = { Text("Join code or IP") },
-                placeholder = { Text("ABCD-EFG") },
-                singleLine = true, modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
-            )
-            Text("Ask the host for the code shown on their screen, or type the IP shown under the QR.",
-                 style = MaterialTheme.typography.bodySmall)
-            if (status.isNotEmpty()) Text(status, color = MaterialTheme.colorScheme.error,
-                                          style = MaterialTheme.typography.bodySmall)
-            Button(
+            MonoLabel("Join", color = Ub.Accent)
+            Spacer(Modifier.height(6.dp))
+            Text("Enter the app code", fontSize = 30.sp, fontWeight = FontWeight.ExtraBold,
+                 letterSpacing = (-0.9).sp, color = Ub.Foreground)
+            Spacer(Modifier.height(6.dp))
+            Text("The host's phone is showing it. Letters and numbers.",
+                 fontSize = 13.sp, color = Ub.Muted)
+            Spacer(Modifier.height(28.dp))
+
+            MonoLabel("Your name")
+            Spacer(Modifier.height(8.dp))
+            FieldCard {
+                BasicTextField(
+                    value = name, onValueChange = { name = it }, singleLine = true,
+                    textStyle = TextStyle(color = Ub.Foreground, fontSize = 16.sp),
+                    cursorBrush = SolidColor(Ub.Accent),
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+                    modifier = Modifier.fillMaxWidth(),
+                    decorationBox = { inner ->
+                        if (name.isEmpty()) Text("Display name", color = Ub.Faint, fontSize = 16.sp)
+                        inner()
+                    },
+                )
+            }
+            Spacer(Modifier.height(16.dp))
+
+            MonoLabel("App code")
+            Spacer(Modifier.height(8.dp))
+            FieldCard {
+                BasicTextField(
+                    value = rawCode, onValueChange = { rawCode = it }, singleLine = true,
+                    textStyle = TextStyle(color = Ub.Foreground, fontSize = 22.sp,
+                                          fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold,
+                                          letterSpacing = 4.sp),
+                    cursorBrush = SolidColor(Ub.Accent),
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
+                    modifier = Modifier.fillMaxWidth(),
+                    decorationBox = { inner ->
+                        if (rawCode.isEmpty()) Text("ABCD-EFG", color = Ub.Faint, fontSize = 22.sp,
+                                                    fontFamily = FontFamily.Monospace, letterSpacing = 4.sp)
+                        inner()
+                    },
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Text("Or paste the IP shown under the host's QR.", fontSize = 12.sp, color = Ub.Muted)
+            if (status.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                Text(status, color = Ub.Accent, fontSize = 13.sp)
+            }
+            Spacer(Modifier.height(24.dp))
+            UbPrimaryButton(
+                "Connect",
                 enabled = name.isNotBlank() && rawCode.isNotBlank(),
                 onClick = {
                     val ip = JoinCode.decode(rawCode.trim())
@@ -160,18 +205,31 @@ fun JoinFlowScreen() {
                     status = ""
                     client = gc
                 },
-            ) { Text("Connect") }
+            )
         } else {
-            CircularProgressIndicator()
-            Text("Connecting…", style = MaterialTheme.typography.bodyMedium)
-            if (status.isNotEmpty()) Text(status, color = MaterialTheme.colorScheme.error,
-                                          style = MaterialTheme.typography.bodySmall)
-            OutlinedButton(onClick = {
+            Spacer(Modifier.height(40.dp))
+            Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                CircularProgressIndicator(color = Ub.Accent, strokeWidth = 2.dp,
+                                          modifier = Modifier.size(20.dp))
+                Text("Connecting…", fontSize = 15.sp, color = Ub.Muted)
+            }
+            if (status.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                Text(status, color = Ub.Accent, fontSize = 13.sp)
+            }
+            Spacer(Modifier.height(20.dp))
+            UbSecondaryButton("Cancel", onClick = {
                 client?.close(); client = null
                 welcomedGame = null; yourId = null; yourName = null
                 queued.clear(); status = ""
-            }) { Text("Cancel") }
+            })
         }
     }
     }
+}
+
+@Composable
+private fun FieldCard(content: @Composable () -> Unit) {
+    Box(Modifier.fillMaxWidth().ubCard(radius = Ub.Radius.button).padding(16.dp)) { content() }
 }

@@ -1,19 +1,19 @@
 package com.example.ubapp.menu
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -34,79 +34,92 @@ import com.example.ubapp.join.JoinFlowScreen
 import com.example.ubapp.settings.SettingsScreen
 import com.example.ubapp.social.SocialScreen
 import com.example.ubapp.stats.StatBoardScreen
+import com.example.ubapp.theme.GameGlyph
+import com.example.ubapp.theme.GameGlyphView
+import com.example.ubapp.theme.MonoLabel
+import com.example.ubapp.theme.PipMark
+import com.example.ubapp.theme.Ub
 import com.example.ubapp.theme.UbappTheme
+import com.example.ubapp.theme.Wordmark
+import com.example.ubapp.theme.ubAccentCard
+import com.example.ubapp.theme.ubCard
 
-private data class MenuItem(val route: String, val title: String, val subtitle: String)
-private data class MenuGroup(val title: String, val subtitle: String?, val items: List<MenuItem>)
+private data class MenuItem(
+    val route: String,
+    val title: String,
+    val subtitle: String,
+    val players: String,
+    val minutes: String?,
+    val glyph: GameGlyph,
+)
+private data class MenuGroup(val title: String, val trailing: String?, val items: List<MenuItem>)
 
 private val groups = listOf(
     MenuGroup(
-        "Party games",
-        "Pass the QR — guests play in their browser.",
+        "Host a game", "15 in library",
         listOf(
-            MenuItem("mafia", "Mafia", "Hidden roles, find the killer in the dark."),
-            MenuItem("werewolf", "Werewolf", "Moonlight whodunit with a hunter twist."),
-            MenuItem("imposter", "Imposter", "Bluff your way through a secret word."),
-            MenuItem("codenames", "Codenames", "Word association duel for two teams."),
-            MenuItem("crazy_eights", "Crazy Eights", "Race to empty your hand."),
-            MenuItem("cheat", "Cheat", "Bluff your way out by claiming the right rank — or call BS."),
-            MenuItem("president", "President", "Shed your hand, win social status, swap cards next round."),
-            MenuItem("bluff_market", "Bluff Market", "Trade face-down cards. Avoid the Bomb."),
-            MenuItem("secret_hitler", "Secret Hitler", "Politics, lies, and hidden roles."),
+            MenuItem("crazy_eights", "Crazy 8s", "Match suit or rank — eights are wild.",
+                     "2–7", "8–15 min", GameGlyph.Crazy8s),
+            MenuItem("cheat", "Cheat", "Claim what you played; get called and take the pile.",
+                     "3–8", "10–20 min", GameGlyph.Cheat),
+            MenuItem("president", "President", "Shed your hand to climb from Scum to President.",
+                     "4–7", "15–30 min", GameGlyph.President),
+            MenuItem("bluff_market", "Bluff Market", "Trade face-down. One bomb is worth −25.",
+                     "3–6", "6–12 min", GameGlyph.BluffMarket),
+            MenuItem("mafia", "Mafia", "Mafia kill by night; the town hangs by day.",
+                     "5–12", "15–30 min", GameGlyph.Mafia),
+            MenuItem("werewolf", "Werewolf", "Seer, Doctor, Hunter. Day vote, night kills.",
+                     "5–14", "20–40 min", GameGlyph.Werewolf),
+            MenuItem("imposter", "Imposter", "Everyone shares a word — except one.",
+                     "4–10", "5–10 min", GameGlyph.Imposter),
+            MenuItem("codenames", "Codenames", "Word-association duel for two teams.",
+                     "4+", null, GameGlyph.Letter("C")),
+            MenuItem("secret_hitler", "Secret Hitler", "Politics, lies, and hidden roles.",
+                     "5–10", null, GameGlyph.Letter("S")),
         ),
     ),
     MenuGroup(
-        "On the move",
-        "Get up, walk around, use your phone's radios.",
+        "On the move", null,
         listOf(
-            MenuItem("tag", "Tag", "BLE proximity tag in the room."),
-            MenuItem("realtime", "Real-time", "Sandbox realtime networking demo."),
+            MenuItem("tag", "Tag", "BLE proximity tag in the room.", "2+", null, GameGlyph.Letter("T")),
+            MenuItem("realtime", "Real-time", "Sandbox realtime networking demo.", "2+", null, GameGlyph.Letter("R")),
         ),
     ),
     MenuGroup(
-        "Two-player",
-        "Quick turn-based classics for one phone.",
+        "Two-player", null,
         listOf(
-            MenuItem("tictactoe", "Tic-Tac-Toe", "Three in a row."),
-            MenuItem("connect_four", "Connect Four", "Four in a row, drop tokens."),
+            MenuItem("tictactoe", "Tic-Tac-Toe", "Three in a row.", "2", null, GameGlyph.Letter("#")),
+            MenuItem("connect_four", "Connect Four", "Four in a row, drop tokens.", "2", null, GameGlyph.Letter("4")),
         ),
     ),
     MenuGroup(
-        "More",
-        null,
+        "More", null,
         listOf(
-            MenuItem("social", "Social", "Friends, chat, presence demo."),
-            MenuItem("statboard", "Stat board", "Play counts and recent games."),
+            MenuItem("social", "Social", "Friends, chat, presence demo.", "—", null, GameGlyph.Letter("S")),
+            MenuItem("statboard", "Stat board", "Play counts and recent games.", "—", null, GameGlyph.Letter("≡")),
         ),
     ),
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainMenu() {
     val nav = rememberNavController()
     NavHost(navController = nav, startDestination = "menu") {
         composable("menu") {
             UbappTheme {
-                Scaffold(topBar = {
-                    TopAppBar(
-                        title = { Text("Ubapp") },
-                        actions = {
-                            TextButton(onClick = { nav.navigate("settings") }) {
-                                Text("Settings")
-                            }
-                        },
-                    )
-                }) { pad ->
-                    Column(
-                        Modifier
-                            .padding(pad)
-                            .padding(horizontal = 20.dp, vertical = 16.dp)
-                            .verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(24.dp),
-                    ) {
-                        JoinCallout(onClick = { nav.navigate("join") })
-                        for (group in groups) MenuSection(group, onItemClick = { nav.navigate(it.route) })
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                        .statusBarsPadding()
+                        .verticalScroll(rememberScrollState())
+                        .padding(bottom = 40.dp),
+                ) {
+                    Header(onSettings = { nav.navigate("settings") })
+                    JoinCallout(onClick = { nav.navigate("join") })
+                    Spacer(Modifier.height(8.dp))
+                    for (group in groups) {
+                        MenuSection(group, onItemClick = { nav.navigate(it.route) })
+                        Spacer(Modifier.height(24.dp))
                     }
                 }
             }
@@ -131,102 +144,96 @@ fun MainMenu() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun Header(onSettings: () -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(top = 16.dp, bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            PipMark(size = 20.dp)
+            Spacer(Modifier.width(8.dp))
+            Wordmark(size = 17)
+            Spacer(Modifier.weight(1f))
+            Text("⚙", color = Ub.Accent, fontSize = 20.sp,
+                 modifier = Modifier.clickable(onClick = onSettings))
+        }
+        Text("ubapp", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold,
+             letterSpacing = (-1).sp, color = Color_White)
+        Text("Pass the QR — everyone plays in their browser.",
+             fontSize = 13.sp, color = Ub.Muted)
+    }
+}
+
 @Composable
 private fun JoinCallout(onClick: () -> Unit) {
-    val accent = MaterialTheme.colorScheme.primary
-    OutlinedCard(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        border = BorderStroke(1.dp, accent.copy(alpha = 0.5f)),
-        colors = CardDefaults.outlinedCardColors(containerColor = accent.copy(alpha = 0.12f)),
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .ubAccentCard()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            Modifier.fillMaxWidth().padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        Box(
+            Modifier.size(44.dp).clip(RoundedCornerShape(10.dp)).background(Ub.Accent.copy(alpha = 0.22f)),
+            contentAlignment = Alignment.Center,
         ) {
-            Box(
-                Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(accent.copy(alpha = 0.22f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("QR", fontWeight = FontWeight.Bold, color = accent)
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text("Join a game", style = MaterialTheme.typography.titleMedium)
-                Text(
-                    "Scan a QR or type an app code.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                )
-            }
-            Text("›", style = MaterialTheme.typography.titleLarge,
-                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+            PipMark(size = 22.dp, color = Ub.Accent, accentIndex = 3)
         }
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text("Join a game", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color_White)
+            Text("Scan the host's QR or enter a code.", fontSize = 12.sp, color = Ub.Muted)
+        }
+        Text("›", fontSize = 18.sp, color = Ub.Muted)
     }
 }
 
 @Composable
 private fun MenuSection(group: MenuGroup, onItemClick: (MenuItem) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Column {
-            Text(group.title, style = MaterialTheme.typography.titleMedium,
-                 fontWeight = FontWeight.Bold)
-            if (group.subtitle != null) {
-                Text(group.subtitle, style = MaterialTheme.typography.bodySmall,
-                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
-            }
+    Column {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            MonoLabel(group.title)
+            Spacer(Modifier.weight(1f))
+            if (group.trailing != null) MonoLabel(group.trailing, size = 10, color = Ub.Faint)
         }
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             for (item in group.items) GameTile(item, onClick = { onItemClick(item) })
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun GameTile(item: MenuItem, onClick: () -> Unit) {
-    val accent = MaterialTheme.colorScheme.primary
-    OutlinedCard(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
-        colors = CardDefaults.outlinedCardColors(
-            containerColor = Color.White.copy(alpha = 0.04f),
-        ),
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .ubCard()
+            .clickable(onClick = onClick)
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            Modifier.fillMaxWidth().padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(accent.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    item.title.take(1),
-                    color = accent,
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleMedium,
-                )
+        GameGlyphView(item.glyph, size = 56.dp)
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(item.title, fontSize = 17.sp, fontWeight = FontWeight.Bold,
+                 letterSpacing = (-0.3).sp, color = Color_White)
+            Text(item.subtitle, fontSize = 12.sp, color = Ub.Muted, maxLines = 1)
+            Spacer(Modifier.height(4.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                MonoLabel(item.players, size = 9)
+                if (item.minutes != null) MonoLabel(item.minutes, size = 9)
             }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(item.title, style = MaterialTheme.typography.titleMedium)
-                Text(
-                    item.subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                )
-            }
-            Text("›", style = MaterialTheme.typography.titleLarge,
-                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
         }
+        Spacer(Modifier.width(8.dp))
+        Text("›", fontSize = 20.sp, color = Ub.Faint)
     }
 }
+
+private val Color_White = androidx.compose.ui.graphics.Color.White
