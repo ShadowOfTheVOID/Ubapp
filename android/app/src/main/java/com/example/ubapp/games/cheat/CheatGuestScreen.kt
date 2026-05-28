@@ -160,7 +160,7 @@ fun CheatGuestScreen(ctx: GuestContext) {
                                 val loser = s.players.firstOrNull { it.id == reveal.loserId }?.name ?: "?"
                                 MonoLabel(if (reveal.truthful) "Truthful claim" else "Caught cheating!",
                                           color = if (reveal.truthful) Ub.Online else Ub.Accent)
-                                Text("$caller called BS on $accused · ${rankName(reveal.claimedRank)}",
+                                Text("$caller called bluff on $accused · ${rankName(reveal.claimedRank)}",
                                      fontSize = 13.sp, color = Ub.Foreground)
                                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -178,13 +178,13 @@ fun CheatGuestScreen(ctx: GuestContext) {
                                      fontSize = 13.sp, color = Ub.Foreground)
                                 if (ctx.yourId != s.winnerId) {
                                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                        UbSecondaryButton("Call BS", modifier = Modifier.weight(1f),
+                                        UbSecondaryButton("Call bluff", modifier = Modifier.weight(1f),
                                             onClick = { ctx.client.send(JSONObject().put("type", "bs")) })
                                         UbPrimaryButton("Accept win", modifier = Modifier.weight(1f),
                                             onClick = { ctx.client.send(JSONObject().put("type", "accept_win")) })
                                     }
                                 } else {
-                                    Text("Wait for the others to call BS or accept.",
+                                    Text("Wait for the others to call bluff or accept.",
                                          fontSize = 12.sp, color = Ub.Muted)
                                 }
                             }

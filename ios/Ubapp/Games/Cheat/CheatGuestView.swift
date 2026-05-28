@@ -140,7 +140,7 @@ struct CheatGuestView: View {
         VStack(alignment: .leading, spacing: 10) {
             MonoLabel(r.truthful ? "Truthful claim" : "Caught cheating!",
                       color: r.truthful ? UbappTheme.online : UbappTheme.accent)
-            Text("\(caller) called BS on \(accused) · \(rankName(r.claimedRank))")
+            Text("\(caller) called bluff on \(accused) · \(rankName(r.claimedRank))")
                 .font(.system(size: 13)).foregroundStyle(.white)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
@@ -167,13 +167,13 @@ struct CheatGuestView: View {
                 .font(.system(size: 13)).foregroundStyle(.white)
             if ctx.yourId != model.winnerId {
                 HStack(spacing: 10) {
-                    Button("Call BS") { model.send(["type": "bs"]) }
+                    Button("Call bluff") { model.send(["type": "bs"]) }
                         .buttonStyle(UbSecondaryButtonStyle())
                     Button("Accept win") { model.send(["type": "accept_win"]) }
                         .buttonStyle(UbPrimaryButtonStyle())
                 }
             } else {
-                Text("Wait for the others to call BS or accept.")
+                Text("Wait for the others to call bluff or accept.")
                     .font(.system(size: 12)).foregroundStyle(UbappTheme.muted)
             }
         }

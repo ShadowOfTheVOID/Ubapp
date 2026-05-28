@@ -42,9 +42,9 @@ struct CheatOptions: Equatable {
     var descending: Bool = false
 }
 
-/// The currently-open play that any other player can call BS on. Cards
+/// The currently-open play that any other player can call bluff on. Cards
 /// are face-down in the pile but the engine remembers their actual values
-/// so calling BS can resolve correctly.
+/// so calling bluff can resolve correctly.
 struct CheatLastPlay {
     let playerId: String
     let claimedRank: Int
@@ -52,7 +52,7 @@ struct CheatLastPlay {
     var count: Int { actualCards.count }
 }
 
-/// Result of the most recent BS call, surfaced to clients so they can
+/// Result of the most recent bluff call, surfaced to clients so they can
 /// reveal the cards briefly.
 struct CheatReveal {
     let callerId: String
@@ -70,16 +70,16 @@ final class CheatPlayer {
     init(id: String, name: String, isHost: Bool) { self.id = id; self.name = name; self.isHost = isHost }
 }
 
-/// Cheat (a.k.a. BS / I Doubt It).
+/// Cheat (a.k.a. Bluff / I Doubt It).
 ///
 /// Turn cycle:
 ///  * The active player plays one or more cards face-down and claims a
 ///    rank that matches `expectedRank` (or anything if `freeClaim`).
-///  * Anyone except the player who just played can call BS until the
+///  * Anyone except the player who just played can call bluff until the
 ///    next play closes the window.
-///  * Calling BS reveals the cards; the loser picks up everything.
+///  * Calling bluff reveals the cards; the loser picks up everything.
 ///  * Playing your last card enters `pendingWin` — any other player can
-///    still call BS or `acceptWin` to confirm the round.
+///    still call bluff or `acceptWin` to confirm the round.
 final class CheatEngine {
     private var rng: any RandomNumberGenerator
     private(set) var players: [String: CheatPlayer] = [:]
@@ -92,7 +92,7 @@ final class CheatEngine {
     var pile: [CheatCard] = []
     /// Currently open play; nil between plays / at game start.
     var lastPlay: CheatLastPlay?
-    /// The reveal from the most recent BS call, kept until the next play
+    /// The reveal from the most recent bluff call, kept until the next play
     /// so clients can flash it on screen.
     var lastReveal: CheatReveal?
 
@@ -151,7 +151,7 @@ final class CheatEngine {
     /// `claimedRank` (1..13). Returns nil on success, error string otherwise.
     func play(playerId: String, cards: [CheatCard], claimedRank: Int) -> String? {
         guard phase == .playing || phase == .pendingWin else { return "not playing" }
-        guard phase != .pendingWin else { return "round is pending — call BS or accept" }
+        guard phase != .pendingWin else { return "round is pending — call bluff or accept" }
         guard let p = players[playerId] else { return "unknown player" }
         guard p.id == current!.id else { return "not your turn" }
         guard !cards.isEmpty else { return "play at least one card" }
@@ -176,7 +176,7 @@ final class CheatEngine {
         if p.hand.isEmpty {
             phase = .pendingWin
             winnerId = p.id
-            // Do NOT advance turn — round resolves once someone calls BS or accepts.
+            // Do NOT advance turn — round resolves once someone calls bluff or accepts.
             return nil
         }
         advanceTurn()
@@ -184,12 +184,12 @@ final class CheatEngine {
         return nil
     }
 
-    /// `callerId` calls BS on the current `lastPlay`. Returns nil on success.
+    /// `callerId` calls bluff on the current `lastPlay`. Returns nil on success.
     func callBs(callerId: String) -> String? {
         guard phase == .playing || phase == .pendingWin else { return "not playing" }
         guard let lp = lastPlay else { return "nothing to call" }
         guard players[callerId] != nil else { return "unknown caller" }
-        if callerId == lp.playerId { return "can't BS your own play" }
+        if callerId == lp.playerId { return "can't bluff your own play" }
         let truthful = lp.actualCards.allSatisfy { $0.rank == lp.claimedRank }
         let loserId = truthful ? callerId : lp.playerId
         let losingPlayer = players[loserId]!
@@ -206,8 +206,8 @@ final class CheatEngine {
                                  truthful: truthful, loserId: loserId)
         lastPlay = nil
         let outcome = truthful
-            ? "\(callerName) called BS on \(accusedName) — truthful. \(callerName) picks up \(pickup.count)."
-            : "\(callerName) called BS on \(accusedName) — caught! \(accusedName) picks up \(pickup.count)."
+            ? "\(callerName) called bluff on \(accusedName) — truthful. \(callerName) picks up \(pickup.count)."
+            : "\(callerName) called bluff on \(accusedName) — caught! \(accusedName) picks up \(pickup.count)."
         lastEvent = outcome
         if phase == .pendingWin {
             if truthful {
@@ -230,7 +230,7 @@ final class CheatEngine {
     }
 
     /// Used when phase == pendingWin: any non-winner can accept the win,
-    /// closing the BS window and ending the round.
+    /// closing the bluff window and ending the round.
     func acceptWin(playerId: String) -> String? {
         guard phase == .pendingWin else { return "no pending win" }
         guard let wid = winnerId else { return "no winner" }
@@ -241,7 +241,7 @@ final class CheatEngine {
         return nil
     }
 
-    /// Skip the BS window without calling — only matters in `pendingWin`.
+    /// Skip the bluff window without calling — only matters in `pendingWin`.
     /// Returns true if win was confirmed.
     func confirmPendingWin() -> Bool {
         guard phase == .pendingWin else { return false }
