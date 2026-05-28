@@ -33,7 +33,7 @@ data class CheatOptions(
     val descending: Boolean = false,
 )
 
-/** The currently-open play that any non-author can BS-call. */
+/** The currently-open play that any non-author can bluff-call. */
 data class CheatLastPlay(
     val playerId: String,
     val claimedRank: Int,
@@ -42,7 +42,7 @@ data class CheatLastPlay(
     val count: Int get() = actualCards.size
 }
 
-/** Result of the most recent BS call so clients can flash a reveal. */
+/** Result of the most recent bluff call so clients can flash a reveal. */
 data class CheatReveal(
     val callerId: String,
     val accusedId: String,
@@ -57,16 +57,16 @@ class CheatPlayer(val id: String, val name: String, val isHost: Boolean) {
 }
 
 /**
- * Cheat (a.k.a. BS / I Doubt It).
+ * Cheat (a.k.a. Bluff / I Doubt It).
  *
  * Turn cycle:
  *  - The active player plays one or more cards face-down and claims a
  *    rank matching `expectedRank` (or anything if [CheatOptions.freeClaim]).
- *  - Anyone except the player who just played can call BS until the
+ *  - Anyone except the player who just played can call bluff until the
  *    next play closes the window.
- *  - Calling BS reveals the cards; the loser picks up everything.
+ *  - Calling bluff reveals the cards; the loser picks up everything.
  *  - Playing your last card enters [CheatPhase.PENDING_WIN] — any other
- *    player can still call BS or [acceptWin] to confirm.
+ *    player can still call bluff or [acceptWin] to confirm.
  */
 class CheatEngine(private val rng: Random = Random.Default) {
     val tutorialVote = com.example.ubapp.tutorials.TutorialVote()
@@ -81,7 +81,7 @@ class CheatEngine(private val rng: Random = Random.Default) {
     val pile: MutableList<CheatCard> = mutableListOf()
     /** Currently open play; null between plays / at start. */
     var lastPlay: CheatLastPlay? = null
-    /** Reveal from the most recent BS call (kept until the next play). */
+    /** Reveal from the most recent bluff call (kept until the next play). */
     var lastReveal: CheatReveal? = null
 
     /** 1..13. Next rank that must be claimed (unless freeClaim). */
@@ -126,7 +126,7 @@ class CheatEngine(private val rng: Random = Random.Default) {
 
     /** Returns null on success, an error message on failure. */
     fun play(playerId: String, cards: List<CheatCard>, claimedRank: Int): String? {
-        if (phase == CheatPhase.PENDING_WIN) return "round is pending — call BS or accept"
+        if (phase == CheatPhase.PENDING_WIN) return "round is pending — call bluff or accept"
         if (phase != CheatPhase.PLAYING) return "not playing"
         val p = players[playerId] ?: return "unknown player"
         if (p.id != current!!.id) return "not your turn"
@@ -160,7 +160,7 @@ class CheatEngine(private val rng: Random = Random.Default) {
         if (phase != CheatPhase.PLAYING && phase != CheatPhase.PENDING_WIN) return "not playing"
         val lp = lastPlay ?: return "nothing to call"
         if (players[callerId] == null) return "unknown caller"
-        if (callerId == lp.playerId) return "can't BS your own play"
+        if (callerId == lp.playerId) return "can't bluff your own play"
         val truthful = lp.actualCards.all { it.rank == lp.claimedRank }
         val loserId = if (truthful) callerId else lp.playerId
         val loser = players[loserId]!!
@@ -174,9 +174,9 @@ class CheatEngine(private val rng: Random = Random.Default) {
         lastReveal = CheatReveal(callerId, lp.playerId, lp.claimedRank, lp.actualCards, truthful, loserId)
         lastPlay = null
         lastEvent = if (truthful)
-            "$callerName called BS on $accusedName — truthful. $callerName picks up ${pickup.size}."
+            "$callerName called bluff on $accusedName — truthful. $callerName picks up ${pickup.size}."
         else
-            "$callerName called BS on $accusedName — caught! $accusedName picks up ${pickup.size}."
+            "$callerName called bluff on $accusedName — caught! $accusedName picks up ${pickup.size}."
         if (phase == CheatPhase.PENDING_WIN) {
             if (truthful) {
                 phase = CheatPhase.GAME_OVER

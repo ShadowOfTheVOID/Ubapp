@@ -90,7 +90,7 @@ progress; the table below tracks what's done per game.
 | Imposter       | done   | done   | done           | done            | done                |
 | Codenames      | done   | done   | done           | done            | done                |
 | Crazy Eights   | done   | done   | done           | done            | done                |
-| Cheat (BS)     | done   | done   | done           | done            | done                |
+| Cheat (Bluff)     | done   | done   | done           | done            | done                |
 | President      | done   | done   | done           | done            | done                |
 | Bluff Market   | done   | done   | done           | done            | done                |
 | Secret Hitler  | done   | done   | done           | done            | done                |
@@ -135,7 +135,7 @@ tutorial opt-in) helper so adding a new game is mostly engine + adapter.
 | Imposter      | 3   | —   |
 | Codenames     | 4   | —   |
 | Crazy Eights  | 2   | 8   |
-| Cheat (BS)    | 3   | 8   |
+| Cheat (Bluff)    | 3   | 8   |
 | President     | 4   | 7   |
 | Bluff Market  | 3   | 6   |
 | Secret Hitler | 5   | 10  |

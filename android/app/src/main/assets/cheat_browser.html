@@ -288,7 +288,7 @@
     if (state.lastReveal) {
       const r = state.lastReveal;
       const cards = r.cards.map(c => `<div class="card ${suitIsRed(c.suit)?'red':''}" style="width:48px;height:72px"><div class="rank">${rankShort(c.rank)}</div><div class="suit">${suitGlyph(c.suit)}</div></div>`).join('');
-      revealHtml = `<div class="reveal"><h3>${r.truthful ? 'Truthful claim' : 'Caught cheating!'}</h3><p>${esc(nameOf(r.callerId))} called BS on ${esc(nameOf(r.accusedId))} (${rankName(r.claimedRank)}) — ${esc(nameOf(r.loserId))} picks up.</p><div class="strip">${cards}</div></div>`;
+      revealHtml = `<div class="reveal"><h3>${r.truthful ? 'Truthful claim' : 'Caught cheating!'}</h3><p>${esc(nameOf(r.callerId))} called bluff on ${esc(nameOf(r.accusedId))} (${rankName(r.claimedRank)}) — ${esc(nameOf(r.loserId))} picks up.</p><div class="strip">${cards}</div></div>`;
     }
 
     const handHtml = state.hand.map(c => {
@@ -301,15 +301,15 @@
     if (state.phase === 'pendingWin') {
       const w = nameOf(state.winnerId);
       if (state.me.id !== state.winnerId) {
-        pendingHtml = `<div class="panel"><h2>Pending win</h2><p>${esc(w)} claims their last play (${state.lastPlay ? rankName(state.lastPlay.claimedRank) : ''}). Call BS or accept.</p><div class="row"><button class="danger" id="pw-bs">Call BS</button><button class="good" id="pw-acc">Accept win</button></div></div>`;
+        pendingHtml = `<div class="panel"><h2>Pending win</h2><p>${esc(w)} claims their last play (${state.lastPlay ? rankName(state.lastPlay.claimedRank) : ''}). Call bluff or accept.</p><div class="row"><button class="danger" id="pw-bs">Call bluff</button><button class="good" id="pw-acc">Accept win</button></div></div>`;
       } else {
-        pendingHtml = `<div class="panel"><h2>Pending win</h2><p>Waiting for the others to call BS or accept your win.</p></div>`;
+        pendingHtml = `<div class="panel"><h2>Pending win</h2><p>Waiting for the others to call bluff or accept your win.</p></div>`;
       }
     }
 
     let actionsHtml = '';
     const canBs = state.lastPlay && state.lastPlay.playerId !== state.me.id && state.phase === 'playing';
-    if (canBs) actionsHtml += `<button class="danger" id="bs">Call BS</button>`;
+    if (canBs) actionsHtml += `<button class="danger" id="bs">Call bluff</button>`;
     if (isMyTurn && state.phase === 'playing') {
       const count = state.selected.size;
       actionsHtml += `<button id="play" ${count===0?'disabled':''}>Play ${count} × ${rankName(state.expectedRank)}</button>`;

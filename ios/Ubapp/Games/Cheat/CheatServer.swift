@@ -1,6 +1,6 @@
 import Foundation
 
-/// Wraps [HostServer] with Cheat (BS) routing. Mirrors the Crazy Eights
+/// Wraps [HostServer] with Cheat (bluff) routing. Mirrors the Crazy Eights
 /// adapter — host is player id `host`, driven through an in-process
 /// loopback so it plays on the same `CheatGuestView` every guest sees.
 final class CheatServer {

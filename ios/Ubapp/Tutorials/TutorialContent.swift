@@ -120,17 +120,17 @@ enum GameTutorials {
     )
 
     static let cheat = GameTutorial(
-        title: "How to play Cheat (BS)",
+        title: "How to play Cheat (Bluff)",
         sections: [
             TutorialSection(heading: "Deal", body: "All 52 cards are dealt face-down to the table. Some hands may be one card bigger — that's fine."),
             TutorialSection(heading: "Claim a rank", body: "On your turn you must play at least one card face-down and claim a rank — Aces first, then 2s, 3s, all the way to Kings, then back to Aces."),
-            TutorialSection(heading: "Call BS", body: "Any other player can call BS on the last play. The cards flip — if the claim was a lie the cheater picks up the whole pile. If it was honest, the caller picks it up."),
-            TutorialSection(heading: "Winning", body: "Empty your hand and survive the BS window — if no-one calls (or the call fails), you win the round."),
+            TutorialSection(heading: "Call bluff", body: "Any other player can call bluff on the last play. The cards flip — if the claim was a lie the cheater picks up the whole pile. If it was honest, the caller picks it up."),
+            TutorialSection(heading: "Winning", body: "Empty your hand and survive the bluff window — if no-one calls (or the call fails), you win the round."),
         ],
         browserMenuSections: [
             TutorialSection(heading: "Your hand", body: "Tap cards to lift them out of your hand. The button at the bottom tells you what rank you're claiming and how many cards you'll play."),
-            TutorialSection(heading: "Calling BS", body: "When someone else has just played, a red Call BS button appears. Once the next player plays, the window closes — be quick."),
-            TutorialSection(heading: "Pending win", body: "When someone plays their last card, the round pauses with Call BS / Accept buttons. Catch the cheater or confirm the win."),
+            TutorialSection(heading: "Calling bluff", body: "When someone else has just played, a red Call bluff button appears. Once the next player plays, the window closes — be quick."),
+            TutorialSection(heading: "Pending win", body: "When someone plays their last card, the round pauses with Call bluff / Accept buttons. Catch the cheater or confirm the win."),
         ]
     )
 
