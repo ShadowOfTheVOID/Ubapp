@@ -94,7 +94,6 @@ progress; the table below tracks what's done per game.
 | President      | done   | done   | done           | done            | done                |
 | Bluff Market   | done   | done   | done           | done            | done                |
 | Secret Hitler  | done   | done   | done           | done            | done                |
-| The Bureaucrat | done   | done   | done           | done            | done                |
 | Tag (BLE)      | done   | n/a    | n/a            | done            | done                |
 | Tic-Tac-Toe    | done   | n/a    | n/a            | done            | done                |
 | Connect Four   | done   | n/a    | n/a            | done            | done                |
@@ -140,46 +139,5 @@ tutorial opt-in) helper so adding a new game is mostly engine + adapter.
 | President     | 4   | 7   |
 | Bluff Market  | 3   | 6   |
 | Secret Hitler | 5   | 10  |
-| The Bureaucrat| 3   | 10  |
 
 Enforced by `*Engine.canStart`.
-
-## The Bureaucrat's contradiction detector (optional on-device NLI)
-
-The Bureaucrat ships a swappable `ContradictionDetector` (`ProximitySource`-
-style interface). `KeywordContradictionDetector` is the always-on offline
-default and needs no model — the game is fully playable on the rebuttal-timer
-+ keyword path with zero setup.
-
-To upgrade rebuttal judging to a real NLI model, the project targets
-`cross-encoder/nli-MiniLM2-L6-H768` — a MiniLM **distilled from RoBERTa**, so
-it uses RoBERTa byte-level BPE tokenisation and emits three logits in the order
-`[contradiction, entailment, neutral]`.
-
-1. From the model repo's `Files` tab, download two files (no Python needed —
-   the repo ships pre-exported ONNX):
-   - `onnx/model_qint8_arm64.onnx` — int8, ARM64, ~83 MB (right for phones;
-     for x86 simulator/emulator use the arch-neutral `model_O4.onnx` instead)
-   - `tokenizer.json` — the self-contained tokeniser (vocab **and** merges)
-2. Rename to `nli_minilm.onnx` and `nli_tokenizer.json`, then drop **both**
-   into **both** trees (they are intentionally *not* committed — an ~83 MB
-   binary doesn't belong in git):
-   - `android/app/src/main/assets/`
-   - `ios/Ubapp/Resources/`
-3. Android already declares `com.microsoft.onnxruntime:onnxruntime-android`.
-   For iOS, add the `onnxruntime-objc` package — the ONNX call sites in
-   `OnnxContradictionDetector.swift` are gated behind
-   `#if canImport(onnxruntime_objc)`, so the app builds and runs on the
-   keyword fallback until that dependency is present.
-
-`OnnxContradictionDetector` reads `tokenizer.json` with a hand-written
-byte-level BPE tokeniser (matching the Kotlin/Swift implementations), queries
-the model's inputs so `token_type_ids` is only supplied if the export expects
-it, and returns `nil` if anything is missing — so the server silently falls
-back to the keyword detector. Everything is on-device — no network, fully
-offline.
-
-> Note: the BPE tokeniser and ONNX wiring could not be compiled or run in the
-> environment this was built in (no Swift/Kotlin toolchain, model repos
-> blocked). Verify on a real device; the keyword fallback covers you until the
-> model path is confirmed.

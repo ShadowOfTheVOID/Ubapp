@@ -53,11 +53,6 @@ dependencies {
     // Compose permission helpers for the Tag BLE prompts.
     implementation("com.google.accompanist:accompanist-permissions:0.36.0")
 
-    // On-device NLI for The Bureaucrat's contradiction detector. The model
-    // file itself (assets/nli_minilm.onnx) is not committed; OnnxContradiction-
-    // Detector falls back to the keyword detector when the asset is absent.
-    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.19.2")
-
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlin:kotlin-test")
 }

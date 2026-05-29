@@ -194,8 +194,6 @@ private let partyGames: [GameMeta] = [
              players: "4+", glyph: .symbol("square.grid.3x3.fill")) { CodenamesView() },
     GameMeta("secrethitler", "Secret Hitler", "Politics, lies, and hidden roles.",
              players: "5–10", glyph: .symbol("person.crop.rectangle.stack.fill")) { SecretHitlerView() },
-    GameMeta("bureaucrat", "The Bureaucrat", "Deny every request — until a citizen finds the loophole.",
-             players: "3–10", minutes: "10–20 min", glyph: .symbol("doc.text.magnifyingglass")) { BureaucratView() },
 ]
 
 private let proximityGames: [GameMeta] = [
