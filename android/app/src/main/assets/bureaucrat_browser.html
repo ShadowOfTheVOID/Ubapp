@@ -137,6 +137,7 @@
   }
 
   const state = {
+    connected:false,
     me:null, phase:'lobby', players:[],
     roundNumber:0, bureaucratId:null, bureaucratName:'', task:'',
     targetScore:10, scores:{}, tokens:{}, policyLog:[],
@@ -151,6 +152,10 @@
   function send(o){ if (ws.readyState===1) ws.send(JSON.stringify(o)); }
   const isBureaucrat = () => state.me && state.bureaucratId === state.me.id;
   function nameOf(id){ const p = state.players.find(p=>p.id===id); return p ? p.name : id; }
+
+  ws.addEventListener('open',  () => { state.connected = true;  render(); });
+  ws.addEventListener('close', () => { state.connected = false; render(); });
+  ws.addEventListener('error', () => { state.connected = false; render(); });
 
   ws.addEventListener('message', e => {
     let m; try { m = JSON.parse(e.data); } catch { return; }
@@ -196,7 +201,7 @@
   function remaining(){ return Math.max(0, Math.ceil((state.deadlineMs - Date.now())/1000)); }
 
   function render(){
-    if (!state.me) return root.innerHTML = `<h1>The Bureaucrat</h1><div class="card"><h2>Pick a name</h2><input id="n" type="text" placeholder="Your name" maxlength="20" autofocus><div style="height:12px"></div><button id="b">Join</button></div>`;
+    if (!state.me) return root.innerHTML = `<h1>The Bureaucrat</h1><div class="card"><p class="small">${state.connected ? 'Connected' : 'Connecting…'}</p><h2>Pick a name</h2><input id="n" type="text" placeholder="Your name" maxlength="20" autofocus><div style="height:10px"></div><button id="b" ${state.connected ? '' : 'disabled'}>Join the lobby</button></div>`;
     if (state.phase==='lobby')     return renderLobby();
     if (state.phase==='arguing')   return renderArguing();
     if (state.phase==='rebuttal')  return renderRebuttal();
