@@ -164,6 +164,22 @@ enum GameTutorials {
         ]
     )
 
+    static let bureaucrat = GameTutorial(
+        title: "How to play The Bureaucrat",
+        sections: [
+            TutorialSection(heading: "Setup", body: "One player is the Bureaucrat; everyone else is a Citizen sharing one absurd task (e.g. \"register my goldfish as a mortgage co-signer\"). The Bureaucrat's job is to deny everything."),
+            TutorialSection(heading: "Binding policy", body: "Citizens argue out loud for their request. The Bureaucrat answers by typing denials — and every denial becomes binding policy on everyone's screen. Vague denials are safe; specific ones give citizens something to attack."),
+            TutorialSection(heading: "Call a loophole", body: "When a citizen catches the Bureaucrat contradicting their own policy, they spend a token to Call a loophole. The Bureaucrat must type a rebuttal before the timer runs out — or the citizen wins the round."),
+            TutorialSection(heading: "Scoring", body: "Loophole win: +3 to the citizen. Survive the round: +2 to the Bureaucrat. A failed challenge costs the citizen a token and a point. The role rotates each round; first to the target score wins."),
+            TutorialSection(heading: "The judge", body: "A rebuttal that itself contradicts the policy log is rejected automatically (an on-device AI checks it when available; otherwise the countdown is the only judge). No voting — so no trolling the result."),
+        ],
+        browserMenuSections: [
+            TutorialSection(heading: "Your role", body: "A tag at the top tells you whether you're the Bureaucrat or a Citizen this round, plus the shared task. Roles rotate every round."),
+            TutorialSection(heading: "As the Bureaucrat", body: "Type denials into the box to build your policy log. When a loophole is called, a countdown appears — type your rebuttal and submit before it hits zero."),
+            TutorialSection(heading: "As a Citizen", body: "Make your case out loud, then tap Call loophole (you get a limited number per round). Watch the policy log — contradictions are your ammunition."),
+        ]
+    )
+
     static let tag = GameTutorial(
         title: "How to play Tag (BLE proximity)",
         sections: [
@@ -211,6 +227,7 @@ enum GameTutorials {
         case "cheat": return cheat
         case "president": return president
         case "bluff_market": return bluffMarket
+        case "bureaucrat": return bureaucrat
         case "tag": return tag
         case "tic_tac_toe": return ticTacToe
         case "connect_four": return connectFour

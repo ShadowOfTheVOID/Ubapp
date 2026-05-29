@@ -94,6 +94,7 @@ progress; the table below tracks what's done per game.
 | President      | done   | done   | done           | done            | done                |
 | Bluff Market   | done   | done   | done           | done            | done                |
 | Secret Hitler  | done   | done   | done           | done            | done                |
+| The Bureaucrat | done   | done   | done           | done            | done                |
 | Tag (BLE)      | done   | n/a    | n/a            | done            | done                |
 | Tic-Tac-Toe    | done   | n/a    | n/a            | done            | done                |
 | Connect Four   | done   | n/a    | n/a            | done            | done                |
@@ -139,5 +140,33 @@ tutorial opt-in) helper so adding a new game is mostly engine + adapter.
 | President     | 4   | 7   |
 | Bluff Market  | 3   | 6   |
 | Secret Hitler | 5   | 10  |
+| The Bureaucrat| 3   | 10  |
 
 Enforced by `*Engine.canStart`.
+
+## The Bureaucrat's contradiction detector (optional on-device NLI)
+
+The Bureaucrat ships a swappable `ContradictionDetector` (`ProximitySource`-
+style interface). `KeywordContradictionDetector` is the always-on offline
+default and needs no model — the game is fully playable on the rebuttal-timer
++ keyword path with zero setup.
+
+To upgrade rebuttal judging to a real NLI model
+(`cross-encoder/nli-MiniLM2-L6-H768`, a BERT cross-encoder emitting
+`[contradiction, entailment, neutral]`):
+
+1. Export/quantise the model to ONNX and grab its `vocab.txt`.
+2. Drop the two files into **both** trees (they are intentionally *not*
+   committed — an ~85 MB binary doesn't belong in git):
+   - `android/app/src/main/assets/nli_minilm.onnx` + `nli_vocab.txt`
+   - `ios/Ubapp/Resources/nli_minilm.onnx` + `nli_vocab.txt`
+3. Android already declares `com.microsoft.onnxruntime:onnxruntime-android`.
+   For iOS, add the `onnxruntime-objc` package — the ONNX call sites in
+   `OnnxContradictionDetector.swift` are gated behind
+   `#if canImport(onnxruntime_objc)`, so the app builds and runs on the
+   keyword fallback until that dependency is present.
+
+`OnnxContradictionDetector` loads the assets if found (WordPiece tokeniser is
+hand-written to match the model) and otherwise returns `nil`, so the server
+silently falls back to the keyword detector. Everything is on-device — no
+network, fully offline.
