@@ -248,7 +248,9 @@ final class BureaucratServer {
         var payload: [String: Any] = [
             "type": "tutorial_vote_state",
             "isOpen": v.isOpen, "yesCount": v.yesCount, "noCount": v.noCount,
-            "eligibleCount": v.eligibleCount, "result": v.result as Any, "tutorialShown": v.tutorialShown,
+            "eligibleCount": v.eligibleCount,
+            "result": v.result.map { $0 as Any } ?? NSNull(),
+            "tutorialShown": v.tutorialShown,
         ]
         if v.result == true && !v.tutorialShown {
             payload["title"] = GameTutorials.bureaucrat.title
