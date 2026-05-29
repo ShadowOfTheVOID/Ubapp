@@ -22,3 +22,6 @@ android/.idea/
 
 # OS
 .DS_Store
+
+# Claude Code tooling
+.claude/
