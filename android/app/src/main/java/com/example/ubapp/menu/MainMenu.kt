@@ -18,6 +18,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.ubapp.games.bluffmarket.BluffMarketScreen
+import com.example.ubapp.games.bureaucrat.BureaucratScreen
 import com.example.ubapp.games.cheat.CheatScreen
 import com.example.ubapp.games.codenames.CodenamesScreen
 import com.example.ubapp.games.connectfour.ConnectFourScreen
@@ -56,7 +57,7 @@ private data class MenuGroup(val title: String, val trailing: String?, val items
 
 private val groups = listOf(
     MenuGroup(
-        "Host a game", "15 in library",
+        "Host a game", "16 in library",
         listOf(
             MenuItem("crazy_eights", "Crazy 8s", "Match suit or rank — eights are wild.",
                      "2–7", "8–15 min", GameGlyph.Crazy8s),
@@ -76,6 +77,8 @@ private val groups = listOf(
                      "4+", null, GameGlyph.Letter("C")),
             MenuItem("secret_hitler", "Secret Hitler", "Politics, lies, and hidden roles.",
                      "5–10", null, GameGlyph.Letter("S")),
+            MenuItem("bureaucrat", "The Bureaucrat", "Deny every request — until a citizen finds the loophole.",
+                     "3–10", "10–20 min", GameGlyph.Letter("B")),
         ),
     ),
     MenuGroup(
@@ -133,6 +136,7 @@ fun MainMenu() {
         composable("president") { PresidentScreen() }
         composable("bluff_market") { BluffMarketScreen() }
         composable("secret_hitler") { SecretHitlerScreen() }
+        composable("bureaucrat") { BureaucratScreen() }
         composable("tag") { TagLobbyScreen() }
         composable("realtime") { RealtimeScreen() }
         composable("tictactoe") { TicTacToeScreen() }

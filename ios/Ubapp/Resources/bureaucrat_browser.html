@@ -1,0 +1,338 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>The Bureaucrat</title>
+<style>
+  :root { color-scheme: dark; --bg:#0d1117; --card:#161b22; --card2:#21262d;
+    --line:#30363d; --text:#e6edf3; --muted:#9da7b3; --accent:#7c3aed;
+    --danger:#f85149; --good:#2ea043; --warn:#d29922; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:env(safe-area-inset-top) 16px env(safe-area-inset-bottom);
+    background:var(--bg); color:var(--text); font-family:-apple-system, system-ui, sans-serif; }
+  .wrap { max-width: 480px; margin: 0 auto; padding: 24px 0; }
+  h1 { font-size: 28px; margin: 0 0 16px; }
+  h2 { font-size: 14px; margin: 24px 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 1.2px; }
+  .card { background:var(--card); border-radius:16px; padding:20px; margin-bottom:16px; }
+  button, input[type=text], textarea { width:100%; font-size:16px; padding:14px 16px; border-radius:12px;
+    border:1px solid var(--line); background:var(--card2); color:var(--text); font-family:inherit; }
+  button { background:var(--accent); color:#fff; border:none; font-weight:600; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  textarea { resize:vertical; min-height:64px; }
+  .pill { display:inline-block; background:var(--card2); padding:4px 10px; border-radius:999px; font-size:12px; color:var(--muted); }
+  .pill.you { background:var(--accent); color:#fff; }
+  .player { display:flex; align-items:center; justify-content:space-between;
+    background:var(--card2); padding:12px 16px; border-radius:12px; margin-bottom:8px; }
+  .center { text-align:center; }
+  .small { color:var(--muted); font-size:13px; }
+  .vote-row { display:flex; gap:8px; }
+  .vote-row button { flex:1; }
+  .vote-yes { background:var(--good); }
+  .vote-no { background:var(--danger); }
+  .vote-yes.selected, .vote-no.selected { outline:3px solid #fff; }
+  .tutorial-banner { background:linear-gradient(160deg, #1d4a36, #0d2a1f); color:#6ee7a8; padding:20px; border-radius:16px; margin-bottom:16px; text-align:center; font-weight:600; }
+  .tutorial-card { background:linear-gradient(160deg, #1d4a36, #0d2a1f); color:#e6edf3; padding:20px; border-radius:16px; margin-bottom:16px; }
+  .tutorial-card h2 { color:#6ee7a8; font-size:18px; margin:0 0 8px; letter-spacing:0; text-transform:none; }
+  .tutorial-card h3 { font-size:14px; margin:12px 0 4px; color:#e6edf3; text-transform:none; letter-spacing:0; }
+  .tutorial-card p { margin:4px 0; color:#cfd8de; font-size:14px; line-height:1.45; }
+  .tutorial-card .t-sec { margin-top:6px; }
+  .tutorial-card .menu-label { color:#6ee7a8; font-size:16px; margin:18px 0 6px; font-weight:700; }
+  .tutorial-card .wait { color:#9da7b3; font-size:13px; margin-top:14px; }
+  /* ===== unified ubapp chrome: ubapp design system (redesign) =====
+     Appended last so it wins the cascade. ===== */
+  :root{
+    --bg:#0a0a0a; --ink:#000000; --fg:#ffffff;
+    --accent:#ff2e88; --accent-ink:#2a0010;
+    --accent-soft:rgba(255,46,136,0.14); --accent-line:rgba(255,46,136,0.45);
+    --card:#141416; --card2:#1c1c1f; --surface-hi:#1c1c1f;
+    --line:rgba(255,255,255,0.08); --line-strong:rgba(255,255,255,0.14);
+    --text:#ffffff; --muted:rgba(255,255,255,0.58); --faint:rgba(255,255,255,0.38);
+    --online:#3ddc84;
+    --sys:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  }
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--bg); color:var(--text); font-family:var(--sys);
+    display:flex; flex-direction:column; min-height:100%;
+    padding:env(safe-area-inset-top) 16px env(safe-area-inset-bottom); }
+  .wrap{ width:100%; max-width:600px; margin:auto; padding:20px 0; text-align:center; }
+  h1{ font-size:28px; font-weight:800; letter-spacing:-0.03em; margin:0 0 14px; color:var(--fg); }
+  h2{ font-family:var(--mono); font-size:11px; font-weight:600; letter-spacing:0.14em;
+    text-transform:uppercase; color:var(--muted); margin:18px 0 8px; }
+  p{ color:var(--text); }
+  p.small,.small{ color:var(--muted); font-size:13px; }
+  .panel,.card{ background:var(--card); border:1px solid var(--line); border-radius:16px;
+    padding:16px; margin-bottom:12px; text-align:left; }
+  button, input[type=text], textarea{ width:100%; font-size:16px; padding:14px 16px; border-radius:12px;
+    border:1px solid var(--line-strong); background:rgba(255,255,255,0.06); color:var(--text);
+    font-family:inherit; box-sizing:border-box; }
+  button{ background:var(--accent); color:var(--accent-ink); border:none; font-weight:700;
+    cursor:pointer; letter-spacing:-0.01em; transition:filter .12s, opacity .12s; }
+  button:hover{ filter:brightness(1.06); }
+  button:active{ filter:brightness(0.96); }
+  button:disabled{ opacity:.5; cursor:not-allowed; filter:none; }
+  button.gray, button.secondary{ background:rgba(255,255,255,0.06); color:var(--text);
+    border:1px solid var(--line-strong); font-weight:600; }
+  button.danger{ background:var(--danger); color:#fff; }
+  input[type=text],textarea{ background:rgba(255,255,255,0.04); }
+  input[type=text]:focus,textarea:focus{ outline:none; border-color:var(--accent-line); }
+  .player{ display:flex; align-items:center; justify-content:space-between;
+    background:var(--card2); padding:12px 16px; border-radius:12px; margin-bottom:8px; }
+  .vote-row{ display:flex; gap:8px; }
+  .vote-row button{ flex:1; }
+  .vote-yes{ background:var(--accent); color:var(--accent-ink); border:none; }
+  .vote-no{ background:rgba(255,255,255,0.06); color:var(--text); border:1px solid var(--line-strong); }
+  .vote-yes.selected, .vote-no.selected{ outline:2px solid var(--fg); outline-offset:1px; }
+  .tutorial-banner{ background:var(--accent-soft); border:1px solid var(--accent-line);
+    color:var(--fg); border-radius:16px; }
+  .tutorial-card{ background:var(--accent-soft); border:1px solid var(--accent-line);
+    color:var(--text); border-radius:16px; }
+  .tutorial-card h2{ color:var(--accent); font-family:var(--sys); font-size:18px;
+    letter-spacing:-0.02em; text-transform:none; }
+  .tutorial-card h3{ color:var(--fg); }
+  .tutorial-card p{ color:var(--muted); }
+  .tutorial-card .menu-label{ color:var(--accent); }
+  .tutorial-card .wait{ color:var(--faint); }
+  /* ===== Bureaucrat-specific ===== */
+  .task-card{ background:linear-gradient(160deg,#2a1430,#160a1c); border:1px solid var(--accent-line);
+    border-radius:18px; padding:22px; text-align:left; margin-bottom:14px; }
+  .task-card .label{ font-family:var(--mono); font-size:10px; letter-spacing:0.16em;
+    text-transform:uppercase; color:var(--accent); }
+  .task-card .task{ font-size:20px; font-weight:800; margin-top:8px; line-height:1.3; }
+  .rolebar{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .rolebar .tag{ font-family:var(--mono); font-size:10px; letter-spacing:0.14em;
+    text-transform:uppercase; padding:4px 10px; border-radius:999px; }
+  .rolebar .tag.b{ background:var(--accent); color:var(--accent-ink); }
+  .rolebar .tag.c{ background:rgba(255,255,255,0.08); color:var(--text); }
+  .log{ list-style:none; padding:0; margin:0; }
+  .log li{ background:var(--card2); border:1px solid var(--line); border-radius:12px;
+    padding:12px 14px; margin-bottom:8px; font-size:14px; line-height:1.4; }
+  .log li.reb{ border-color:var(--accent-line); background:var(--accent-soft); }
+  .log li .meta{ font-family:var(--mono); font-size:9px; letter-spacing:0.12em;
+    text-transform:uppercase; color:var(--faint); display:block; margin-bottom:4px; }
+  .count{ font-size:46px; font-weight:800; letter-spacing:-0.03em; text-align:center; margin:6px 0; }
+  .count.warn{ color:var(--danger); }
+  .score{ display:flex; justify-content:space-between; padding:8px 12px; border-radius:10px;
+    background:var(--card2); margin-bottom:6px; }
+  .score.lead{ background:var(--accent-soft); border:1px solid var(--accent-line); }
+  .score .pts{ font-weight:800; }
+</style>
+</head>
+<body>
+<div class="wrap" id="root"></div>
+<script>
+(() => {
+  const root = document.getElementById('root');
+  const ws = new WebSocket(`wss://${location.host}/ws`);
+
+  let wakeLock = null;
+  async function requestWakeLock(){ try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e){} }
+  if ('wakeLock' in navigator) {
+    requestWakeLock();
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') requestWakeLock();
+    });
+  }
+
+  const state = {
+    me:null, phase:'lobby', players:[],
+    roundNumber:0, bureaucratId:null, bureaucratName:'', task:'',
+    targetScore:10, scores:{}, tokens:{}, policyLog:[],
+    challengerId:null, challengerName:'', deadlineMs:0, rebuttalSeconds:20,
+    last:null, winnerId:null, winnerName:'',
+    options:{targetScore:10, challengeTokens:2, rebuttalSeconds:20, aiAssist:true},
+    denialDraft:'', rebuttalDraft:'',
+    tutorial:{isOpen:false,yesCount:0,noCount:0,eligibleCount:0,result:null,tutorialShown:false},
+    tutorialContent:null, myTutorialVote:null,
+  };
+
+  function send(o){ if (ws.readyState===1) ws.send(JSON.stringify(o)); }
+  const isBureaucrat = () => state.me && state.bureaucratId === state.me.id;
+  function nameOf(id){ const p = state.players.find(p=>p.id===id); return p ? p.name : id; }
+
+  ws.addEventListener('message', e => {
+    let m; try { m = JSON.parse(e.data); } catch { return; }
+    switch (m.type) {
+      case 'welcome': state.me = { id:m.yourId, name:m.yourName }; break;
+      case 'lobby':   state.players = m.players; state.phase='lobby'; break;
+      case 'options': state.options = { targetScore:m.targetScore, challengeTokens:m.challengeTokens, rebuttalSeconds:m.rebuttalSeconds, aiAssist:!!m.aiAssist }; break;
+      case 'round':
+      case 'policy':  applyRound(m); break;
+      case 'rebuttal_open':
+        state.phase='rebuttal'; state.challengerId=m.challengerId; state.challengerName=m.challengerName||'';
+        state.deadlineMs=m.deadlineMs||0; state.rebuttalSeconds=m.seconds||20;
+        if (m.policyLog) state.policyLog=m.policyLog; state.rebuttalDraft='';
+        break;
+      case 'round_over':
+        state.phase='roundOver'; state.last=m; state.scores=m.scores||{};
+        if (m.policyLog) state.policyLog=m.policyLog; break;
+      case 'game_over':
+        state.phase='gameOver'; state.winnerId=m.winnerId; state.winnerName=m.winnerName||''; state.scores=m.scores||{}; break;
+      case 'tutorial_vote_state': {
+        const wasOpen = state.tutorial.isOpen;
+        state.tutorial = { isOpen:m.isOpen, yesCount:m.yesCount, noCount:m.noCount, eligibleCount:m.eligibleCount, result:m.result, tutorialShown:m.tutorialShown };
+        if (m.title) state.tutorialContent = { title:m.title, sections:m.sections||[], menuSections:m.menuSections||[] };
+        if (!wasOpen && m.isOpen) state.myTutorialVote = null;
+        break;
+      }
+    }
+    render();
+  });
+
+  function applyRound(m){
+    state.phase = m.phase==='rebuttal' ? 'rebuttal' : 'arguing';
+    state.roundNumber = m.roundNumber; state.bureaucratId = m.bureaucratId;
+    state.bureaucratName = m.bureaucratName||''; state.task = m.task||'';
+    state.targetScore = m.targetScore||10; state.scores = m.scores||{};
+    state.tokens = m.tokens||{}; state.policyLog = m.policyLog||[];
+    if (m.type==='round') { state.denialDraft=''; }
+  }
+
+  // ---- countdown ticker ----
+  let timer = null;
+  function startTicker(){ if (!timer) timer = setInterval(()=>{ if (state.phase==='rebuttal') render(); }, 250); }
+  function remaining(){ return Math.max(0, Math.ceil((state.deadlineMs - Date.now())/1000)); }
+
+  function render(){
+    if (!state.me) return root.innerHTML = `<h1>The Bureaucrat</h1><div class="card"><h2>Pick a name</h2><input id="n" type="text" placeholder="Your name" maxlength="20" autofocus><div style="height:12px"></div><button id="b">Join</button></div>`;
+    if (state.phase==='lobby')     return renderLobby();
+    if (state.phase==='arguing')   return renderArguing();
+    if (state.phase==='rebuttal')  return renderRebuttal();
+    if (state.phase==='roundOver') return renderRoundOver();
+    if (state.phase==='gameOver')  return renderGameOver();
+  }
+
+  function renderLobby(){
+    root.innerHTML = `<h1>The Bureaucrat</h1>${viewTutorialBanner()}${viewTutorialVote()}${viewOptions()}<div class="card"><p class="small">Waiting for the host to start.</p><h2>Players (${state.players.length})</h2>${state.players.map(p=>`<div class="player"><span>${esc(p.name)}${p.isHost?' <span class="pill">host</span>':''}</span>${state.me.id===p.id?'<span class="pill you">you</span>':''}</div>`).join('')}</div>`;
+  }
+
+  function viewOptions(){
+    const o = state.options;
+    const ai = o.aiAssist ? 'AI rebuttal check on' : 'timer only';
+    return `<div class="card"><h2>Rules</h2><p class="small">First to <strong>${o.targetScore}</strong> wins · <strong>${o.challengeTokens}</strong> loopholes each · <strong>${o.rebuttalSeconds}s</strong> to rebut · ${ai}</p></div>`;
+  }
+
+  function taskCard(){
+    return `<div class="task-card"><div class="label">the task before the office</div><div class="task">${esc(state.task)}</div></div>`;
+  }
+  function roleBar(){
+    const b = isBureaucrat();
+    const tag = b ? `<span class="tag b">You are the Bureaucrat</span>` : `<span class="tag c">Citizen</span>`;
+    const who = b ? '' : `<span class="small">Bureaucrat: <strong>${esc(state.bureaucratName)}</strong></span>`;
+    return `<div class="rolebar">${tag}${who}</div>`;
+  }
+  function policyList(){
+    if (!state.policyLog.length) return `<p class="small">No policy on record yet. The Bureaucrat has said nothing binding… for now.</p>`;
+    return `<ul class="log">${state.policyLog.map((e,i)=>`<li class="${e.isRebuttal?'reb':''}"><span class="meta">${e.isRebuttal?'rebuttal':'policy §'+(i+1)}</span>${esc(e.text)}</li>`).join('')}</ul>`;
+  }
+
+  function renderArguing(){
+    let action;
+    if (isBureaucrat()){
+      action = `<div class="card"><h2>Issue a denial</h2><p class="small">Every denial becomes binding policy. Be specific — but specifics can be turned against you.</p><textarea id="den" placeholder="e.g. Form 7B is required for all exemptions." maxlength="240">${esc(state.denialDraft)}</textarea><div style="height:10px"></div><button id="den-go">Add to policy log</button></div>`;
+    } else {
+      const left = state.tokens[state.me.id] ?? 0;
+      action = `<div class="card"><h2>Find the loophole</h2><p class="small">Argue out loud. When you've trapped the Bureaucrat in their own logic, call a loophole — they must rebut before the clock runs out.</p><button id="loop" ${left<=0?'disabled':''}>Call loophole (${left} left)</button>${left<=0?'<p class="small">You\\'re out of challenges this round.</p>':''}</div>`;
+    }
+    root.innerHTML = `<h1>Round ${state.roundNumber}</h1>${roleBar()}${taskCard()}${action}<div class="card"><h2>Policy log</h2>${policyList()}</div>${scoreboard()}`;
+    bindArguing();
+  }
+
+  function renderRebuttal(){
+    startTicker();
+    const secs = remaining();
+    const warn = secs<=5 ? 'warn' : '';
+    let body;
+    if (isBureaucrat()){
+      body = `<div class="card"><h2>Rebuttal demanded</h2><p><strong>${esc(state.challengerName)}</strong> called a loophole. Defend your policy before the clock runs out.</p><div class="count ${warn}">${secs}s</div><textarea id="reb" placeholder="Your binding rebuttal…" maxlength="240" autofocus>${esc(state.rebuttalDraft)}</textarea><div style="height:10px"></div><button id="reb-go">Submit rebuttal</button></div>`;
+    } else {
+      body = `<div class="card center"><h2>Loophole called</h2><p><strong>${esc(state.challengerName)}</strong> is challenging the Bureaucrat.</p><div class="count ${warn}">${secs}s</div><p class="small">If the Bureaucrat can't rebut in time, ${esc(state.challengerName)} takes the round.</p></div>`;
+    }
+    root.innerHTML = `<h1>Loophole!</h1>${roleBar()}${taskCard()}${body}<div class="card"><h2>Policy log</h2>${policyList()}</div>`;
+    bindRebuttal();
+  }
+
+  function renderRoundOver(){
+    const r = state.last || {};
+    const reasonText = {
+      timeout: `${esc(r.challengerName||'A citizen')} found the loophole — the Bureaucrat couldn't rebut in time.`,
+      contradiction: `${esc(r.challengerName||'A citizen')} won — the rebuttal contradicted the office's own policy.`,
+      survived: `The Bureaucrat survived the round. No loophole stuck.`,
+      exhausted: `The citizens ran out of challenges. The Bureaucrat survives.`,
+    }[r.reason] || '';
+    const nextB = r.nextBureaucratId ? nameOf(r.nextBureaucratId) : '';
+    root.innerHTML = `<h1>Round over</h1><div class="card center"><p>${reasonText}</p>${nextB?`<p class="small">Next round, <strong>${esc(nextB)}</strong> takes the desk.</p>`:''}</div>${scoreboard()}<div class="card center small">Waiting for the host to start the next round…</div>`;
+  }
+
+  function renderGameOver(){
+    root.innerHTML = `<h1>${esc(state.winnerName||'Someone')} wins!</h1><div class="card center"><p>First past ${state.targetScore} points. The office is finally closed.</p></div>${scoreboard()}<div class="card center small">Waiting for the host…</div>`;
+  }
+
+  function scoreboard(){
+    const ids = Object.keys(state.scores);
+    if (!ids.length) return '';
+    const max = Math.max(...ids.map(id=>state.scores[id]));
+    const rows = ids.sort((a,b)=>state.scores[b]-state.scores[a]).map(id=>{
+      const lead = state.scores[id]===max && max>0 ? 'lead' : '';
+      const you = state.me && id===state.me.id ? ' (you)' : '';
+      return `<div class="score ${lead}"><span>${esc(nameOf(id))}${you}</span><span class="pts">${state.scores[id]}</span></div>`;
+    }).join('');
+    return `<div class="card"><h2>Scores · first to ${state.targetScore}</h2>${rows}</div>`;
+  }
+
+  function bindArguing(){
+    const den = document.getElementById('den');
+    if (den) den.addEventListener('input', ()=>{ state.denialDraft = den.value; });
+    const dg = document.getElementById('den-go');
+    if (dg) dg.addEventListener('click', ()=>{ const t=(state.denialDraft||'').trim(); if(t){ send({type:'denial', text:t}); state.denialDraft=''; } });
+    const lp = document.getElementById('loop');
+    if (lp) lp.addEventListener('click', ()=> send({type:'call_loophole'}));
+  }
+  function bindRebuttal(){
+    const reb = document.getElementById('reb');
+    if (reb) reb.addEventListener('input', ()=>{ state.rebuttalDraft = reb.value; });
+    const rg = document.getElementById('reb-go');
+    if (rg) rg.addEventListener('click', ()=>{ const t=(state.rebuttalDraft||'').trim(); if(t){ send({type:'rebuttal', text:t}); } });
+  }
+
+  function viewTutorialBanner(){
+    const t = state.tutorial, c = state.tutorialContent;
+    if (t.result !== true || t.tutorialShown) return '';
+    if (!c) return `<div class="tutorial-banner">Loading tutorial…</div>`;
+    const ruleSecs = c.sections.map(s => `<div class="t-sec"><h3>${esc(s.heading)}</h3><p>${esc(s.body)}</p></div>`).join('');
+    const menuSecs = (c.menuSections||[]).map(s => `<div class="t-sec"><h3>${esc(s.heading)}</h3><p>${esc(s.body)}</p></div>`).join('');
+    return `<div class="tutorial-card"><h2>${esc(c.title)}</h2>${ruleSecs}${menuSecs ? `<div class="menu-label">Using this screen</div>${menuSecs}` : ''}<p class="wait">Waiting for the host to finish reading.</p></div>`;
+  }
+  function viewTutorialVote(){
+    const t = state.tutorial;
+    if (t.isOpen) return `<div class="card"><h2>Show tutorial first?</h2><p class="small">${t.yesCount + t.noCount} / ${t.eligibleCount} voted — majority wins.</p><div class="vote-row"><button class="vote-yes ${state.myTutorialVote===true?'selected':''}" id="tut-yes">Yes (${t.yesCount})</button><button class="vote-no ${state.myTutorialVote===false?'selected':''}" id="tut-no">No (${t.noCount})</button></div></div>`;
+    if (t.result === null && !t.tutorialShown) return `<div class="card"><p class="small">Want a refresher on the rules?</p><button id="call-tut">Call tutorial vote</button></div>`;
+    if (t.result === false) return `<div class="card center"><p class="small">Majority voted to skip the tutorial.</p></div>`;
+    return '';
+  }
+  function bindTutorialVote(){
+    const cb = document.getElementById('call-tut');
+    if (cb) cb.addEventListener('click', () => send({type:'call_tutorial_vote'}));
+    const y = document.getElementById('tut-yes'), n = document.getElementById('tut-no');
+    if (y) y.addEventListener('click', () => { state.myTutorialVote=true; send({type:'tutorial_vote', yes:true}); render(); });
+    if (n) n.addEventListener('click', () => { state.myTutorialVote=false; send({type:'tutorial_vote', yes:false}); render(); });
+  }
+  function bindJoin(){
+    const i = document.getElementById('n'), b = document.getElementById('b');
+    if (!i || !b) return;
+    const submit = () => { const n=i.value.trim(); if (n) send({type:'join', name:n}); };
+    b.addEventListener('click', submit);
+    i.addEventListener('keydown', e => { if (e.key==='Enter') submit(); });
+  }
+
+  function esc(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  const _r = render;
+  render = () => { _r(); bindJoin(); bindTutorialVote(); };
+  render();
+})();
+</script>
+</body>
+</html>
