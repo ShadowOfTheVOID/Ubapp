@@ -6,6 +6,11 @@
 	objectVersion = 71;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		9F8FCF8F2FC924B50000CD49 /* onnxruntime in Frameworks */ = {isa = PBXBuildFile; productRef = 9F8FCF8E2FC924B50000CD49 /* onnxruntime */; };
+		9F8FCF912FC924B50000CD49 /* onnxruntime_extensions in Frameworks */ = {isa = PBXBuildFile; productRef = 9F8FCF902FC924B50000CD49 /* onnxruntime_extensions */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		A100000000000000000000A1 /* Ubapp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Ubapp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -29,6 +34,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9F8FCF912FC924B50000CD49 /* onnxruntime_extensions in Frameworks */,
+				9F8FCF8F2FC924B50000CD49 /* onnxruntime in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -99,6 +106,9 @@
 			);
 			mainGroup = A100000000000000000000D1;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				9F8FCF8D2FC924B50000CD49 /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */,
+			);
 			productRefGroup = A100000000000000000000D2 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -231,6 +241,30 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		9F8FCF8D2FC924B50000CD49 /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/microsoft/onnxruntime-swift-package-manager";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.24.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		9F8FCF8E2FC924B50000CD49 /* onnxruntime */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9F8FCF8D2FC924B50000CD49 /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */;
+			productName = onnxruntime;
+		};
+		9F8FCF902FC924B50000CD49 /* onnxruntime_extensions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9F8FCF8D2FC924B50000CD49 /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */;
+			productName = onnxruntime_extensions;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A100000000000000000000E0 /* Project object */;
 }
