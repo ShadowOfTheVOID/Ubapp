@@ -2,27 +2,26 @@ import Foundation
 
 /// NLI-backed contradiction detector for `cross-encoder/nli-MiniLM2-L6-H768`.
 ///
-/// The model is a BERT cross-encoder: `[CLS] premise [SEP] hypothesis [SEP]`
-/// → three logits in the order `[contradiction, entailment, neutral]`. We run
-/// the rebuttal (hypothesis) against each prior policy statement (premise); if
-/// any pair's arg-max is index 0 the loophole stands.
+/// That model is MiniLM **distilled from RoBERTa**, so it uses RoBERTa's
+/// byte-level BPE tokenizer (not BERT WordPiece). We read the self-contained
+/// `tokenizer.json` (vocab + merges) and encode a pair as
+/// `<s> premise </s></s> hypothesis </s>`. The cross-encoder emits three logits
+/// in the order `[contradiction, entailment, neutral]`; we run the rebuttal
+/// against each prior policy statement and treat arg-max index 0 as a
+/// contradiction (loophole stands).
 ///
-/// **Integration (one-time, on your machine — see CLAUDE.md):**
-///  1. Add the ONNX Runtime Objective-C package to the Xcode project
-///     (`onnxruntime-objc` via CocoaPods, or the equivalent SPM/xcframework).
-///  2. Drop `nli_minilm.onnx` and `nli_vocab.txt` into `Resources/` (and the
-///     Android `assets/`). The model file is intentionally not committed.
+/// **Integration (one-time, on your machine — see README):**
+///  1. Add the ONNX Runtime Objective-C package (`onnxruntime-objc`).
+///  2. Drop `nli_minilm.onnx` (use `model_qint8_arm64.onnx` for devices) and
+///     `nli_tokenizer.json` into `Resources/` (and Android `assets/`).
 ///
 /// The ONNX call sites are gated behind `#if canImport(onnxruntime_objc)`, so
-/// the app compiles and runs **today** on the keyword fallback; adding the
-/// dependency flips on real inference with no other code change. Everything is
-/// synchronous CPU compute — no network, fully offline.
+/// the app builds and runs **today** on the keyword fallback; adding the
+/// dependency flips on real inference. All on-device, fully offline.
 enum OnnxContradictionDetector {
     static let modelResource = "nli_minilm"
-    static let vocabResource = "nli_vocab"
+    static let tokenizerResource = "nli_tokenizer"
 
-    /// Builds the NLI detector if the runtime and bundled assets are present,
-    /// otherwise returns nil so the caller can fall back. Never throws.
     static func tryCreate(fallback: ContradictionDetector = KeywordContradictionDetector()) -> ContradictionDetector? {
         #if canImport(onnxruntime_objc)
         return NliDetector(fallback: fallback)
@@ -35,38 +34,35 @@ enum OnnxContradictionDetector {
 #if canImport(onnxruntime_objc)
 import onnxruntime_objc
 
-/// Real ONNX-Runtime implementation, compiled only when the dependency exists.
 private final class NliDetector: ContradictionDetector {
     private let session: ORTSession
     private let env: ORTEnv
-    private let tokenizer: WordPieceTokenizer
+    private let tokenizer: BpeTokenizer
+    private let usesTokenTypeIds: Bool
     private let fallback: ContradictionDetector
-    private let maxLen = 128
+    private let maxLen = 256
     private let contradictionIndex = 0
 
     init?(fallback: ContradictionDetector) {
         self.fallback = fallback
         guard let modelPath = Bundle.main.path(forResource: OnnxContradictionDetector.modelResource, ofType: "onnx"),
-              let vocabURL = Bundle.main.url(forResource: OnnxContradictionDetector.vocabResource, withExtension: "txt"),
-              let vocabText = try? String(contentsOf: vocabURL, encoding: .utf8),
+              let tokURL = Bundle.main.url(forResource: OnnxContradictionDetector.tokenizerResource, withExtension: "json"),
+              let tokData = try? Data(contentsOf: tokURL),
+              let tokenizer = BpeTokenizer(tokenizerJSON: tokData),
               let env = try? ORTEnv(loggingLevel: .warning),
               let opts = try? ORTSessionOptions(),
               let session = try? ORTSession(env: env, modelPath: modelPath, sessionOptions: opts)
         else { return nil }
-        var vocab: [String: Int] = [:]
-        for (i, line) in vocabText.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
-            vocab[line.trimmingCharacters(in: .whitespaces)] = i
-        }
         self.env = env
         self.session = session
-        self.tokenizer = WordPieceTokenizer(vocab: vocab)
+        self.tokenizer = tokenizer
+        let names = (try? session.inputNames()) ?? []
+        self.usesTokenTypeIds = names.contains("token_type_ids")
     }
 
     func contradicts(priorStatements: [String], rebuttal: String) -> Bool {
         if rebuttal.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return false }
-        for prior in priorStatements {
-            if runPair(premise: prior, hypothesis: rebuttal) { return true }
-        }
+        for prior in priorStatements where runPair(premise: prior, hypothesis: rebuttal) { return true }
         return false
     }
 
@@ -74,12 +70,12 @@ private final class NliDetector: ContradictionDetector {
         let enc = tokenizer.encodePair(premise: premise, hypothesis: hypothesis, maxLen: maxLen)
         do {
             let shape: [NSNumber] = [1, NSNumber(value: enc.ids.count)]
-            let ids = try tensor(enc.ids, shape: shape)
-            let mask = try tensor(enc.mask, shape: shape)
-            let types = try tensor(enc.typeIds, shape: shape)
-            let outputs = try session.run(
-                withInputs: ["input_ids": ids, "attention_mask": mask, "token_type_ids": types],
-                outputNames: ["logits"], runOptions: nil)
+            var inputs: [String: ORTValue] = [
+                "input_ids": try tensor(enc.ids, shape: shape),
+                "attention_mask": try tensor(enc.mask, shape: shape),
+            ]
+            if usesTokenTypeIds { inputs["token_type_ids"] = try tensor(enc.typeIds, shape: shape) }
+            let outputs = try session.run(withInputs: inputs, outputNames: ["logits"], runOptions: nil)
             guard let logitsValue = outputs["logits"],
                   let data = try? logitsValue.tensorData() as Data else {
                 return fallback.contradicts(priorStatements: [premise], rebuttal: hypothesis)
@@ -113,74 +109,118 @@ struct EncodedPair {
     let typeIds: [Int64]
 }
 
-/// Minimal uncased BERT WordPiece tokenizer — enough to feed the cross-encoder.
-/// Deliberately identical in behaviour to the Kotlin `WordPieceTokenizer`:
-/// lowercase, split on whitespace + punctuation, then greedy longest-match
-/// subword lookup with `##` continuations and `[UNK]` fallback.
-struct WordPieceTokenizer {
+/// Byte-level BPE tokenizer (GPT-2 / RoBERTa style) driven by a HuggingFace
+/// `tokenizer.json`. Behaviour-identical to the Kotlin `BpeTokenizer`.
+struct BpeTokenizer {
     private let vocab: [String: Int]
+    private let mergeRanks: [String: Int]   // "a\u{0001}b" -> rank
+    private let byteEncoder: [UInt8: Character]
+    private let bos: Int
+    private let eos: Int
     private let unk: Int
-    private let cls: Int
-    private let sep: Int
+    private let regex: NSRegularExpression
 
-    init(vocab: [String: Int]) {
-        self.vocab = vocab
-        self.unk = vocab["[UNK]"] ?? 100
-        self.cls = vocab["[CLS]"] ?? 101
-        self.sep = vocab["[SEP]"] ?? 102
+    private static let pairSep = "\u{0001}"
+
+    init?(tokenizerJSON data: Data) {
+        guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let model = root["model"] as? [String: Any],
+              let rawVocab = model["vocab"] as? [String: Int] else { return nil }
+        self.vocab = rawVocab
+
+        var ranks: [String: Int] = [:]
+        if let merges = model["merges"] as? [Any] {
+            for (i, m) in merges.enumerated() {
+                if let s = m as? String {
+                    if let sp = s.firstIndex(of: " ") {
+                        let a = String(s[s.startIndex..<sp]), b = String(s[s.index(after: sp)...])
+                        ranks[a + Self.pairSep + b] = i
+                    }
+                } else if let arr = m as? [String], arr.count == 2 {
+                    ranks[arr[0] + Self.pairSep + arr[1]] = i
+                }
+            }
+        }
+        self.mergeRanks = ranks
+        self.byteEncoder = Self.buildByteEncoder()
+        self.bos = rawVocab["<s>"] ?? 0
+        self.eos = rawVocab["</s>"] ?? 2
+        self.unk = rawVocab["<unk>"] ?? 3
+        let pattern = "'s|'t|'re|'ve|'m|'ll|'d| ?\\p{L}+| ?\\p{N}+| ?[^\\s\\p{L}\\p{N}]+|\\s+(?!\\S)|\\s+"
+        guard let re = try? NSRegularExpression(pattern: pattern) else { return nil }
+        self.regex = re
     }
 
     func encodePair(premise: String, hypothesis: String, maxLen: Int) -> EncodedPair {
-        var ta = wordpiece(premise)
-        var tb = wordpiece(hypothesis)
-        let budget = maxLen - 3
-        while ta.count + tb.count > budget {
-            if ta.count > tb.count { ta.removeLast() } else { tb.removeLast() }
+        var a = encode(premise)
+        var b = encode(hypothesis)
+        let budget = maxLen - 4
+        while a.count + b.count > budget && (!a.isEmpty || !b.isEmpty) {
+            if a.count > b.count { a.removeLast() } else if !b.isEmpty { b.removeLast() } else { a.removeLast() }
         }
-        var ids: [Int64] = [Int64(cls)]
-        var types: [Int64] = [0]
-        for t in ta { ids.append(Int64(t)); types.append(0) }
-        ids.append(Int64(sep)); types.append(0)
-        for t in tb { ids.append(Int64(t)); types.append(1) }
-        ids.append(Int64(sep)); types.append(1)
+        var ids: [Int64] = [Int64(bos)]
+        ids.append(contentsOf: a.map(Int64.init))
+        ids.append(Int64(eos)); ids.append(Int64(eos))
+        ids.append(contentsOf: b.map(Int64.init))
+        ids.append(Int64(eos))
         let mask = [Int64](repeating: 1, count: ids.count)
+        let types = [Int64](repeating: 0, count: ids.count)
         return EncodedPair(ids: ids, mask: mask, typeIds: types)
     }
 
-    private func wordpiece(_ text: String) -> [Int] {
+    private func encode(_ text: String) -> [Int] {
         var out: [Int] = []
-        for token in basicTokenize(text) {
-            let chars = Array(token)
-            var start = 0
-            var sub: [Int] = []
-            var bad = false
-            while start < chars.count {
-                var end = chars.count
-                var cur: Int?
-                while start < end {
-                    let piece = (start > 0 ? "##" : "") + String(chars[start..<end])
-                    if let id = vocab[piece] { cur = id; break }
-                    end -= 1
-                }
-                guard let id = cur else { bad = true; break }
-                sub.append(id); start = end
+        let ns = text as NSString
+        let matches = regex.matches(in: text, range: NSRange(location: 0, length: ns.length))
+        for m in matches {
+            let piece = ns.substring(with: m.range)
+            var mapped = ""
+            for byte in Array(piece.utf8) {
+                if let c = byteEncoder[byte] { mapped.append(c) }
             }
-            if bad { out.append(unk) } else { out.append(contentsOf: sub) }
+            for tok in bpe(mapped) { out.append(vocab[tok] ?? unk) }
         }
         return out
     }
 
-    /// Lowercase, then split on whitespace with punctuation as its own token.
-    private func basicTokenize(_ text: String) -> [String] {
-        var out: [String] = []
-        var sb = ""
-        func flush() { if !sb.isEmpty { out.append(sb); sb = "" } }
-        for ch in text.lowercased() {
-            if ch.isWhitespace { flush() }
-            else if !(ch.isLetter || ch.isNumber) { flush(); out.append(String(ch)) }
-            else { sb.append(ch) }
+    private func bpe(_ token: String) -> [String] {
+        if token.isEmpty { return [] }
+        var word = token.map { String($0) }
+        while word.count > 1 {
+            var bestRank = Int.max
+            var bestIdx = -1
+            for i in 0..<(word.count - 1) {
+                if let rank = mergeRanks[word[i] + Self.pairSep + word[i + 1]], rank < bestRank {
+                    bestRank = rank; bestIdx = i
+                }
+            }
+            if bestIdx < 0 { break }
+            let first = word[bestIdx], second = word[bestIdx + 1]
+            var merged: [String] = []
+            var i = 0
+            while i < word.count {
+                if i < word.count - 1 && word[i] == first && word[i + 1] == second {
+                    merged.append(first + second); i += 2
+                } else { merged.append(word[i]); i += 1 }
+            }
+            word = merged
         }
-        flush()
-        return out
+        return word
+    }
+
+    /// GPT-2 reversible byte ↔ unicode mapping so every byte is a printable char.
+    private static func buildByteEncoder() -> [UInt8: Character] {
+        var bs: [Int] = []
+        bs.append(contentsOf: Int(Character("!").asciiValue!)...Int(Character("~").asciiValue!))
+        bs.append(contentsOf: 0xA1...0xAC)   // ¡..¬
+        bs.append(contentsOf: 0xAE...0xFF)   // ®..ÿ
+        var cs = bs
+        var n = 0
+        for b in 0...255 where !bs.contains(b) { bs.append(b); cs.append(256 + n); n += 1 }
+        var map: [UInt8: Character] = [:]
+        for i in 0..<bs.count {
+            if let scalar = UnicodeScalar(cs[i]) { map[UInt8(bs[i])] = Character(scalar) }
+        }
+        return map
     }
 }
