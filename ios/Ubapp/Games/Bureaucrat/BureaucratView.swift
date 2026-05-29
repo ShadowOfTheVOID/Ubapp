@@ -16,11 +16,15 @@ struct BureaucratView: View {
                         VStack(spacing: 0) {
                             Spacer(minLength: 0)
                             VStack(alignment: .center, spacing: 16) {
-                                VStack(spacing: 4) {
-                                    MonoLabel("Hosting · The Bureaucrat", color: UbappTheme.accent)
-                                    Text("Waiting for players")
-                                        .font(.system(size: 24, weight: .heavy)).kerning(-0.6)
-                                        .foregroundStyle(.white)
+                                // Updated lobby header with GlyphBureaucrat
+                                HStack(spacing: 14) {
+                                    GlyphBureaucrat(size: 56)
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        MonoLabel("Hosting · The Bureaucrat", color: UbappTheme.accent)
+                                        Text("Waiting for players")
+                                            .font(.system(size: 24, weight: .heavy)).kerning(-0.6)
+                                            .foregroundStyle(.white)
+                                    }
                                 }
                                 HostingChrome(joinUrl: model.joinUrl, onStart: model.startHosting, onStop: model.stop)
                                 TutorialVoteCard(state: model.tutorialState, tutorial: GameTutorials.bureaucrat,
@@ -104,6 +108,39 @@ struct BureaucratView: View {
     }
 
 }
+
+// MARK: - GlyphBureaucrat (shared atom — also used in BureaucratGuestView)
+
+/// Square bureaucrat glyph icon — surfaceHi tile with a rotated document
+/// outline and a solid accent bar inside.
+struct GlyphBureaucrat: View {
+    var size: CGFloat = 64
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: size * 0.18, style: .continuous)
+                .fill(UbappTheme.surfaceHi)
+
+            let rectW = size * 0.62
+            let rectH = size * 0.42
+            let strokeW: CGFloat = max(2, size * 0.045)
+
+            ZStack {
+                RoundedRectangle(cornerRadius: size * 0.06, style: .continuous)
+                    .stroke(UbappTheme.accent, lineWidth: strokeW)
+                    .frame(width: rectW, height: rectH)
+
+                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                    .fill(UbappTheme.accent)
+                    .frame(width: rectW * 0.64, height: max(2, rectH * 0.175))
+            }
+            .rotationEffect(.degrees(-9))
+        }
+        .frame(width: size, height: size)
+    }
+}
+
+// MARK: - BureaucratViewModel (unchanged)
 
 @MainActor
 final class BureaucratViewModel: ObservableObject {

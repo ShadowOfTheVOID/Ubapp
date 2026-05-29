@@ -57,11 +57,17 @@ fun BureaucratScreen() {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        MonoLabel("Hosting · The Bureaucrat", color = Ub.Accent)
-                        Text("Waiting for players", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = (-0.6).sp, color = Ub.Foreground)
+                    // Updated lobby header with GlyphBureaucrat
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        GlyphBureaucrat(size = 56.dp)
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            MonoLabel("Hosting · The Bureaucrat", color = Ub.Accent)
+                            Text("Waiting for players", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold,
+                                letterSpacing = (-0.6).sp, color = Ub.Foreground)
+                        }
                     }
                     HostingChrome(joinUrl = joinUrl,
                         onStart = { joinUrl = server.start() },
