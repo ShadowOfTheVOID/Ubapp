@@ -23,7 +23,7 @@ enum OnnxContradictionDetector {
     static let tokenizerResource = "nli_tokenizer"
 
     static func tryCreate(fallback: ContradictionDetector = KeywordContradictionDetector()) -> ContradictionDetector? {
-        #if canImport(onnxruntime_objc)
+        #if canImport(onnxruntime)
         return NliDetector(fallback: fallback)
         #else
         return nil
@@ -31,8 +31,8 @@ enum OnnxContradictionDetector {
     }
 }
 
-#if canImport(onnxruntime_objc)
-import onnxruntime_objc
+#if canImport(onnxruntime)
+import onnxruntime
 
 private final class NliDetector: ContradictionDetector {
     private let session: ORTSession
