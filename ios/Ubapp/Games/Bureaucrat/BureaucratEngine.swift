@@ -11,6 +11,8 @@ struct BureaucratOptions: Equatable {
     var challengeTokens: Int = 2
     var rebuttalSeconds: Int = 20
     var aiAssist: Bool = true
+    /// Input method for rebuttal: "type" (default) or "speak" (voice).
+    var rebuttalMode: String = "type"
 }
 
 final class BureaucratPlayer {
@@ -97,6 +99,7 @@ final class BureaucratEngine {
         c.targetScore = min(max(o.targetScore, 3), 50)
         c.challengeTokens = min(max(o.challengeTokens, 1), 9)
         c.rebuttalSeconds = min(max(o.rebuttalSeconds, 5), 120)
+        c.rebuttalMode = (o.rebuttalMode == "speak") ? "speak" : "type"
         options = c
     }
 

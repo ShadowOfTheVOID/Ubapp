@@ -19,6 +19,8 @@ data class BureaucratOptions(
     /** When true the server consults a [ContradictionDetector] on each rebuttal;
      *  purely a UI/broadcast hint here — the engine stays transport-agnostic. */
     val aiAssist: Boolean = true,
+    /** Input method for rebuttal: "type" (default) or "speak" (voice). */
+    val rebuttalMode: String = "type",
 )
 
 class BureaucratPlayer(val id: String, val name: String, val isHost: Boolean) {
@@ -102,6 +104,7 @@ class BureaucratEngine(private val rng: Random = Random.Default) {
             targetScore = o.targetScore.coerceIn(3, 50),
             challengeTokens = o.challengeTokens.coerceIn(1, 9),
             rebuttalSeconds = o.rebuttalSeconds.coerceIn(5, 120),
+            rebuttalMode = if (o.rebuttalMode == "speak") "speak" else "type",
         )
     }
 

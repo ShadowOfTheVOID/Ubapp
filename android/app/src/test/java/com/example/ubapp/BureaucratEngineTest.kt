@@ -177,6 +177,12 @@ class BureaucratEngineTest {
         assertEquals(1, e.options.challengeTokens)
         assertEquals(5, e.options.rebuttalSeconds)
     }
+
+    @Test fun `rebuttalMode option clamps to type for unknown values`() {
+        val e = engine(n = 3)
+        e.setOptions(BureaucratOptions(rebuttalMode = "yell"))
+        assertEquals("type", e.options.rebuttalMode)
+    }
 }
 
 class KeywordContradictionDetectorTest {
