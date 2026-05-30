@@ -239,7 +239,7 @@
       action = `<div class="card"><h2>Issue a denial</h2><p class="small">Every denial becomes binding policy. Be specific — but specifics can be turned against you.</p><textarea id="den" placeholder="e.g. Form 7B is required for all exemptions." maxlength="240">${esc(state.denialDraft)}</textarea><div style="height:10px"></div><button id="den-go">Add to policy log</button></div>`;
     } else {
       const left = state.tokens[state.me.id] ?? 0;
-      action = `<div class="card"><h2>Find the loophole</h2><p class="small">Argue out loud. When you've trapped the Bureaucrat in their own logic, call a loophole — they must rebut before the clock runs out.</p><button id="loop" ${left<=0?'disabled':''}>Call loophole (${left} left)</button>${left<=0?'<p class="small">You\\'re out of challenges this round.</p>':''}</div>`;
+      action = `<div class="card"><h2>Find the loophole</h2><p class="small">Argue out loud. When you've trapped the Bureaucrat in their own logic, call a loophole — they must rebut before the clock runs out.</p><button id="loop" ${left<=0?'disabled':''}>Call loophole (${left} left)</button>${left<=0?'<p class="small">You\'re out of challenges this round.</p>':''}</div>`;
     }
     root.innerHTML = `<h1>Round ${state.roundNumber}</h1>${roleBar()}${taskCard()}${action}<div class="card"><h2>Policy log</h2>${policyList()}</div>${scoreboard()}`;
     bindArguing();
