@@ -93,6 +93,19 @@ struct BureaucratView: View {
                 Toggle("AI rebuttal check (falls back to timer)", isOn: Binding(
                     get: { model.options.aiAssist },
                     set: { var o = model.options; o.aiAssist = $0; model.setOptions(o) }))
+                HStack {
+                    Text("Rebuttal mode")
+                    Spacer()
+                    Picker("Rebuttal mode", selection: Binding(
+                        get: { model.options.rebuttalMode },
+                        set: { var o = model.options; o.rebuttalMode = $0; model.setOptions(o) }
+                    )) {
+                        Text("Type").tag("type")
+                        Text("Speak").tag("speak")
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: 160)
+                }
             }
             .font(.system(size: 15)).tint(UbappTheme.accent).padding(14).ubCard()
         }
