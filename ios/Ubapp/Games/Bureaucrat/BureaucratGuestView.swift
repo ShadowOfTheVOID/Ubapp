@@ -292,7 +292,6 @@ struct BureaucratGuestView: View {
                     let e = item.element
                     LedgerRow(
                         number: item.offset + 1,
-                        petition: shortTask,
                         reason: e.text,
                         verdict: e.isRebuttal ? "REBUTTAL" : "DENIED",
                         isCited: e.isRebuttal
@@ -640,14 +639,6 @@ struct BureaucratGuestView: View {
 
     // MARK: - Helpers
 
-    private var shortTask: String {
-        let words = model.task.split(separator: " ").map(String.init)
-        if words.count > 4 {
-            return words.prefix(4).joined(separator: " ") + "…"
-        }
-        return model.task
-    }
-
     private var roundOverText: String {
         let who = model.lastChallengerName.isEmpty ? "A citizen" : model.lastChallengerName
         switch model.lastReason {
@@ -703,10 +694,9 @@ private struct BureaucratStamp: View {
     }
 }
 
-/// Ledger entry row — numbered petition with a verdict pill.
+/// Ledger entry row — numbered denial reason with a verdict pill.
 private struct LedgerRow: View {
     let number: Int
-    let petition: String
     let reason: String
     var verdict: String = "DENIED"
     var isCited: Bool = false
@@ -726,16 +716,11 @@ private struct LedgerRow: View {
                 .foregroundStyle(UbappTheme.faint)
                 .frame(width: 30, alignment: .leading)
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(petition)
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(.white)
-                Text("\"\(reason)\"")
-                    .font(.system(size: 11))
-                    .foregroundStyle(UbappTheme.muted)
-                    .lineLimit(2)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            Text(reason)
+                .font(.system(size: 13))
+                .foregroundStyle(.white)
+                .lineLimit(3)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
             Text(verdict)
                 .font(.system(size: 9, weight: .bold, design: .monospaced))

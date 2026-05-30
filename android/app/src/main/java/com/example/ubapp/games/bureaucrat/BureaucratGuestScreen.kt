@@ -327,10 +327,6 @@ private fun LoopholePanel(s: BureaucratGuestState, ctx: GuestContext) {
 
 @Composable
 private fun DenialLedger(s: BureaucratGuestState) {
-    val shortTask = run {
-        val words = s.task.split(" ")
-        if (words.size > 4) words.take(4).joinToString(" ") + "…" else s.task
-    }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             MonoLabel("Denial ledger · this round")
@@ -344,7 +340,6 @@ private fun DenialLedger(s: BureaucratGuestState) {
             s.policyLog.forEachIndexed { i, e ->
                 LedgerRow(
                     number = i + 1,
-                    petition = shortTask,
                     reason = e.text,
                     verdict = if (e.isRebuttal) "REBUTTAL" else "DENIED",
                     isCited = e.isRebuttal
@@ -699,19 +694,18 @@ fun GlyphBureaucrat(size: Dp = 64.dp) {
 }
 
 /**
- * Ledger entry row — numbered petition with a verdict pill.
+ * Ledger entry row — numbered denial reason with a verdict pill.
  */
 @Composable
 private fun LedgerRow(
     number: Int,
-    petition: String,
     reason: String,
-    verdict: String = "DENIED",
+    verdict: String = “DENIED”,
     isCited: Boolean = false,
 ) {
     val verdictColor = when (verdict) {
-        "APPROVED" -> Color(0xFF3DDC84)
-        "DENIED"   -> Ub.Accent
+        “APPROVED” -> Color(0xFF3DDC84)
+        “DENIED”   -> Ub.Accent
         else       -> Ub.Muted
     }
     Row(
@@ -726,17 +720,15 @@ private fun LedgerRow(
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Text(
-            "#$number",
+            “#$number”,
             fontFamily = FontFamily.Monospace,
             fontSize = 9.sp,
             fontWeight = FontWeight.Medium,
             color = Ub.Faint,
             modifier = Modifier.width(30.dp)
         )
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(petition, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ub.Foreground)
-            Text("“$reason”", fontSize = 11.sp, color = Ub.Muted, maxLines = 2)
-        }
+        Text(reason, fontSize = 13.sp, color = Ub.Foreground, maxLines = 3,
+            modifier = Modifier.weight(1f))
         Text(
             verdict,
             fontFamily = FontFamily.Monospace,
