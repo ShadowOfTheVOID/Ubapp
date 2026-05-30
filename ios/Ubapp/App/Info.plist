@@ -34,6 +34,10 @@
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Social games host a small server on this phone so other players can join over Wi-Fi.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>The Bureaucrat uses the microphone to let you speak your rebuttal instead of typing it.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>The Bureaucrat transcribes your spoken rebuttal so the game can check it for contradictions.</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>
