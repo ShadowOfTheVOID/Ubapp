@@ -330,7 +330,7 @@ struct BureaucratGuestView: View {
                         .font(.system(size: 17, weight: .bold))
                         .foregroundStyle(.white)
                     if let latest = model.policyLog.last(where: { !$0.isRebuttal }) {
-                        Text(""\(latest.text)"")
+                        Text("\"\(latest.text)\"")
                             .font(.system(size: 12))
                             .foregroundStyle(UbappTheme.muted)
                             .lineLimit(2)
@@ -596,7 +596,7 @@ private struct LedgerRow: View {
                 Text(petition)
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(.white)
-                Text(""\(reason)"")
+                Text("\"\(reason)\"")
                     .font(.system(size: 11))
                     .foregroundStyle(UbappTheme.muted)
                     .lineLimit(2)
