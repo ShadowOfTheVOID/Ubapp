@@ -40,6 +40,8 @@ struct TutorialGuestCard: View {
     let onCall: () -> Void
     let onVote: (Bool) -> Void
 
+    @State private var pageIndex = 0
+
     var body: some View {
         if state.tutorialShown {
             EmptyView()
@@ -61,21 +63,34 @@ struct TutorialGuestCard: View {
                 }
             }
         } else if state.result == true, let c = content {
+            let allSections = c.sections + c.menuSections
             GroupBox(c.title) {
-                ForEach(Array(c.sections.enumerated()), id: \.offset) { _, s in
+                if !allSections.isEmpty {
+                    let total = allSections.count
+                    let s = allSections[pageIndex]
+
+                    Text("\(pageIndex + 1) / \(total)")
+                        .font(.caption).foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+
                     VStack(alignment: .leading, spacing: 4) {
                         Text(s.heading).font(.subheadline.bold())
                         Text(s.body).font(.callout).foregroundStyle(.secondary)
-                    }.padding(.vertical, 4)
+                    }.padding(.vertical, 8)
+
+                    HStack {
+                        Spacer()
+                        if pageIndex > 0 {
+                            Button("← Back") { pageIndex -= 1 }.buttonStyle(.bordered)
+                        }
+                        if pageIndex < total - 1 {
+                            Button("Next →") { pageIndex += 1 }.buttonStyle(.borderedProminent)
+                        } else {
+                            Text("Waiting for the host to finish reading…")
+                                .font(.footnote).foregroundStyle(.secondary)
+                        }
+                    }
                 }
-                ForEach(Array(c.menuSections.enumerated()), id: \.offset) { _, s in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(s.heading).font(.subheadline.bold())
-                        Text(s.body).font(.callout).foregroundStyle(.secondary)
-                    }.padding(.vertical, 4)
-                }
-                Text("Waiting for the host to finish reading…")
-                    .font(.footnote).foregroundStyle(.secondary)
             }
         } else if state.result == false {
             Text("Majority voted to skip the tutorial.")

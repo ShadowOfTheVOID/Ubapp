@@ -64,14 +64,37 @@ fun TutorialVoteCard(
         }
         state.result == true -> ElevatedCard {
             Column(Modifier.padding(12.dp)) {
-                Text(tutorial.title, style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(8.dp))
-                for (s in tutorial.sections) {
-                    Text(s.heading, style = MaterialTheme.typography.titleSmall)
-                    Text(s.body, style = MaterialTheme.typography.bodyMedium)
-                    Spacer(Modifier.height(8.dp))
+                var pageIndex by remember { mutableIntStateOf(0) }
+                val sections = tutorial.sections
+                val total = sections.size
+                val section = sections[pageIndex]
+
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(tutorial.title, style = MaterialTheme.typography.titleMedium)
+                    Text("${pageIndex + 1} / $total",
+                         style = MaterialTheme.typography.bodySmall,
+                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Button(onClick = onDismiss) { Text("Got it — start") }
+
+                Spacer(Modifier.height(8.dp))
+                Text(section.heading, style = MaterialTheme.typography.titleSmall)
+                Spacer(Modifier.height(2.dp))
+                Text(section.body, style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.height(12.dp))
+
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    OutlinedButton(onClick = onDismiss) { Text("Skip") }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (pageIndex > 0) {
+                            OutlinedButton(onClick = { pageIndex-- }) { Text("← Back") }
+                        }
+                        if (pageIndex < total - 1) {
+                            Button(onClick = { pageIndex++ }) { Text("Next →") }
+                        } else {
+                            Button(onClick = onDismiss) { Text("Got it — start") }
+                        }
+                    }
+                }
             }
         }
         state.result == false -> Text("Majority voted to skip the tutorial.",

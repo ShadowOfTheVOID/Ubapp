@@ -99,15 +99,38 @@ fun TutorialGuestCard(
         }
         state.result == true && content != null -> ElevatedCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(12.dp)) {
-                Text(content.title, style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(8.dp))
-                for ((h, b) in content.sections + content.menuSections) {
-                    Text(h, style = MaterialTheme.typography.titleSmall)
-                    Text(b, style = MaterialTheme.typography.bodyMedium)
+                val allSections = content.sections + content.menuSections
+                if (allSections.isNotEmpty()) {
+                    var pageIndex by remember { mutableIntStateOf(0) }
+                    val total = allSections.size
+                    val (h, b) = allSections[pageIndex]
+
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(content.title, style = MaterialTheme.typography.titleMedium)
+                        Text("${pageIndex + 1} / $total",
+                             style = MaterialTheme.typography.bodySmall,
+                             color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+
                     Spacer(Modifier.height(8.dp))
+                    Text(h, style = MaterialTheme.typography.titleSmall)
+                    Spacer(Modifier.height(2.dp))
+                    Text(b, style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(12.dp))
+
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        if (pageIndex > 0) {
+                            OutlinedButton(onClick = { pageIndex-- }) { Text("← Back") }
+                            Spacer(Modifier.width(8.dp))
+                        }
+                        if (pageIndex < total - 1) {
+                            Button(onClick = { pageIndex++ }) { Text("Next →") }
+                        } else {
+                            Text("Waiting for the host to finish reading…",
+                                 style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
                 }
-                Text("Waiting for the host to finish reading…",
-                     style = MaterialTheme.typography.bodySmall)
             }
         }
         state.result == false -> Text("Majority voted to skip the tutorial.",
