@@ -44,11 +44,11 @@
      Appended last so it wins the cascade. ===== */
   :root{
     --bg:#0a0a0a; --ink:#000000; --fg:#ffffff;
-    --accent:#ff2e88; --accent-ink:#2a0010;
+    --accent:#ff2e88; --accent-ink:#ffffff;
     --accent-soft:rgba(255,46,136,0.14); --accent-line:rgba(255,46,136,0.45);
     --card:#141416; --card2:#1c1c1f; --surface-hi:#1c1c1f;
     --line:rgba(255,255,255,0.08); --line-strong:rgba(255,255,255,0.14);
-    --text:#ffffff; --muted:rgba(255,255,255,0.58); --faint:rgba(255,255,255,0.38);
+    --text:#ffffff; --muted:rgba(255,255,255,0.68); --faint:rgba(255,255,255,0.55);
     --online:#3ddc84;
     --sys:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
     --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
@@ -291,7 +291,7 @@
     const den = document.getElementById('den');
     if (den) den.addEventListener('input', ()=>{ state.denialDraft = den.value; });
     const dg = document.getElementById('den-go');
-    if (dg) dg.addEventListener('click', ()=>{ const t=(state.denialDraft||'').trim(); if(t){ send({type:'denial', text:t}); state.denialDraft=''; } });
+    if (dg) dg.addEventListener('click', ()=>{ const t=(state.denialDraft||'').trim(); if(t){ send({type:'denial', text:t}); state.denialDraft=''; render(); } });
     const lp = document.getElementById('loop');
     if (lp) lp.addEventListener('click', ()=> send({type:'call_loophole'}));
   }
