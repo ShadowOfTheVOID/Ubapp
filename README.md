@@ -144,6 +144,31 @@ tutorial opt-in) helper so adding a new game is mostly engine + adapter.
 
 Enforced by `*Engine.canStart`.
 
+## Possible revenue model
+
+All games remain fully free and unrestricted. Revenue comes from ads shown
+during natural idle moments; a one-time paid upgrade removes them.
+
+**Ad placements (host-side only — browser guests are never affected):**
+
+- **Lobby** — a banner sits below the QR code while the host waits for
+  players to join. Dismissed instantly when the host taps Start; never
+  blocks the join code.
+- **Between rounds** — a bottom banner during the natural pause before the
+  next round begins. Disappears when the round starts.
+- **Post-game** — a short interstitial (≤10 s, skippable) before the
+  scoreboard is revealed. Highest-attention moment in the session.
+
+**Ad-free upgrade:** a single one-time IAP (~$2.99–$3.99) removes all
+placements permanently. No content is locked — the upgrade is purely a
+smoother experience for players who want it.
+
+**Why this shape:**
+- Ads never fire during active gameplay.
+- The host controls every dismissal naturally (tapping Start, skipping).
+- Consistent recurring revenue scales with active sessions.
+- Nothing is gated, capped, or taken away.
+
 ## The Bureaucrat's contradiction detector (optional on-device NLI)
 
 The Bureaucrat ships a swappable `ContradictionDetector` (`ProximitySource`-
