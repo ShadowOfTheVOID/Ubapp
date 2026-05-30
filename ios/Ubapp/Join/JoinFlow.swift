@@ -118,6 +118,7 @@ struct JoinFlowView: View {
         case "president":     PresidentGuestView(ctx: ctx)
         case "bluff_market":  BluffMarketGuestView(ctx: ctx)
         case "secret_hitler": SecretHitlerGuestView(ctx: ctx)
+        case "bureaucrat":    BureaucratGuestView(ctx: ctx)
         case "tag":           TagGuestView(ctx: ctx)
         default:
             VStack {

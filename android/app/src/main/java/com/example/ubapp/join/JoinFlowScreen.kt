@@ -31,6 +31,7 @@ import com.example.ubapp.games.crazyeights.CrazyEightsGuestScreen
 import com.example.ubapp.games.imposter.ImposterGuestScreen
 import com.example.ubapp.games.president.PresidentGuestScreen
 import com.example.ubapp.games.mafia.MafiaGuestScreen
+import com.example.ubapp.games.bureaucrat.BureaucratGuestScreen
 import com.example.ubapp.games.secrethitler.SecretHitlerGuestScreen
 import com.example.ubapp.games.werewolf.WerewolfGuestScreen
 import com.example.ubapp.theme.UbappTheme
@@ -82,6 +83,7 @@ fun JoinFlowScreen() {
             "president" -> PresidentGuestScreen(ctx)
             "bluff_market" -> BluffMarketGuestScreen(ctx)
             "secret_hitler" -> SecretHitlerGuestScreen(ctx)
+            "bureaucrat" -> BureaucratGuestScreen(ctx)
             "tag" -> com.example.ubapp.games.tag.TagGuestScreen(ctx)
             else -> Text("Unknown game: $game")
         }
