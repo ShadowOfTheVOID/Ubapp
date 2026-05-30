@@ -6,28 +6,51 @@ import SwiftUI
 struct TutorialSheet: View {
     let tutorial: GameTutorial
     @Environment(\.dismiss) private var dismiss
+    @State private var pageIndex = 0
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    ForEach(Array(tutorial.sections.enumerated()), id: \.offset) { _, section in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(section.heading).font(.headline)
-                            Text(section.body).font(.body).foregroundStyle(.secondary)
-                        }
+            let sections = tutorial.sections
+            let total = sections.count
+            let section = sections[pageIndex]
+
+            VStack(alignment: .leading, spacing: 16) {
+                Text("\(pageIndex + 1) / \(total)")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(section.heading).font(.headline)
+                    Text(section.body).font(.body).foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                HStack {
+                    Button("Skip") { dismiss() }
+                        .buttonStyle(.bordered)
+                        .tint(.secondary)
+
+                    Spacer()
+
+                    if pageIndex > 0 {
+                        Button("← Back") { pageIndex -= 1 }
+                            .buttonStyle(.bordered)
+                    }
+
+                    if pageIndex < total - 1 {
+                        Button("Next →") { pageIndex += 1 }
+                            .buttonStyle(.borderedProminent)
+                    } else {
+                        Button("Done") { dismiss() }
+                            .buttonStyle(.borderedProminent)
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding()
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding()
             .navigationTitle(tutorial.title)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                }
-            }
         }
     }
 }

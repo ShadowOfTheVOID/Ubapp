@@ -21,6 +21,7 @@ struct TutorialVoteCard: View {
     let onDismiss: () -> Void
 
     @State private var myVote: Bool?
+    @State private var pageIndex = 0
 
     init(state: VoteState, tutorial: GameTutorial, onCall: @escaping () -> Void, onVote: @escaping (Bool) -> Void, onDismiss: @escaping () -> Void) {
         self.state = state
@@ -53,16 +54,34 @@ struct TutorialVoteCard: View {
             }
         } else if state.result == true {
             GroupBox(tutorial.title) {
-                ForEach(tutorial.sections.indices, id: \.self) { i in
-                    let s = tutorial.sections[i]
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(s.heading).font(.subheadline.bold())
-                        Text(s.body).font(.callout).foregroundStyle(.secondary)
-                    }
-                    .padding(.vertical, 4)
+                let sections = tutorial.sections
+                let total = sections.count
+                let section = sections[pageIndex]
+
+                Text("\(pageIndex + 1) / \(total)")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(section.heading).font(.subheadline.bold())
+                    Text(section.body).font(.callout).foregroundStyle(.secondary)
                 }
-                Button("Got it — start") { onDismiss() }
-                    .buttonStyle(.borderedProminent)
+                .padding(.vertical, 8)
+
+                HStack {
+                    Button("Skip") { onDismiss() }
+                        .buttonStyle(.bordered)
+                        .tint(.secondary)
+                    Spacer()
+                    if pageIndex > 0 {
+                        Button("← Back") { pageIndex -= 1 }.buttonStyle(.bordered)
+                    }
+                    if pageIndex < total - 1 {
+                        Button("Next →") { pageIndex += 1 }.buttonStyle(.borderedProminent)
+                    } else {
+                        Button("Got it — start") { onDismiss() }.buttonStyle(.borderedProminent)
+                    }
+                }
             }
         } else if state.result == false {
             Text("Majority voted to skip the tutorial.")
