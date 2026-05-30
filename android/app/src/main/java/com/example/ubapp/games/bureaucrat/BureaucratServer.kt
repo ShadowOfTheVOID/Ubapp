@@ -171,7 +171,8 @@ class BureaucratServer(context: Context, val hostName: String = "Host") {
         val o = engine.options
         broadcast(JSONObject().put("type", "options")
             .put("targetScore", o.targetScore).put("challengeTokens", o.challengeTokens)
-            .put("rebuttalSeconds", o.rebuttalSeconds).put("aiAssist", o.aiAssist))
+            .put("rebuttalSeconds", o.rebuttalSeconds).put("aiAssist", o.aiAssist)
+            .put("rebuttalMode", o.rebuttalMode))
     }
 
     private fun roundCore(j: JSONObject): JSONObject = j.apply {

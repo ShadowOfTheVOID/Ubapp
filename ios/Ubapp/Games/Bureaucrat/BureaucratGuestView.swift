@@ -1,4 +1,6 @@
 import SwiftUI
+import Speech
+import AVFoundation
 
 /// Native guest UI for The Bureaucrat. Consumes the same JSON the browser
 /// bundle does — see `bureaucrat_browser.html` for the wire protocol.
@@ -7,7 +9,15 @@ struct BureaucratGuestView: View {
     @StateObject private var model = BureaucratGuestModel()
     @State private var denialDraft = ""
     @State private var rebuttalDraft = ""
+    @State private var speakTranscript = ""
+    @State private var isRecording = false
+    @State private var speechUnavailable = false
     @State private var now = Date()
+
+    private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
+    @State private var audioEngine = AVAudioEngine()
+    @State private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
+    @State private var recognitionTask: SFSpeechRecognitionTask?
 
     private let ticker = Timer.publish(every: 0.25, on: .main, in: .common).autoconnect()
 
@@ -370,7 +380,15 @@ struct BureaucratGuestView: View {
         )
     }
 
-    private var rebuttalComposer: some View {
+    @ViewBuilder private var rebuttalComposer: some View {
+        if model.rebuttalMode == "speak" {
+            rebuttalComposerSpeak
+        } else {
+            rebuttalComposerType
+        }
+    }
+
+    private var rebuttalComposerType: some View {
         VStack(alignment: .leading, spacing: 10) {
             MonoLabel("Rebuttal demanded")
             Text("\(model.challengerName.isEmpty ? "A challenger" : model.challengerName) called a loophole. Defend your policy before the clock runs out.")
@@ -380,16 +398,7 @@ struct BureaucratGuestView: View {
                 .lineLimit(2...5)
                 .textFieldStyle(.roundedBorder)
                 .foregroundStyle(.black)
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(model.aiAssist ? Color(hex: 0x3DDC84) : UbappTheme.muted)
-                    .frame(width: 8, height: 8)
-                MonoLabel(
-                    "Detector: \(model.aiAssist ? "Listening…" : "Timer only")",
-                    size: 9,
-                    color: model.aiAssist ? Color(hex: 0x3DDC84) : UbappTheme.muted
-                )
-            }
+            detectorRow
             Button("Submit rebuttal") {
                 let t = rebuttalDraft.trimmingCharacters(in: .whitespacesAndNewlines)
                 if !t.isEmpty {
@@ -403,6 +412,131 @@ struct BureaucratGuestView: View {
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .ubCard()
+    }
+
+    @ViewBuilder private var rebuttalComposerSpeak: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            MonoLabel("Rebuttal demanded")
+            Text("\(model.challengerName.isEmpty ? "A challenger" : model.challengerName) called a loophole. Defend your policy before the clock runs out.")
+                .font(.system(size: 14))
+                .foregroundStyle(.white)
+            if speechUnavailable {
+                Text("Voice not supported — type instead.")
+                    .font(.system(size: 13))
+                    .foregroundStyle(UbappTheme.muted)
+                TextField("Your rebuttal…", text: $rebuttalDraft, axis: .vertical)
+                    .lineLimit(2...5)
+                    .textFieldStyle(.roundedBorder)
+                    .foregroundStyle(.black)
+            } else {
+                Button(isRecording ? "⏹ Stop" : "🎙 Tap to speak") {
+                    if isRecording {
+                        stopRecording()
+                    } else {
+                        startRecording()
+                    }
+                }
+                .buttonStyle(UbPrimaryButtonStyle())
+                if !speakTranscript.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        MonoLabel("Transcript", size: 9, color: UbappTheme.faint)
+                        Text(speakTranscript)
+                            .font(.system(size: 14))
+                            .foregroundStyle(.white)
+                    }
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .ubCard(radius: UbappRadius.row, fill: UbappTheme.surfaceHi, stroke: UbappTheme.line)
+                }
+            }
+            detectorRow
+            Button("Submit rebuttal") {
+                let t = (speechUnavailable ? rebuttalDraft : speakTranscript)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                if !t.isEmpty {
+                    if isRecording { stopRecording() }
+                    model.send(["type": "rebuttal", "text": t])
+                    speakTranscript = ""
+                    rebuttalDraft = ""
+                }
+            }
+            .buttonStyle(UbPrimaryButtonStyle())
+            .disabled({
+                let t = speechUnavailable ? rebuttalDraft : speakTranscript
+                return t.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            }())
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .ubCard()
+        .onAppear {
+            speakTranscript = ""
+            isRecording = false
+            // Check authorisation eagerly so the button is responsive.
+            SFSpeechRecognizer.requestAuthorization { status in
+                DispatchQueue.main.async {
+                    speechUnavailable = (status != .authorized || speechRecognizer?.isAvailable != true)
+                }
+            }
+        }
+        .onDisappear { if isRecording { stopRecording() } }
+    }
+
+    private var detectorRow: some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(model.aiAssist ? Color(hex: 0x3DDC84) : UbappTheme.muted)
+                .frame(width: 8, height: 8)
+            MonoLabel(
+                "Detector: \(model.aiAssist ? "Listening…" : "Timer only")",
+                size: 9,
+                color: model.aiAssist ? Color(hex: 0x3DDC84) : UbappTheme.muted
+            )
+        }
+    }
+
+    private func startRecording() {
+        guard let recognizer = speechRecognizer, recognizer.isAvailable else {
+            speechUnavailable = true; return
+        }
+        SFSpeechRecognizer.requestAuthorization { status in
+            DispatchQueue.main.async {
+                guard status == .authorized else { speechUnavailable = true; return }
+                do {
+                    let req = SFSpeechAudioBufferRecognitionRequest()
+                    req.shouldReportPartialResults = true
+                    recognitionRequest = req
+                    recognitionTask = recognizer.recognitionTask(with: req) { result, error in
+                        if let r = result {
+                            speakTranscript = r.bestTranscription.formattedString
+                        }
+                        if error != nil || result?.isFinal == true {
+                            stopRecording()
+                        }
+                    }
+                    let node = audioEngine.inputNode
+                    let fmt = node.outputFormat(forBus: 0)
+                    node.installTap(onBus: 0, bufferSize: 1024, format: fmt) { buf, _ in
+                        req.append(buf)
+                    }
+                    audioEngine.prepare()
+                    try audioEngine.start()
+                    isRecording = true
+                } catch {
+                    speechUnavailable = true
+                }
+            }
+        }
+    }
+
+    private func stopRecording() {
+        audioEngine.stop()
+        audioEngine.inputNode.removeTap(onBus: 0)
+        recognitionRequest?.endAudio()
+        recognitionRequest = nil
+        recognitionTask?.cancel()
+        recognitionTask = nil
+        isRecording = false
     }
 
     private var spectateCard: some View {
@@ -701,6 +835,7 @@ final class BureaucratGuestModel: ObservableObject {
     @Published var challengeTokens = 2
     @Published var rebuttalSeconds = 20
     @Published var aiAssist = true
+    @Published var rebuttalMode = "type"
     @Published var scores: [String: Int] = [:]
     @Published var tokens: [String: Int] = [:]
     @Published var policyLog: [Entry] = []
@@ -740,6 +875,7 @@ final class BureaucratGuestModel: ObservableObject {
             challengeTokens = m["challengeTokens"] as? Int ?? challengeTokens
             rebuttalSeconds = m["rebuttalSeconds"] as? Int ?? rebuttalSeconds
             aiAssist = m["aiAssist"] as? Bool ?? aiAssist
+            if let rm = m["rebuttalMode"] as? String { rebuttalMode = (rm == "speak") ? "speak" : "type" }
         case "round", "policy":
             applyRound(m)
         case "rebuttal_open":

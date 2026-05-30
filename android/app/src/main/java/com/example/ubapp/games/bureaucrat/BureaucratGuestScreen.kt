@@ -24,6 +24,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.app.Activity
+import android.content.Intent
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import com.example.ubapp.join.GuestContext
 import com.example.ubapp.join.GuestTutorialContent
 import com.example.ubapp.join.GuestTutorialState
@@ -154,7 +160,7 @@ private fun BureaucratArguing(s: BureaucratGuestState, ctx: GuestContext, iAmBur
 private fun BureaucratRebuttal(s: BureaucratGuestState, ctx: GuestContext, iAmBureaucrat: Boolean, secs: Int) {
     ArgHeader(s.roundNumber)
     LiveChallengeBanner(s, secs)
-    if (iAmBureaucrat) RebuttalComposer(s, ctx)
+    if (iAmBureaucrat) RebuttalComposer(s, ctx, s.rebuttalMode)
     else SpectateCard(s)
     DenialLedger(s)
 }
@@ -424,13 +430,29 @@ private fun LiveChallengeBanner(s: BureaucratGuestState, secs: Int) {
 }
 
 @Composable
-private fun RebuttalComposer(s: BureaucratGuestState, ctx: GuestContext) {
+private fun RebuttalComposer(s: BureaucratGuestState, ctx: GuestContext, rebuttalMode: String) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val speechAvailable = remember(context) { SpeechRecognizer.isRecognitionAvailable(context) }
+    val isSpeakMode = rebuttalMode == "speak" && speechAvailable
+    val fallbackNote = rebuttalMode == "speak" && !speechAvailable
+    if (isSpeakMode) {
+        RebuttalComposerSpeak(s, ctx)
+    } else {
+        RebuttalComposerType(s, ctx, fallbackNote)
+    }
+}
+
+@Composable
+private fun RebuttalComposerType(s: BureaucratGuestState, ctx: GuestContext, fallbackNote: Boolean) {
     var draft by remember(s.deadlineMs) { mutableStateOf("") }
     Column(Modifier.fillMaxWidth().ubCard().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)) {
         MonoLabel("Rebuttal demanded")
         Text("${s.challengerName.ifEmpty { "A challenger" }} called a loophole. Defend your policy before the clock runs out.",
             fontSize = 14.sp, color = Ub.Foreground)
+        if (fallbackNote) {
+            Text("Voice not supported — type instead.", fontSize = 13.sp, color = Ub.Muted)
+        }
         OutlinedTextField(value = draft, onValueChange = { if (it.length <= 240) draft = it },
             modifier = Modifier.fillMaxWidth(), minLines = 2,
             placeholder = { Text("Your rebuttal…") })
@@ -448,6 +470,57 @@ private fun RebuttalComposer(s: BureaucratGuestState, ctx: GuestContext) {
         }
         UbPrimaryButton("Submit rebuttal", enabled = draft.isNotBlank(), onClick = {
             val t = draft.trim()
+            if (t.isNotEmpty()) ctx.client.send(JSONObject().put("type", "rebuttal").put("text", t))
+        })
+    }
+}
+
+@Composable
+private fun RebuttalComposerSpeak(s: BureaucratGuestState, ctx: GuestContext) {
+    var transcript by remember(s.deadlineMs) { mutableStateOf("") }
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val matches = result.data
+                ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+            val best = matches?.firstOrNull()?.trim() ?: ""
+            if (best.isNotEmpty()) transcript = best
+        }
+    }
+    Column(Modifier.fillMaxWidth().ubCard().padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        MonoLabel("Rebuttal demanded")
+        Text("${s.challengerName.ifEmpty { "A challenger" }} called a loophole. Defend your policy before the clock runs out.",
+            fontSize = 14.sp, color = Ub.Foreground)
+        UbPrimaryButton("🎙 Tap to speak", onClick = {
+            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                putExtra(RecognizerIntent.EXTRA_PROMPT, "Say your rebuttal…")
+            }
+            launcher.launch(intent)
+        })
+        if (transcript.isNotEmpty()) {
+            Column(Modifier.fillMaxWidth().ubCard(radius = Ub.Radius.row, fill = Ub.SurfaceHi, stroke = Ub.Line)
+                .padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                MonoLabel("Transcript", size = 9, color = Ub.Faint)
+                Text(transcript, fontSize = 14.sp, color = Ub.Foreground)
+            }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(
+                Modifier.size(8.dp).clip(CircleShape)
+                    .background(if (s.aiAssist) Color(0xFF3DDC84) else Ub.Muted)
+            )
+            MonoLabel(
+                if (s.aiAssist) "Detector: Listening…" else "Detector: Timer only",
+                size = 9,
+                color = if (s.aiAssist) Color(0xFF3DDC84) else Ub.Muted
+            )
+        }
+        UbPrimaryButton("Submit rebuttal", enabled = transcript.isNotBlank(), onClick = {
+            val t = transcript.trim()
             if (t.isNotEmpty()) ctx.client.send(JSONObject().put("type", "rebuttal").put("text", t))
         })
     }
@@ -760,6 +833,7 @@ class BureaucratGuestState {
     var challengeTokens by mutableIntStateOf(2)
     var rebuttalSeconds by mutableIntStateOf(20)
     var aiAssist by mutableStateOf(true)
+    var rebuttalMode by mutableStateOf("type")
     var scores by mutableStateOf<Map<String, Int>>(emptyMap())
     var tokens by mutableStateOf<Map<String, Int>>(emptyMap())
     var policyLog by mutableStateOf<List<Entry>>(emptyList())
@@ -789,6 +863,7 @@ class BureaucratGuestState {
                 challengeTokens = m.optInt("challengeTokens", challengeTokens)
                 rebuttalSeconds = m.optInt("rebuttalSeconds", rebuttalSeconds)
                 aiAssist = m.optBoolean("aiAssist", aiAssist)
+                rebuttalMode = m.optString("rebuttalMode", "type").let { if (it == "speak") "speak" else "type" }
             }
             "round", "policy" -> applyRound(m)
             "rebuttal_open" -> {

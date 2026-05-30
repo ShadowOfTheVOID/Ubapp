@@ -139,6 +139,24 @@ private fun OptionsCard(engine: BureaucratEngine, server: BureaucratServer) {
                 Switch(checked = o.aiAssist, onCheckedChange = { server.hostSetOptions(o.copy(aiAssist = it)) })
                 Text("  AI rebuttal check (falls back to timer)")
             }
+            Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Rebuttal mode:", Modifier.weight(1f))
+                SingleChoiceSegmentedButtonRow {
+                    SegmentedButton(
+                        selected = o.rebuttalMode == "type",
+                        onClick = { server.hostSetOptions(o.copy(rebuttalMode = "type")) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                        label = { Text("Type") }
+                    )
+                    SegmentedButton(
+                        selected = o.rebuttalMode == "speak",
+                        onClick = { server.hostSetOptions(o.copy(rebuttalMode = "speak")) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                        label = { Text("Speak") }
+                    )
+                }
+            }
         }
     }
 }

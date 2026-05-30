@@ -159,7 +159,8 @@ final class BureaucratServer {
     private func broadcastOptions() {
         let o = engine.options
         broadcast(["type": "options", "targetScore": o.targetScore, "challengeTokens": o.challengeTokens,
-                   "rebuttalSeconds": o.rebuttalSeconds, "aiAssist": o.aiAssist])
+                   "rebuttalSeconds": o.rebuttalSeconds, "aiAssist": o.aiAssist,
+                   "rebuttalMode": o.rebuttalMode])
     }
 
     private func roundCore(_ type: String) -> [String: Any] {

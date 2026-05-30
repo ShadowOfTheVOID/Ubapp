@@ -162,7 +162,7 @@
     switch (m.type) {
       case 'welcome': state.me = { id:m.yourId, name:m.yourName }; break;
       case 'lobby':   state.players = m.players; state.phase='lobby'; break;
-      case 'options': state.options = { targetScore:m.targetScore, challengeTokens:m.challengeTokens, rebuttalSeconds:m.rebuttalSeconds, aiAssist:!!m.aiAssist }; break;
+      case 'options': state.options = { targetScore:m.targetScore, challengeTokens:m.challengeTokens, rebuttalSeconds:m.rebuttalSeconds, aiAssist:!!m.aiAssist, rebuttalMode:m.rebuttalMode||'type' }; break;
       case 'round':
       case 'policy':  applyRound(m); break;
       case 'rebuttal_open':
@@ -251,7 +251,17 @@
     const warn = secs<=5 ? 'warn' : '';
     let body;
     if (isBureaucrat()){
-      body = `<div class="card"><h2>Rebuttal demanded</h2><p><strong>${esc(state.challengerName)}</strong> called a loophole. Defend your policy before the clock runs out.</p><div class="count ${warn}">${secs}s</div><textarea id="reb" placeholder="Your binding rebuttal…" maxlength="240" autofocus>${esc(state.rebuttalDraft)}</textarea><div style="height:10px"></div><button id="reb-go">Submit rebuttal</button></div>`;
+      const useSpeech = state.options.rebuttalMode === 'speak';
+      const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (useSpeech && SpeechRec) {
+        body = `<div class="card"><h2>Rebuttal demanded</h2><p><strong>${esc(state.challengerName)}</strong> called a loophole. Defend your policy before the clock runs out.</p><div class="count ${warn}">${secs}s</div><button id="reb-mic">🎙 Tap to speak</button><p id="reb-live" class="small" style="min-height:1.4em;margin-top:8px"></p><p id="reb-preview" style="display:none;margin-top:8px;padding:10px 14px;background:rgba(255,255,255,0.06);border-radius:10px;font-size:15px"></p><div style="height:10px"></div><button id="reb-go" disabled>Submit rebuttal</button></div>`;
+      } else {
+        if (useSpeech && !SpeechRec) {
+          body = `<div class="card"><h2>Rebuttal demanded</h2><p><strong>${esc(state.challengerName)}</strong> called a loophole. Defend your policy before the clock runs out.</p><div class="count ${warn}">${secs}s</div><p class="small" style="color:var(--warn)">Voice not supported — type instead.</p><textarea id="reb" placeholder="Your binding rebuttal…" maxlength="240" autofocus>${esc(state.rebuttalDraft)}</textarea><div style="height:10px"></div><button id="reb-go">Submit rebuttal</button></div>`;
+        } else {
+          body = `<div class="card"><h2>Rebuttal demanded</h2><p><strong>${esc(state.challengerName)}</strong> called a loophole. Defend your policy before the clock runs out.</p><div class="count ${warn}">${secs}s</div><textarea id="reb" placeholder="Your binding rebuttal…" maxlength="240" autofocus>${esc(state.rebuttalDraft)}</textarea><div style="height:10px"></div><button id="reb-go">Submit rebuttal</button></div>`;
+        }
+      }
     } else {
       body = `<div class="card center"><h2>Loophole called</h2><p><strong>${esc(state.challengerName)}</strong> is challenging the Bureaucrat.</p><div class="count ${warn}">${secs}s</div><p class="small">If the Bureaucrat can't rebut in time, ${esc(state.challengerName)} takes the round.</p></div>`;
     }
@@ -295,11 +305,54 @@
     const lp = document.getElementById('loop');
     if (lp) lp.addEventListener('click', ()=> send({type:'call_loophole'}));
   }
+  let _speechRec = null;
+  let _speechRecording = false;
   function bindRebuttal(){
     const reb = document.getElementById('reb');
-    if (reb) reb.addEventListener('input', ()=>{ state.rebuttalDraft = reb.value; });
     const rg = document.getElementById('reb-go');
-    if (rg) rg.addEventListener('click', ()=>{ const t=(state.rebuttalDraft||'').trim(); if(t){ send({type:'rebuttal', text:t}); } });
+    const mic = document.getElementById('reb-mic');
+    if (mic){
+      // ---- speak mode ----
+      if (!_speechRec){
+        const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+        _speechRec = new SpeechRec();
+        _speechRec.continuous = true;
+        _speechRec.interimResults = true;
+        _speechRec.lang = 'en-US';
+      }
+      let finalTranscript = '';
+      _speechRec.onresult = e => {
+        let interimStr = '';
+        for (let i = e.resultIndex; i < e.results.length; i++){
+          const seg = e.results[i][0].transcript;
+          if (e.results[i].isFinal) finalTranscript += seg + ' ';
+          else interimStr += seg;
+        }
+        const live = document.getElementById('reb-live');
+        if (live) live.textContent = interimStr || '';
+        const preview = document.getElementById('reb-preview');
+        const go = document.getElementById('reb-go');
+        const full = (finalTranscript + interimStr).trim();
+        if (preview){ preview.textContent = full; preview.style.display = full ? '' : 'none'; }
+        if (go) go.disabled = !full;
+        state.rebuttalDraft = full;
+      };
+      _speechRec.onerror = () => { _speechRecording = false; const m = document.getElementById('reb-mic'); if (m) m.textContent = '🎙 Tap to speak'; };
+      _speechRec.onend   = () => { _speechRecording = false; const m = document.getElementById('reb-mic'); if (m) m.textContent = '🎙 Tap to speak'; };
+      mic.addEventListener('click', () => {
+        if (_speechRecording){ _speechRec.stop(); _speechRecording = false; mic.textContent = '🎙 Tap to speak'; }
+        else { finalTranscript = ''; _speechRec.start(); _speechRecording = true; mic.textContent = '⏹ Stop'; }
+      });
+      if (rg) rg.addEventListener('click', ()=>{
+        if (_speechRecording){ _speechRec.stop(); _speechRecording = false; }
+        const t = (state.rebuttalDraft||'').trim();
+        if (t) send({type:'rebuttal', text:t});
+      });
+    } else {
+      // ---- type mode ----
+      if (reb) reb.addEventListener('input', ()=>{ state.rebuttalDraft = reb.value; });
+      if (rg) rg.addEventListener('click', ()=>{ const t=(state.rebuttalDraft||'').trim(); if(t){ send({type:'rebuttal', text:t}); } });
+    }
   }
 
   function viewTutorialBanner(){
