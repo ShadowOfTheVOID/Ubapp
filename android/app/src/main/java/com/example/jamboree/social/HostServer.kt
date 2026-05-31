@@ -255,7 +255,7 @@ class HostServer(
         fun buildSslSocketFactory(ctx: Context): javax.net.ssl.SSLServerSocketFactory? =
             runCatching {
                 val ks = KeyStore.getInstance("PKCS12")
-                ctx.assets.open("ubapp.p12").use { ks.load(it, "jamboree".toCharArray()) }
+                ctx.assets.open("jamboree.p12").use { ks.load(it, "jamboree".toCharArray()) }
                 val kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm())
                 kmf.init(ks, "jamboree".toCharArray())
                 val ssl = SSLContext.getInstance("TLS")

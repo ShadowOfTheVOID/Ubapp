@@ -22,7 +22,7 @@ import javax.net.ssl.X509TrustManager
  * Callbacks fire on the main thread so Compose state writes are safe.
  *
  * Pass [ctx] so the client trusts the bundled self-signed server cert
- * (ubapp.p12). Without it the client falls back to the system trust store,
+ * (jamboree.p12). Without it the client falls back to the system trust store,
  * which rejects self-signed certs.
  */
 class GuestClient(private val url: String, ctx: Context? = null) : GuestLink {
@@ -117,7 +117,7 @@ class GuestClient(private val url: String, ctx: Context? = null) : GuestLink {
 
         private fun bundledTrustManager(ctx: Context): X509TrustManager? = runCatching {
             val ks = KeyStore.getInstance("PKCS12")
-            ctx.assets.open("ubapp.p12").use { ks.load(it, "jamboree".toCharArray()) }
+            ctx.assets.open("jamboree.p12").use { ks.load(it, "jamboree".toCharArray()) }
             val tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
             tmf.init(ks)
             tmf.trustManagers.filterIsInstance<X509TrustManager>().firstOrNull()
