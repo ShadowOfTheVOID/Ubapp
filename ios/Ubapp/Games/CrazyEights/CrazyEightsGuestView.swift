@@ -5,22 +5,38 @@ struct CrazyEightsGuestView: View {
     let ctx: GuestContext
     @StateObject private var model = CrazyEightsGuestModel()
     @State private var suitPickFor: CrazyEightsGuestModel.Card?
+    @State private var showInterstitial = false
+    @State private var interstitialFired = false
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                SeriesBanner(state: model.series)
-                switch model.phase {
-                case "lobby":    lobby
-                case "gameOver": gameOver
-                default:         table
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    SeriesBanner(state: model.series)
+                    switch model.phase {
+                    case "lobby":    lobby
+                    case "gameOver": gameOver
+                    default:         table
+                    }
                 }
+                .frame(maxWidth: 520, alignment: .leading)
+                .frame(maxWidth: .infinity)
+                .padding(20)
             }
-            .frame(maxWidth: 520, alignment: .leading)
-            .frame(maxWidth: .infinity)
-            .padding(20)
+            .scrollIndicators(.hidden)
+            if model.phase == "gameOver" {
+                AdBannerView()
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+            }
         }
-        .scrollIndicators(.hidden)
+        .adInterstitial(isPresented: $showInterstitial)
+        .onChange(of: model.phase) { _, newPhase in
+            if newPhase == "gameOver" && !interstitialFired {
+                interstitialFired = true
+                showInterstitial = true
+            }
+        }
         .navigationTitle("Crazy 8s")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { model.attach(ctx: ctx) }

@@ -4,26 +4,42 @@ import SwiftUI
 struct SecretHitlerGuestView: View {
     let ctx: GuestContext
     @StateObject private var model = SecretHitlerGuestModel()
+    @State private var showInterstitial = false
+    @State private var interstitialFired = false
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                if model.phase == "gameOver" {
-                    gameOver
-                } else if model.phase == "lobby" {
-                    lobby
-                } else {
-                    roleCard
-                    tracks
-                    government
-                    phaseSection
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    if model.phase == "gameOver" {
+                        gameOver
+                    } else if model.phase == "lobby" {
+                        lobby
+                    } else {
+                        roleCard
+                        tracks
+                        government
+                        phaseSection
+                    }
                 }
+                .frame(maxWidth: 520, alignment: .leading)
+                .frame(maxWidth: .infinity)
+                .padding(20)
             }
-            .frame(maxWidth: 520, alignment: .leading)
-            .frame(maxWidth: .infinity)
-            .padding(20)
+            .scrollIndicators(.hidden)
+            if model.phase == "gameOver" {
+                AdBannerView()
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+            }
         }
-        .scrollIndicators(.hidden)
+        .adInterstitial(isPresented: $showInterstitial)
+        .onChange(of: model.phase) { _, newPhase in
+            if newPhase == "gameOver" && !interstitialFired {
+                interstitialFired = true
+                showInterstitial = true
+            }
+        }
         .navigationTitle("Secret Hitler")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { model.attach(ctx: ctx) }

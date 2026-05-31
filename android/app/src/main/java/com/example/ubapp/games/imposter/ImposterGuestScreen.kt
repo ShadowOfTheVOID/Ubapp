@@ -16,6 +16,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ubapp.ads.AdBanner
+import com.example.ubapp.ads.AdInterstitialOverlay
 import com.example.ubapp.theme.Avatar
 import com.example.ubapp.theme.LobbyPlayerRow
 import com.example.ubapp.theme.MonoLabel
@@ -41,9 +43,20 @@ fun ImposterGuestScreen(ctx: GuestContext) {
         onDispose { ctx.client.onMessage = null }
     }
     @Suppress("UNUSED_EXPRESSION") tick
+    var showInterstitial by remember { mutableStateOf(false) }
+    var interstitialFired by remember { mutableStateOf(false) }
+    val gameOverPhase = "result"
+    LaunchedEffect(tick) {
+        if (s.phase == gameOverPhase && !interstitialFired) {
+            interstitialFired = true
+            showInterstitial = true
+        }
+    }
 
     UbappTheme {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+    Box(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize()) {
+    Box(Modifier.weight(1f), contentAlignment = Alignment.TopCenter) {
     Column(
         Modifier
             .verticalScroll(rememberScrollState())
@@ -161,8 +174,16 @@ fun ImposterGuestScreen(ctx: GuestContext) {
             }
         }
     }
+    } // Box(weight 1f)
+    if (s.phase == gameOverPhase) {
+        AdBanner(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp))
     }
+    } // Column(fillMaxSize)
+    if (showInterstitial) {
+        AdInterstitialOverlay { showInterstitial = false }
     }
+    } // Box(fillMaxSize)
+    } // UbappTheme
 }
 
 private fun phaseLabel(s: ImposterGuestState): String = when (s.phase) {

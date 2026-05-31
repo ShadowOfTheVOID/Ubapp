@@ -15,6 +15,7 @@ struct HostingChrome: View {
         if let url = joinUrl {
             VStack(spacing: 12) {
                 qrCard(url: url)
+                AdBannerView()
                 if settings.diagnosticsEnabled && !diag.lines.isEmpty {
                     diagnostics
                 }

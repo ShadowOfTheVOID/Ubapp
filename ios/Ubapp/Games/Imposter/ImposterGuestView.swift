@@ -4,31 +4,47 @@ import SwiftUI
 struct ImposterGuestView: View {
     let ctx: GuestContext
     @StateObject private var model = ImposterGuestModel()
+    @State private var showInterstitial = false
+    @State private var interstitialFired = false
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                MonoLabel(phaseLabel, color: UbappTheme.accent)
-                if let err = model.error {
-                    Text(err).font(.system(size: 13, weight: .semibold)).foregroundStyle(UbappTheme.accent)
-                        .padding(.vertical, 12).padding(.horizontal, 14)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .ubAccentCard(radius: UbappRadius.row)
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    MonoLabel(phaseLabel, color: UbappTheme.accent)
+                    if let err = model.error {
+                        Text(err).font(.system(size: 13, weight: .semibold)).foregroundStyle(UbappTheme.accent)
+                            .padding(.vertical, 12).padding(.horizontal, 14)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .ubAccentCard(radius: UbappRadius.row)
+                    }
+                    SeriesBanner(state: model.series)
+                    switch model.phase {
+                    case "lobby":   lobby
+                    case "playing": playing
+                    case "voting":  voting
+                    case "result":  result
+                    default:        infoBanner("Waiting…")
+                    }
                 }
-                SeriesBanner(state: model.series)
-                switch model.phase {
-                case "lobby":   lobby
-                case "playing": playing
-                case "voting":  voting
-                case "result":  result
-                default:        infoBanner("Waiting…")
-                }
+                .frame(maxWidth: 520, alignment: .leading)
+                .frame(maxWidth: .infinity)
+                .padding(20)
             }
-            .frame(maxWidth: 520, alignment: .leading)
-            .frame(maxWidth: .infinity)
-            .padding(20)
+            .scrollIndicators(.hidden)
+            if model.phase == "result" {
+                AdBannerView()
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+            }
         }
-        .scrollIndicators(.hidden)
+        .adInterstitial(isPresented: $showInterstitial)
+        .onChange(of: model.phase) { _, newPhase in
+            if newPhase == "result" && !interstitialFired {
+                interstitialFired = true
+                showInterstitial = true
+            }
+        }
         .navigationTitle("Imposter")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { model.attach(ctx: ctx) }
