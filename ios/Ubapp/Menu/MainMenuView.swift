@@ -32,6 +32,7 @@ struct MainMenuView: View {
             .background(UbappTheme.canvas.ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)
             .tint(UbappTheme.accent)
+            .onAppear { ATTManager.requestIfNeeded() }
         }
     }
 
