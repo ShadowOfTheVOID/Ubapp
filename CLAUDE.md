@@ -22,23 +22,23 @@ min/max-player table as the source of truth for game inventory.
 
 ```
 ios/
-├── Ubapp.xcodeproj/project.pbxproj     # hand-written, filesystem-synchronized root group
-└── Ubapp/
-    ├── App/{UbappApp.swift,UbappTheme.swift,Info.plist}
+├── Jamboree.xcodeproj/project.pbxproj     # hand-written, filesystem-synchronized root group
+└── Jamboree/
+    ├── App/{JamboreeApp.swift,JamboreeTheme.swift,Info.plist}
     ├── Menu/MainMenuView.swift
     ├── Games/<Name>/                    # engine + view (+ server + guest view for browser-tier)
     ├── Games/Shared/HostingChrome.swift # shared QR + app-code host card
     ├── Join/                            # app-guest join flow (see below)
     ├── Social/HostServer.swift          # Network.framework HTTPS + WebSocket
     ├── Tutorials/                       # TutorialContent + TutorialVote + TutorialVoteCard
-    └── Resources/                       # *_browser.html bundles + ubapp.p12 TLS identity
+    └── Resources/                       # *_browser.html bundles + jamboree.p12 TLS identity
 
 android/
 ├── settings.gradle.kts, build.gradle.kts, gradle.properties
 └── app/src/main/
     ├── AndroidManifest.xml
-    ├── assets/                          # *_browser.html bundles + ubapp.p12 TLS identity
-    └── java/com/example/ubapp/
+    ├── assets/                          # *_browser.html bundles + jamboree.p12 TLS identity
+    └── java/com/example/jamboree/
         ├── MainActivity.kt, menu/MainMenu.kt
         ├── games/<name>/                # engine + screen (+ server + guest screen for browser-tier)
         ├── shared/HostingChrome.kt
@@ -51,8 +51,8 @@ android/
 
 ### iOS (no test target — engines are verified on the Android side)
 ```
-open ios/Ubapp.xcodeproj
-xcodebuild -project ios/Ubapp.xcodeproj -scheme Ubapp -destination 'generic/platform=iOS Simulator' build
+open ios/Jamboree.xcodeproj
+xcodebuild -project ios/Jamboree.xcodeproj -scheme Jamboree -destination 'generic/platform=iOS Simulator' build
 ```
 
 ### Android
@@ -62,10 +62,10 @@ gradle wrapper --gradle-version=8.10            # one-time, if wrapper missing
 ./gradlew :app:assembleDebug
 ./gradlew :app:installDebug
 ./gradlew :app:testDebugUnitTest                # all engine unit tests (src/test/)
-./gradlew :app:testDebugUnitTest --tests "com.example.ubapp.EnginesTest"   # single test class
+./gradlew :app:testDebugUnitTest --tests "com.example.jamboree.EnginesTest"   # single test class
 ```
 
-Engine unit tests live in `android/app/src/test/java/com/example/ubapp/`
+Engine unit tests live in `android/app/src/test/java/com/example/jamboree/`
 (`EnginesTest`, `GameOptionsTest`, `MafiaEngineTest`, `SecretHitlerEngineTest`).
 Because the Swift and Kotlin engines are deliberately identical state
 machines, these tests are the practical regression net for **both**
@@ -87,7 +87,7 @@ adapter layer entirely: engine + view, no server.
 
 ## Per-game wiring (browser-tier: Mafia, Werewolf, Imposter, Codenames, Crazy Eights, Secret Hitler)
 
-Mafia is the reference (`ios/Ubapp/Games/Mafia/`,
+Mafia is the reference (`ios/Jamboree/Games/Mafia/`,
 `android/.../games/mafia/`). Four pieces per game:
 
 1. **Browser bundle** — `Resources/<name>_browser.html` (iOS) /
@@ -112,7 +112,7 @@ ordered events.
 
 ## Join flow (app guests → browser-tier host)
 
-`ios/Ubapp/Join/` and `android/.../join/`. The host's `HostingChrome` card
+`ios/Jamboree/Join/` and `android/.../join/`. The host's `HostingChrome` card
 shows a **7-character base-36 join code** (`JoinCode`) that encodes the
 host's IPv4 (port fixed at `7654`); a raw IP is also accepted. `GuestClient`
 (iOS, `URLSessionWebSocketTask`) / the Android equivalent opens a `wss://`
@@ -125,7 +125,7 @@ bundle** behind the `GuestLink` interface, then renders the game's native
 `HostServer` binds default port **7654** on all IPv4 interfaces.
 
 - The server runs **HTTPS / WSS** using a bundled self-signed PKCS12
-  identity: `Resources/ubapp.p12` (iOS) / `assets/ubapp.p12` (Android). If
+  identity: `Resources/jamboree.p12` (iOS) / `assets/jamboree.p12` (Android). If
   the cert can't load, both platforms fall back to plain HTTP/WS.
 - Browser bundles connect with `new WebSocket(`wss://${location.host}/ws`)`.
   Browser guests must accept the self-signed-cert warning once.
@@ -151,7 +151,7 @@ When you change the `.p12`, replace it in **both** `Resources/` and
   logic; it's a normal player with id `host` whose transport is in-process.
 - **No platform shells are generated.** iOS uses a hand-written
   `project.pbxproj` with a `PBXFileSystemSynchronizedRootGroup` (Xcode 16) —
-  new Swift files under `ios/Ubapp/` are picked up without editing the
+  new Swift files under `ios/Jamboree/` are picked up without editing the
   project. Android is a plain Gradle project; the Gradle wrapper is the
   user's responsibility to generate.
 - **Keep Swift and Kotlin engines in lockstep.** A fix to one engine almost
@@ -164,7 +164,7 @@ When you change the `.p12`, replace it in **both** `Resources/` and
   native guest view + (Tag) peer all consume the same JSON. The `.html`
   bundles are byte-identical to the original Flutter files and loaded
   verbatim — edit the `.html` too when adding a message type.
-- **TLS asset must be in both trees.** `ubapp.p12` lives in `Resources/`
+- **TLS asset must be in both trees.** `jamboree.p12` lives in `Resources/`
   (iOS) and `assets/` (Android); keep them identical.
 - **iOS BLE in background.** `CBPeripheralManager.startAdvertising` only
   honors the local-name field while foregrounded — backgrounding drops to
