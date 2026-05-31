@@ -224,6 +224,7 @@
     tutorial: { isOpen: false, yesCount: 0, noCount: 0, eligibleCount: 0, result: null, tutorialShown: false },
     tutorialContent: null,  // {title, sections:[{heading,body}], menuSections:[...]}
     myTutorialVote: null,
+    tutorialPage: 0,
     options: { mafiaCount: null, doctorEnabled: true, maxMafiaCount: 1 },
   };
 
@@ -366,20 +367,16 @@
   }
 
   function viewTutorialBanner() {
-    const t = state.tutorial;
-    const c = state.tutorialContent;
+    const t = state.tutorial, c = state.tutorialContent;
     if (t.result !== true || t.tutorialShown) return '';
-    if (!c) return `<div class="tutorial-banner">Loading tutorial…</div>`;
-    const ruleSecs = c.sections.map(s => `<div class="t-sec"><h3>${escapeHtml(s.heading)}</h3><p>${escapeHtml(s.body)}</p></div>`).join('');
-    const menuSecs = (c.menuSections || []).map(s => `<div class="t-sec"><h3>${escapeHtml(s.heading)}</h3><p>${escapeHtml(s.body)}</p></div>`).join('');
-    return `
-      <div class="tutorial-card">
-        <h2>${escapeHtml(c.title)}</h2>
-        ${ruleSecs}
-        ${menuSecs ? `<div class="menu-label">Using this screen</div>${menuSecs}` : ''}
-        <p class="wait">Waiting for the host to finish reading. They'll dismiss this when everyone is ready.</p>
-      </div>
-    `;
+    if (!c) return `<div class="tutorial-card">Loading tutorial…</div>`;
+    const all = [...c.sections, ...(c.menuSections||[])];
+    if (!all.length) return '';
+    const pg = state.tutorialPage||0, total = all.length, s = all[pg];
+    const prevBtn = pg > 0 ? `<button class="secondary" id="tut-prev" style="flex:1">← Back</button>` : '';
+    const nextBtn = pg < total-1 ? `<button id="tut-next" style="flex:1">Next →</button>` : '';
+    const waitMsg = pg >= total-1 ? `<p class="wait" style="margin-top:8px">Waiting for the host to finish reading.</p>` : '';
+    return `<div class="tutorial-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h2 style="margin:0">${escapeHtml(c.title)}</h2><span style="color:var(--faint,#9da7b3);font-size:13px">${pg+1} / ${total}</span></div><h3>${escapeHtml(s.heading)}</h3><p>${escapeHtml(s.body)}</p>${prevBtn||nextBtn?`<div class="vote-row" style="margin-top:12px">${prevBtn}${nextBtn}</div>`:''}${waitMsg}</div>`;
   }
 
   function viewTutorialVote() {
@@ -425,6 +422,10 @@
       send({ type: 'tutorial_vote', yes: false });
       render();
     });
+    const prevBtn = document.getElementById('tut-prev');
+    const nextBtn = document.getElementById('tut-next');
+    if (prevBtn) prevBtn.addEventListener('click', () => { state.tutorialPage = Math.max(0, (state.tutorialPage||0)-1); render(); });
+    if (nextBtn) nextBtn.addEventListener('click', () => { const a = state.tutorialContent ? [...state.tutorialContent.sections, ...(state.tutorialContent.menuSections||[])] : []; state.tutorialPage = Math.min(a.length-1, (state.tutorialPage||0)+1); render(); });
   }
 
   function viewRoleReveal() {
