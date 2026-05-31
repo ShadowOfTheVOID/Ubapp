@@ -3,9 +3,14 @@ package com.example.ubapp.join
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import org.json.JSONObject
 
 /** Mirrors GuestTutorialState in iOS. */
@@ -97,37 +102,56 @@ fun TutorialGuestCard(
                 }
             }
         }
-        state.result == true && content != null -> ElevatedCard(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(12.dp)) {
-                val allSections = content.sections + content.menuSections
-                if (allSections.isNotEmpty()) {
+        state.result == true && content != null -> {
+            val allSections = content.sections + content.menuSections
+            if (allSections.isNotEmpty()) {
+                Dialog(
+                    onDismissRequest = {},
+                    properties = DialogProperties(usePlatformDefaultWidth = false)
+                ) {
                     var pageIndex by remember { mutableIntStateOf(0) }
-                    val total = allSections.size
-                    val (h, b) = allSections[pageIndex]
-
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(content.title, style = MaterialTheme.typography.titleMedium)
-                        Text("${pageIndex + 1} / $total",
-                             style = MaterialTheme.typography.bodySmall,
-                             color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-
-                    Spacer(Modifier.height(8.dp))
-                    Text(h, style = MaterialTheme.typography.titleSmall)
-                    Spacer(Modifier.height(2.dp))
-                    Text(b, style = MaterialTheme.typography.bodyMedium)
-                    Spacer(Modifier.height(12.dp))
-
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        if (pageIndex > 0) {
-                            OutlinedButton(onClick = { pageIndex-- }) { Text("← Back") }
-                            Spacer(Modifier.width(8.dp))
-                        }
-                        if (pageIndex < total - 1) {
-                            Button(onClick = { pageIndex++ }) { Text("Next →") }
-                        } else {
-                            Text("Waiting for the host to finish reading…",
-                                 style = MaterialTheme.typography.bodySmall)
+                    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                        Column(
+                            Modifier
+                                .fillMaxSize()
+                                .statusBarsPadding()
+                                .navigationBarsPadding()
+                                .padding(24.dp)
+                        ) {
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(content.title, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
+                                Text("${pageIndex + 1} / ${allSections.size}",
+                                     style = MaterialTheme.typography.bodySmall,
+                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Spacer(Modifier.height(24.dp))
+                            val (h, b) = allSections[pageIndex]
+                            Text(h, style = MaterialTheme.typography.titleMedium)
+                            Spacer(Modifier.height(8.dp))
+                            Text(b, style = MaterialTheme.typography.bodyMedium,
+                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(Modifier.weight(1f))
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (pageIndex > 0) {
+                                    OutlinedButton(onClick = { pageIndex-- }) { Text("← Back") }
+                                    Spacer(Modifier.width(8.dp))
+                                }
+                                if (pageIndex < allSections.size - 1) {
+                                    Button(onClick = { pageIndex++ }) { Text("Next →") }
+                                } else {
+                                    Text("Waiting for the host to finish reading…",
+                                         style = MaterialTheme.typography.bodySmall,
+                                         color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
                         }
                     }
                 }

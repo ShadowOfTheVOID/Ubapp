@@ -64,33 +64,47 @@ struct TutorialGuestCard: View {
             }
         } else if state.result == true, let c = content {
             let allSections = c.sections + c.menuSections
-            GroupBox(c.title) {
-                if !allSections.isEmpty {
-                    let total = allSections.count
-                    let s = allSections[pageIndex]
-
-                    Text("\(pageIndex + 1) / \(total)")
-                        .font(.caption).foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(s.heading).font(.subheadline.bold())
-                        Text(s.body).font(.callout).foregroundStyle(.secondary)
-                    }.padding(.vertical, 8)
-
-                    HStack {
-                        Spacer()
-                        if pageIndex > 0 {
-                            Button("← Back") { pageIndex -= 1 }.buttonStyle(.bordered)
+            if !allSections.isEmpty {
+                Color.clear
+                    .frame(width: 0, height: 0)
+                    .fullScreenCover(isPresented: .constant(true)) {
+                        ZStack(alignment: .topLeading) {
+                            UbappTheme.canvas.ignoresSafeArea()
+                            VStack(alignment: .leading, spacing: 0) {
+                                HStack {
+                                    Text(c.title)
+                                        .font(.system(size: 26, weight: .heavy)).kerning(-0.8)
+                                        .foregroundStyle(UbappTheme.foreground)
+                                    Spacer()
+                                    Text("\(pageIndex + 1) / \(allSections.count)")
+                                        .font(.caption).foregroundStyle(UbappTheme.faint)
+                                }
+                                .padding(.bottom, 24)
+                                if pageIndex < allSections.count {
+                                    let s = allSections[pageIndex]
+                                    Text(s.heading).font(.headline).foregroundStyle(UbappTheme.foreground)
+                                    Text(s.body).font(.body).foregroundStyle(UbappTheme.muted)
+                                        .padding(.top, 8)
+                                }
+                                Spacer()
+                                HStack {
+                                    Spacer()
+                                    if pageIndex > 0 {
+                                        Button("← Back") { pageIndex -= 1 }.buttonStyle(.bordered)
+                                    }
+                                    if pageIndex < allSections.count - 1 {
+                                        Button("Next →") { pageIndex += 1 }.buttonStyle(.borderedProminent)
+                                    } else {
+                                        Text("Waiting for the host to finish reading…")
+                                            .font(.footnote).foregroundStyle(UbappTheme.faint)
+                                    }
+                                }
+                            }
+                            .padding(24)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                         }
-                        if pageIndex < total - 1 {
-                            Button("Next →") { pageIndex += 1 }.buttonStyle(.borderedProminent)
-                        } else {
-                            Text("Waiting for the host to finish reading…")
-                                .font(.footnote).foregroundStyle(.secondary)
-                        }
+                        .tint(UbappTheme.accent)
                     }
-                }
             }
         } else if state.result == false {
             Text("Majority voted to skip the tutorial.")
