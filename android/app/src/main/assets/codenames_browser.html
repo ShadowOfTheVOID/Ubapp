@@ -410,6 +410,8 @@
     document.body.classList.add('ub-ad-on');
   }
 
+  // Host owns the ad-free upgrade → suppress ads for this host's guests.
+  if (window.UB_AD_FREE === true) { hide(); return; }
   // Offline → never touch the network.
   if (typeof navigator !== 'undefined' && navigator.onLine === false) { hide(); return; }
   // Placeholder id → stay fully inert (no request) until a real id is set.
