@@ -16,7 +16,7 @@ struct SecretHitlerView: View {
                             Spacer(minLength: 0)
                             VStack(alignment: .center, spacing: 16) {
                                 VStack(spacing: 4) {
-                                    MonoLabel("Hosting · Secret Hitler", color: UbappTheme.accent)
+                                    MonoLabel("Hosting · Secret Hitler", color: JamboreeTheme.accent)
                                     Text("Waiting for players")
                                         .font(.system(size: 24, weight: .heavy)).kerning(-0.6)
                                         .foregroundStyle(.white)
@@ -46,7 +46,7 @@ struct SecretHitlerView: View {
                 SecretHitlerGuestView(ctx: ctx)
             }
         }
-        .ubappChrome()
+        .jamboreeChrome()
         .navigationTitle("Secret Hitler")
         .onDisappear { model.stop() }
     }
@@ -60,9 +60,9 @@ struct SecretHitlerView: View {
                         Avatar(name: p.name, host: p.isHost, size: 30)
                         Text(p.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
                         Spacer()
-                        if p.isHost { MonoLabel("host", size: 9, color: UbappTheme.faint) }
+                        if p.isHost { MonoLabel("host", size: 9, color: JamboreeTheme.faint) }
                     }
-                    .padding(.vertical, 10).padding(.horizontal, 14).ubCard(radius: UbappRadius.row)
+                    .padding(.vertical, 10).padding(.horizontal, 14).ubCard(radius: JamboreeRadius.row)
                 }
             }
         }
@@ -73,7 +73,7 @@ struct SecretHitlerView: View {
                 .buttonStyle(UbPrimaryButtonStyle())
         } else {
             Text("Need 5–10 players to start.")
-                .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                .font(.system(size: 13)).foregroundStyle(JamboreeTheme.muted)
         }
     }
 }

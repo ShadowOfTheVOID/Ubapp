@@ -40,7 +40,7 @@ struct TagGuestView: View {
             .onAppear { model.attach(ctx: ctx) }
             .onDisappear { model.dispose() }
         }
-        .ubappChrome()
+        .jamboreeChrome()
     }
 
     @ViewBuilder

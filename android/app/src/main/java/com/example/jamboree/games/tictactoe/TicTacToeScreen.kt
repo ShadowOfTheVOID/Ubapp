@@ -1,4 +1,4 @@
-package com.example.ubapp.games.tictactoe
+package com.example.jamboree.games.tictactoe
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -13,10 +13,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ubapp.stats.StatsStore
-import com.example.ubapp.stats.SeriesScore
-import com.example.ubapp.theme.UbappTheme
-import com.example.ubapp.tutorials.GameTutorials
+import com.example.jamboree.stats.StatsStore
+import com.example.jamboree.stats.SeriesScore
+import com.example.jamboree.theme.JamboreeTheme
+import com.example.jamboree.tutorials.GameTutorials
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -55,7 +55,7 @@ fun TicTacToeScreen() {
     val cell = when (options.boardSize) { 3 -> 80; 4 -> 60; else -> 48 }.dp
     val mark = when (options.boardSize) { 3 -> 48; 4 -> 34; else -> 26 }.sp
 
-    UbappTheme {
+    JamboreeTheme {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
     Column(
         Modifier.widthIn(max = 480.dp).fillMaxWidth().padding(24.dp),

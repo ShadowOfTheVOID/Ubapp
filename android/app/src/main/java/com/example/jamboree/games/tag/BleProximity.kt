@@ -1,4 +1,4 @@
-package com.example.ubapp.games.tag
+package com.example.jamboree.games.tag
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
@@ -16,10 +16,10 @@ import java.util.UUID
 
 /**
  * Combined BLE central (scan) + peripheral (advertise) for one tag round.
- * Your phone sees other Ubapp peers AND advertises so others see you.
+ * Your phone sees other Jamboree peers AND advertises so others see you.
  *
  * Peer id is carried as a one-byte+UTF-8 service-data blob keyed by
- * [UBAPP_TAG_SERVICE_UUID]. On Android the adapter's name is also used as a
+ * [JAMBOREE_TAG_SERVICE_UUID]. On Android the adapter's name is also used as a
  * fallback for older OS versions where service data isn't honored.
  *
  * Callers must hold the runtime BLUETOOTH_SCAN / BLUETOOTH_ADVERTISE
@@ -29,7 +29,7 @@ import java.util.UUID
 class BleProximityRuntime(
     context: Context,
     val selfPeerId: String,
-    serviceUuid: String = UBAPP_TAG_SERVICE_UUID,
+    serviceUuid: String = JAMBOREE_TAG_SERVICE_UUID,
 ) : ProximitySource {
     enum class AdvertiseStatus { IDLE, STARTING, ADVERTISING, STOPPED, ERROR, UNAVAILABLE }
 

@@ -1,6 +1,6 @@
-package com.example.ubapp
+package com.example.jamboree
 
-import com.example.ubapp.stats.SeriesScore
+import com.example.jamboree.stats.SeriesScore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

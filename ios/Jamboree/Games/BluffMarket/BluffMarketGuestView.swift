@@ -27,16 +27,16 @@ struct BluffMarketGuestView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { model.attach(ctx: ctx) }
         .onDisappear { ctx.client.onMessage = nil }
-        .ubappChrome()
+        .jamboreeChrome()
     }
 
     @ViewBuilder private var lobby: some View {
         VStack(alignment: .leading, spacing: 6) {
-            MonoLabel("Bluff Market · lobby", color: UbappTheme.accent)
+            MonoLabel("Bluff Market · lobby", color: JamboreeTheme.accent)
             Text("Waiting for the deal")
                 .font(.system(size: 26, weight: .heavy)).kerning(-0.8).foregroundStyle(.white)
             Text("Playing as \(ctx.yourName)")
-                .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                .font(.system(size: 13)).foregroundStyle(JamboreeTheme.muted)
         }
         TutorialGuestCard(state: model.tutorialState, content: model.tutorialContent,
                           myVote: model.myTutorialVote,
@@ -52,10 +52,10 @@ struct BluffMarketGuestView: View {
                         Text(p.name).font(.system(size: 15, weight: p.id == ctx.yourId ? .bold : .semibold))
                             .foregroundStyle(.white)
                         Spacer()
-                        if p.isHost { MonoLabel("host", size: 9, color: UbappTheme.faint) }
+                        if p.isHost { MonoLabel("host", size: 9, color: JamboreeTheme.faint) }
                     }
                     .padding(.vertical, 10).padding(.horizontal, 14)
-                    .ubCard(radius: UbappRadius.row)
+                    .ubCard(radius: JamboreeRadius.row)
                 }
             }
         }
@@ -63,16 +63,16 @@ struct BluffMarketGuestView: View {
 
     @ViewBuilder private var table: some View {
         VStack(alignment: .leading, spacing: 4) {
-            MonoLabel("Bluff Market", color: UbappTheme.accent)
+            MonoLabel("Bluff Market", color: JamboreeTheme.accent)
             Text(isMyTurn && model.phase == "playing" ? "Your turn" : "\(currentName)'s turn")
                 .font(.system(size: 26, weight: .heavy)).kerning(-0.8)
-                .foregroundStyle(isMyTurn && model.phase == "playing" ? UbappTheme.accent : .white)
+                .foregroundStyle(isMyTurn && model.phase == "playing" ? JamboreeTheme.accent : .white)
             Text("Trade face-down, buy, or sell. One bomb is worth −25.")
-                .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                .font(.system(size: 13)).foregroundStyle(JamboreeTheme.muted)
         }
         playersStrip
         marketCard
-        if !model.lastEvent.isEmpty { MonoLabel(model.lastEvent, size: 10, color: UbappTheme.muted) }
+        if !model.lastEvent.isEmpty { MonoLabel(model.lastEvent, size: 10, color: JamboreeTheme.muted) }
         if let t = model.trade { tradeView(t) }
         hand
         if model.trade == nil && isMyTurn && model.phase == "playing" { actionRow }
@@ -87,14 +87,14 @@ struct BluffMarketGuestView: View {
                         Avatar(name: p.name, host: p.isHost, size: 26)
                         VStack(alignment: .leading, spacing: 1) {
                             Text(p.name).font(.system(size: 12, weight: .semibold)).foregroundStyle(.white)
-                            MonoLabel("\(p.handCount)c·\(p.coins)¢", size: 9, color: UbappTheme.faint)
-                            if !p.guaranteeUsed { MonoLabel("guar", size: 8, color: UbappTheme.accent) }
+                            MonoLabel("\(p.handCount)c·\(p.coins)¢", size: 9, color: JamboreeTheme.faint)
+                            if !p.guaranteeUsed { MonoLabel("guar", size: 8, color: JamboreeTheme.accent) }
                         }
                     }
                     .padding(.vertical, 8).padding(.horizontal, 10)
-                    .ubCard(radius: UbappRadius.button,
-                            fill: current ? UbappTheme.accentSoft : UbappTheme.surface,
-                            stroke: current ? UbappTheme.accentLine : UbappTheme.line)
+                    .ubCard(radius: JamboreeRadius.button,
+                            fill: current ? JamboreeTheme.accentSoft : JamboreeTheme.surface,
+                            stroke: current ? JamboreeTheme.accentLine : JamboreeTheme.line)
                 }
             }
         }
@@ -118,10 +118,10 @@ struct BluffMarketGuestView: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 24)
         .background(
-            RadialGradient(colors: [UbappTheme.accent.opacity(0.12), .clear],
+            RadialGradient(colors: [JamboreeTheme.accent.opacity(0.12), .clear],
                            center: .center, startRadius: 0, endRadius: 180),
         )
-        .clipShape(RoundedRectangle(cornerRadius: UbappRadius.hero, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: JamboreeRadius.hero, style: .continuous))
     }
 
     private var hand: some View {
@@ -136,7 +136,7 @@ struct BluffMarketGuestView: View {
                         bluffCardChip(card)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .stroke(selectedCardId == card.id ? UbappTheme.accent : Color.clear, lineWidth: 3),
+                                    .stroke(selectedCardId == card.id ? JamboreeTheme.accent : Color.clear, lineWidth: 3),
                             )
                             .offset(y: selectedCardId == card.id ? -8 : 0)
                     }
@@ -188,14 +188,14 @@ struct BluffMarketGuestView: View {
         let proposerName = model.players.first { $0.id == t.proposerId }?.name ?? "?"
         let targetName = model.players.first { $0.id == t.targetId }?.name ?? "?"
         VStack(spacing: 12) {
-            MonoLabel("Trade · \(proposerName) ↔ \(targetName)", color: UbappTheme.accent)
+            MonoLabel("Trade · \(proposerName) ↔ \(targetName)", color: JamboreeTheme.accent)
             if t.revealed {
                 HStack(spacing: 16) {
                     VStack(spacing: 4) {
                         MonoLabel(proposerName, size: 9)
                         if let c = t.proposerCard { bluffCardChip(c) }
                     }
-                    Text("⇄").font(.title).foregroundStyle(UbappTheme.muted)
+                    Text("⇄").font(.title).foregroundStyle(JamboreeTheme.muted)
                     VStack(spacing: 4) {
                         MonoLabel(targetName, size: 9)
                         if let c = t.targetCard { bluffCardChip(c) }
@@ -205,7 +205,7 @@ struct BluffMarketGuestView: View {
                     let answered = imProposer ? t.proposerAccept != nil : t.targetAccept != nil
                     if answered {
                         Text("You answered. Waiting for the other side…")
-                            .font(.system(size: 12)).foregroundStyle(UbappTheme.muted)
+                            .font(.system(size: 12)).foregroundStyle(JamboreeTheme.muted)
                     } else {
                         HStack(spacing: 10) {
                             Button("Accept") { model.send(["type": "respond_trade", "accept": true]) }
@@ -225,7 +225,7 @@ struct BluffMarketGuestView: View {
                         MonoLabel(proposerName, size: 9)
                         GridCardBack(width: 70).opacity(t.proposerCommitted ? 1.0 : 0.3)
                     }
-                    Text("?").font(.title).foregroundStyle(UbappTheme.muted)
+                    Text("?").font(.title).foregroundStyle(JamboreeTheme.muted)
                     VStack(spacing: 4) {
                         MonoLabel(targetName, size: 9)
                         GridCardBack(width: 70).opacity(t.targetCommitted ? 1.0 : 0.3)
@@ -244,7 +244,7 @@ struct BluffMarketGuestView: View {
                         .buttonStyle(UbSecondaryButtonStyle())
                 } else {
                     Text("\(proposerName) committed. Waiting for \(targetName) to counter…")
-                        .font(.system(size: 12)).foregroundStyle(UbappTheme.muted)
+                        .font(.system(size: 12)).foregroundStyle(JamboreeTheme.muted)
                     if imProposer {
                         Button("Cancel proposal") { model.send(["type": "decline_trade"]) }
                             .buttonStyle(UbSecondaryButtonStyle())
@@ -252,13 +252,13 @@ struct BluffMarketGuestView: View {
                 }
             }
             if t.proposerGuarantee || t.targetGuarantee {
-                MonoLabel("Guarantee invoked — trade forced", size: 9, color: UbappTheme.accent)
+                MonoLabel("Guarantee invoked — trade forced", size: 9, color: JamboreeTheme.accent)
             }
         }
         .padding(16)
         .frame(maxWidth: .infinity)
-        .ubCard(radius: UbappRadius.panel,
-                fill: UbappTheme.accentSoft, stroke: UbappTheme.accentLine)
+        .ubCard(radius: JamboreeRadius.panel,
+                fill: JamboreeTheme.accentSoft, stroke: JamboreeTheme.accentLine)
     }
 
     private func guaranteeUsedByMe(_ t: BluffMarketGuestModel.Trade) -> Bool {
@@ -269,7 +269,7 @@ struct BluffMarketGuestView: View {
 
     @ViewBuilder private var scoringView: some View {
         VStack(alignment: .leading, spacing: 8) {
-            MonoLabel("Final scores · pending host reveal", color: UbappTheme.accent)
+            MonoLabel("Final scores · pending host reveal", color: JamboreeTheme.accent)
             VStack(spacing: 8) {
                 ForEach(model.scoreRows, id: \.id) { r in
                     HStack {
@@ -279,17 +279,17 @@ struct BluffMarketGuestView: View {
                             .font(.system(size: 16, weight: .bold)).foregroundStyle(.white)
                     }
                     .padding(.vertical, 12).padding(.horizontal, 14)
-                    .ubCard(radius: UbappRadius.row)
+                    .ubCard(radius: JamboreeRadius.row)
                 }
             }
-            Text("Waiting for the host…").font(.system(size: 12)).foregroundStyle(UbappTheme.muted)
+            Text("Waiting for the host…").font(.system(size: 12)).foregroundStyle(JamboreeTheme.muted)
         }
     }
 
     @ViewBuilder private var overView: some View {
         let winner = model.players.first { $0.id == model.winnerId }
         VStack(alignment: .leading, spacing: 6) {
-            MonoLabel("Game over", color: UbappTheme.accent)
+            MonoLabel("Game over", color: JamboreeTheme.accent)
             Text("\(winner?.name ?? "?") wins")
                 .font(.system(size: 28, weight: .heavy)).kerning(-0.8).foregroundStyle(.white)
         }
@@ -300,13 +300,13 @@ struct BluffMarketGuestView: View {
                     VStack(alignment: .leading, spacing: 1) {
                         Text(r.name + (r.id == model.winnerId ? " 🏆" : "") + (r.hasBomb ? " 💣" : ""))
                             .font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
-                        MonoLabel("sum \(r.sum) + coins \(r.coins)", size: 9, color: UbappTheme.faint)
+                        MonoLabel("sum \(r.sum) + coins \(r.coins)", size: 9, color: JamboreeTheme.faint)
                     }
                     Spacer()
                     Text("\(r.total)").font(.system(size: 18, weight: .heavy)).foregroundStyle(.white)
                 }
                 .padding(.vertical, 10).padding(.horizontal, 14)
-                .ubCard(radius: UbappRadius.row)
+                .ubCard(radius: JamboreeRadius.row)
             }
         }
     }

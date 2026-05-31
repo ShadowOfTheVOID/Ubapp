@@ -1,4 +1,4 @@
-package com.example.ubapp.games.bluffmarket
+package com.example.jamboree.games.bluffmarket
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,20 +22,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ubapp.theme.Avatar
-import com.example.ubapp.theme.LobbyPlayerRow
-import com.example.ubapp.theme.MonoLabel
-import com.example.ubapp.theme.Ub
-import com.example.ubapp.theme.UbPrimaryButton
-import com.example.ubapp.theme.UbSecondaryButton
-import com.example.ubapp.theme.UbappTheme
-import com.example.ubapp.theme.ubCard
-import com.example.ubapp.join.GuestContext
-import com.example.ubapp.join.GuestSeriesState
-import com.example.ubapp.join.GuestTutorialContent
-import com.example.ubapp.join.GuestTutorialState
-import com.example.ubapp.join.SeriesBannerCard
-import com.example.ubapp.join.TutorialGuestCard
+import com.example.jamboree.theme.Avatar
+import com.example.jamboree.theme.LobbyPlayerRow
+import com.example.jamboree.theme.MonoLabel
+import com.example.jamboree.theme.Ub
+import com.example.jamboree.theme.UbPrimaryButton
+import com.example.jamboree.theme.UbSecondaryButton
+import com.example.jamboree.theme.JamboreeTheme
+import com.example.jamboree.theme.ubCard
+import com.example.jamboree.join.GuestContext
+import com.example.jamboree.join.GuestSeriesState
+import com.example.jamboree.join.GuestTutorialContent
+import com.example.jamboree.join.GuestTutorialState
+import com.example.jamboree.join.SeriesBannerCard
+import com.example.jamboree.join.TutorialGuestCard
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -51,7 +51,7 @@ fun BluffMarketGuestScreen(ctx: GuestContext) {
     }
     @Suppress("UNUSED_EXPRESSION") tick
 
-    UbappTheme {
+    JamboreeTheme {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
             Column(
                 Modifier
@@ -136,7 +136,7 @@ private fun TablePhase(
             Box(Modifier.size(96.dp, 108.dp), contentAlignment = Alignment.Center) {
                 for (i in 0 until minOf(s.marketSize, 4)) {
                     Box(Modifier.offset(x = (i * 1.5f).dp, y = (i * 1.5f).dp)) {
-                        com.example.ubapp.games.cards.GridCardBack(width = 70.dp)
+                        com.example.jamboree.games.cards.GridCardBack(width = 70.dp)
                     }
                 }
             }
@@ -249,14 +249,14 @@ private fun TradeCard(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     MonoLabel(proposerName, size = 9)
                     Box(Modifier.alpha(if (t.proposerCommitted) 1f else 0.3f)) {
-                        com.example.ubapp.games.cards.GridCardBack(width = 70.dp)
+                        com.example.jamboree.games.cards.GridCardBack(width = 70.dp)
                     }
                 }
                 Text("?", fontSize = 28.sp, color = Ub.Muted)
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     MonoLabel(targetName, size = 9)
                     Box(Modifier.alpha(if (t.targetCommitted) 1f else 0.3f)) {
-                        com.example.ubapp.games.cards.GridCardBack(width = 70.dp)
+                        com.example.jamboree.games.cards.GridCardBack(width = 70.dp)
                     }
                 }
             }
@@ -319,9 +319,9 @@ private fun ScoringPhase(s: BluffMarketGuestState, finalized: Boolean) {
 @Composable
 private fun BluffCardFace(c: BluffMarketGuestState.Card) {
     when (c.kind) {
-        "bomb" -> com.example.ubapp.games.cards.BluffBombCard(width = 80.dp)
-        "wildcard" -> com.example.ubapp.games.cards.BluffPointCard(value = 0, width = 80.dp)
-        else -> com.example.ubapp.games.cards.BluffPointCard(value = c.value, width = 80.dp)
+        "bomb" -> com.example.jamboree.games.cards.BluffBombCard(width = 80.dp)
+        "wildcard" -> com.example.jamboree.games.cards.BluffPointCard(value = 0, width = 80.dp)
+        else -> com.example.jamboree.games.cards.BluffPointCard(value = c.value, width = 80.dp)
     }
 }
 

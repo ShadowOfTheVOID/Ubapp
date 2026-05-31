@@ -28,7 +28,7 @@ struct StatBoardView: View {
             }
             .padding(20)
         }
-        .ubappChrome()
+        .jamboreeChrome()
         .navigationTitle("Stat board")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -49,7 +49,7 @@ struct StatBoardView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("By game")
                     .font(.title3.bold())
-                    .foregroundStyle(UbappTheme.foreground)
+                    .foregroundStyle(JamboreeTheme.foreground)
                 VStack(spacing: 8) {
                     ForEach(sortedGames, id: \.id) { item in
                         gameCard(item.id, item.stat)
@@ -64,11 +64,11 @@ struct StatBoardView: View {
             HStack {
                 Text(StatsCatalog.gameName(id))
                     .font(.headline)
-                    .foregroundStyle(UbappTheme.foreground)
+                    .foregroundStyle(JamboreeTheme.foreground)
                 Spacer()
                 Text("\(stat.playCount) played")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(UbappTheme.accent)
+                    .foregroundStyle(JamboreeTheme.accent)
             }
             ForEach(stat.outcomes.sorted { $0.value > $1.value }, id: \.key) { entry in
                 HStack {
@@ -95,7 +95,7 @@ struct StatBoardView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Recent games")
                     .font(.title3.bold())
-                    .foregroundStyle(UbappTheme.foreground)
+                    .foregroundStyle(JamboreeTheme.foreground)
                 VStack(spacing: 8) {
                     ForEach(store.data.recent) { entry in
                         recentRow(entry)
@@ -110,7 +110,7 @@ struct StatBoardView: View {
             HStack {
                 Text(StatsCatalog.gameName(e.gameId))
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(UbappTheme.foreground)
+                    .foregroundStyle(JamboreeTheme.foreground)
                 Spacer()
                 Text(relativeTime(e.timestamp))
                     .font(.caption2)
@@ -118,7 +118,7 @@ struct StatBoardView: View {
             }
             Text(StatsCatalog.outcomeLabel(e.outcome))
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(UbappTheme.accent)
+                .foregroundStyle(JamboreeTheme.accent)
             if !e.players.isEmpty {
                 Text(e.players.joined(separator: ", "))
                     .font(.caption2)

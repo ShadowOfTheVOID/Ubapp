@@ -1,4 +1,4 @@
-package com.example.ubapp.social
+package com.example.jamboree.social
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme

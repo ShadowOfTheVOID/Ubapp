@@ -16,7 +16,7 @@ struct PresidentView: View {
                             Spacer(minLength: 0)
                             VStack(alignment: .center, spacing: 16) {
                                 VStack(spacing: 4) {
-                                    MonoLabel("Hosting · President", color: UbappTheme.accent)
+                                    MonoLabel("Hosting · President", color: JamboreeTheme.accent)
                                     Text("Waiting for players")
                                         .font(.system(size: 24, weight: .heavy)).kerning(-0.6)
                                         .foregroundStyle(.white)
@@ -53,7 +53,7 @@ struct PresidentView: View {
                 }
             }
         }
-        .ubappChrome()
+        .jamboreeChrome()
         .navigationTitle("President")
         .onDisappear { model.stop() }
     }
@@ -67,10 +67,10 @@ struct PresidentView: View {
                         Avatar(name: p.name, host: p.isHost, size: 30)
                         Text(p.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
                         Spacer()
-                        if p.isHost { MonoLabel("host", size: 9, color: UbappTheme.faint) }
+                        if p.isHost { MonoLabel("host", size: 9, color: JamboreeTheme.faint) }
                     }
                     .padding(.vertical, 10).padding(.horizontal, 14)
-                    .ubCard(radius: UbappRadius.row)
+                    .ubCard(radius: JamboreeRadius.row)
                 }
             }
         }
@@ -89,7 +89,7 @@ struct PresidentView: View {
                                                          revolution: $0)) }))
             }
             .font(.system(size: 15))
-            .tint(UbappTheme.accent)
+            .tint(JamboreeTheme.accent)
             .padding(14)
             .ubCard()
         }
@@ -100,7 +100,7 @@ struct PresidentView: View {
                 .buttonStyle(UbPrimaryButtonStyle())
         } else {
             Text("Need 4–7 players to start.")
-                .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                .font(.system(size: 13)).foregroundStyle(JamboreeTheme.muted)
         }
     }
 }

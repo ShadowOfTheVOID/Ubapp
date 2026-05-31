@@ -1,4 +1,4 @@
-package com.example.ubapp.games.cheat
+package com.example.jamboree.games.cheat
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -23,19 +23,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ubapp.theme.Avatar
-import com.example.ubapp.theme.MonoLabel
-import com.example.ubapp.theme.Ub
-import com.example.ubapp.theme.UbPrimaryButton
-import com.example.ubapp.theme.UbSecondaryButton
-import com.example.ubapp.theme.UbappTheme
-import com.example.ubapp.theme.ubCard
-import com.example.ubapp.join.GuestContext
-import com.example.ubapp.join.GuestSeriesState
-import com.example.ubapp.join.GuestTutorialContent
-import com.example.ubapp.join.GuestTutorialState
-import com.example.ubapp.join.SeriesBannerCard
-import com.example.ubapp.join.TutorialGuestCard
+import com.example.jamboree.theme.Avatar
+import com.example.jamboree.theme.MonoLabel
+import com.example.jamboree.theme.Ub
+import com.example.jamboree.theme.UbPrimaryButton
+import com.example.jamboree.theme.UbSecondaryButton
+import com.example.jamboree.theme.JamboreeTheme
+import com.example.jamboree.theme.ubCard
+import com.example.jamboree.join.GuestContext
+import com.example.jamboree.join.GuestSeriesState
+import com.example.jamboree.join.GuestTutorialContent
+import com.example.jamboree.join.GuestTutorialState
+import com.example.jamboree.join.SeriesBannerCard
+import com.example.jamboree.join.TutorialGuestCard
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -51,7 +51,7 @@ fun CheatGuestScreen(ctx: GuestContext) {
     }
     @Suppress("UNUSED_EXPRESSION") tick
 
-    UbappTheme {
+    JamboreeTheme {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
             Column(
                 Modifier
@@ -131,7 +131,7 @@ fun CheatGuestScreen(ctx: GuestContext) {
                                         Box(Modifier
                                             .offset(x = (i * 1.5f).dp, y = (i * 1.5f).dp)
                                             .rotate(if (i % 2 == 0) -(i + 1).toFloat() else (i + 1).toFloat())) {
-                                            com.example.ubapp.games.cards.GridCardBack(width = 60.dp)
+                                            com.example.jamboree.games.cards.GridCardBack(width = 60.dp)
                                         }
                                     }
                                 }
@@ -274,11 +274,11 @@ private fun PlayerChip(name: String, host: Boolean, cards: Int, current: Boolean
 @Composable
 private fun CardFace(c: CheatGuestState.Card, small: Boolean = false) {
     val w = if (small) 48.dp else 70.dp
-    val suit = com.example.ubapp.games.cards.CardSuit.fromWire(c.suit)
+    val suit = com.example.jamboree.games.cards.CardSuit.fromWire(c.suit)
     if (suit != null) {
-        com.example.ubapp.games.cards.NoirCardFace(rank = c.rank, suit = suit, width = w)
+        com.example.jamboree.games.cards.NoirCardFace(rank = c.rank, suit = suit, width = w)
     } else {
-        com.example.ubapp.games.cards.GridCardBack(width = w)
+        com.example.jamboree.games.cards.GridCardBack(width = w)
     }
 }
 

@@ -17,7 +17,7 @@ struct GameGlyphView: View {
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: size * 0.18, style: .continuous)
-                .fill(UbappTheme.surfaceHi)
+                .fill(JamboreeTheme.surfaceHi)
             content
         }
         .frame(width: size, height: size)
@@ -36,7 +36,7 @@ struct GameGlyphView: View {
         case .symbol(let name):
             Image(systemName: name)
                 .font(.system(size: size * 0.4, weight: .semibold))
-                .foregroundStyle(UbappTheme.accent)
+                .foregroundStyle(JamboreeTheme.accent)
         }
     }
 
@@ -48,7 +48,7 @@ struct GameGlyphView: View {
                 .kerning(-size * 0.06)
                 .foregroundStyle(.white)
             Rectangle()
-                .fill(UbappTheme.accent)
+                .fill(JamboreeTheme.accent)
                 .frame(width: size * 1.2, height: size * 0.10)
                 .rotationEffect(.degrees(-22))
                 .position(x: size * 0.5, y: size * 0.55)
@@ -64,7 +64,7 @@ struct GameGlyphView: View {
                     .fill(Color(white: 0.13))
                     .overlay(
                         RoundedRectangle(cornerRadius: size * 0.04, style: .continuous)
-                            .stroke(UbappTheme.lineStrong, lineWidth: 1),
+                            .stroke(JamboreeTheme.lineStrong, lineWidth: 1),
                     )
                     .overlay(CardBackGrid().stroke(Color.white.opacity(0.18), lineWidth: 0.5).padding(w * 0.12))
                     .frame(width: w, height: h)
@@ -79,7 +79,7 @@ struct GameGlyphView: View {
     private var president: some View {
         let inset = size * 0.16
         let bars: [(CGFloat, Color)] = [
-            (0.95, UbappTheme.accent),
+            (0.95, JamboreeTheme.accent),
             (0.70, .white),
             (0.70, .white),
             (0.38, Color.white.opacity(0.45)),
@@ -104,11 +104,11 @@ struct GameGlyphView: View {
                 .frame(width: size * 0.36, height: size * 0.36)
                 .position(x: size * 0.74, y: size * 0.28)
             RoundedRectangle(cornerRadius: size * 0.05)
-                .fill(UbappTheme.accent)
+                .fill(JamboreeTheme.accent)
                 .frame(width: size * 0.72, height: size * 0.10)
                 .position(x: size * 0.50, y: size * 0.75)
             UnevenRoundedRectangle(topLeadingRadius: size * 0.06, topTrailingRadius: size * 0.06)
-                .fill(UbappTheme.accent)
+                .fill(JamboreeTheme.accent)
                 .frame(width: size * 0.40, height: size * 0.22)
                 .position(x: size * 0.50, y: size * 0.59)
             Rectangle()
@@ -125,10 +125,10 @@ struct GameGlyphView: View {
                 .fill(Color.white)
                 .frame(width: size * 0.56, height: size * 0.48)
                 .position(x: size * 0.5, y: size * 0.46)
-            Ellipse().fill(UbappTheme.accent)
+            Ellipse().fill(JamboreeTheme.accent)
                 .frame(width: size * 0.08, height: size * 0.06)
                 .position(x: size * 0.36, y: size * 0.49)
-            Ellipse().fill(UbappTheme.accent)
+            Ellipse().fill(JamboreeTheme.accent)
                 .frame(width: size * 0.08, height: size * 0.06)
                 .position(x: size * 0.64, y: size * 0.49)
             Circle().fill(Color.white.opacity(0.45))
@@ -141,17 +141,17 @@ struct GameGlyphView: View {
     private var imposter: some View {
         ZStack {
             RoundedRectangle(cornerRadius: size * 0.12, style: .continuous)
-                .fill(UbappTheme.accent)
+                .fill(JamboreeTheme.accent)
                 .frame(width: size * 0.72, height: size * 0.52)
                 .overlay(
                     Text("?")
                         .font(.system(size: size * 0.42, weight: .black))
                         .kerning(-size * 0.06)
-                        .foregroundStyle(UbappTheme.onAccent),
+                        .foregroundStyle(JamboreeTheme.onAccent),
                 )
                 .position(x: size * 0.50, y: size * 0.42)
             TriangleDown()
-                .fill(UbappTheme.accent)
+                .fill(JamboreeTheme.accent)
                 .frame(width: size * 0.20, height: size * 0.16)
                 .position(x: size * 0.32, y: size * 0.70)
         }
@@ -175,7 +175,7 @@ struct GameGlyphView: View {
                 .frame(width: size * 0.16, height: size * 0.16)
                 .position(x: size * 0.70, y: size * 0.72)
             // bomb
-            Circle().fill(UbappTheme.accent)
+            Circle().fill(JamboreeTheme.accent)
                 .frame(width: size * 0.16, height: size * 0.16)
                 .position(x: size * 0.74, y: size * 0.74)
         }

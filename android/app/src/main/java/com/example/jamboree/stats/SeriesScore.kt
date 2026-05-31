@@ -1,4 +1,4 @@
-package com.example.ubapp.stats
+package com.example.jamboree.stats
 
 /**
  * In-session tally of round outcomes for one game — "the series". Keyed by the

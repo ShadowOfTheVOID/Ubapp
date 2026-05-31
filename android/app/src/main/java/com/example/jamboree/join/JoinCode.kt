@@ -1,4 +1,4 @@
-package com.example.ubapp.join
+package com.example.jamboree.join
 
 /**
  * Encodes / decodes a 7-character base-36 join code that maps to an IPv4

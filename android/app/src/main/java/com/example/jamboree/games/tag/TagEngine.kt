@@ -1,4 +1,4 @@
-package com.example.ubapp.games.tag
+package com.example.jamboree.games.tag
 
 enum class PlayerStatus { RUNNER, IT, FROZEN, ELIMINATED }
 

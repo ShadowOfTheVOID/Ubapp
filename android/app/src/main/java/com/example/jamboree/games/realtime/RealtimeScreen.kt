@@ -1,4 +1,4 @@
-package com.example.ubapp.games.realtime
+package com.example.jamboree.games.realtime
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -14,8 +14,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Text
-import com.example.ubapp.stats.StatsStore
-import com.example.ubapp.theme.UbappTheme
+import com.example.jamboree.stats.StatsStore
+import com.example.jamboree.theme.JamboreeTheme
 import kotlinx.coroutines.delay
 import kotlin.math.cos
 import kotlin.math.sin
@@ -47,7 +47,7 @@ fun RealtimeScreen() {
         }
     }
 
-    UbappTheme {
+    JamboreeTheme {
     Box(
         Modifier.fillMaxSize().background(Color.Black)
             .pointerInput(Unit) {

@@ -13,7 +13,7 @@ struct SocialView: View {
         }
         .padding(32)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .ubappChrome()
+        .jamboreeChrome()
         .navigationTitle("Social")
     }
 }

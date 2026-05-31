@@ -34,7 +34,7 @@ struct RealtimeView: View {
                     .padding(12)
             }
         }
-        .ubappChrome()
+        .jamboreeChrome()
         .navigationTitle("Real-time")
         .ignoresSafeArea(edges: .bottom)
         .onAppear {

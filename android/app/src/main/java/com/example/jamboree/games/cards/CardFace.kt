@@ -1,4 +1,4 @@
-package com.example.ubapp.games.cards
+package com.example.jamboree.games.cards
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border

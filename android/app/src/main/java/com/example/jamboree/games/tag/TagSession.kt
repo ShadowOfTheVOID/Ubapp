@@ -1,9 +1,9 @@
-package com.example.ubapp.games.tag
+package com.example.jamboree.games.tag
 
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
-import com.example.ubapp.stats.StatsStore
+import com.example.jamboree.stats.StatsStore
 
 /**
  * Glue between proximity detection, the engine, and the network. Owns a

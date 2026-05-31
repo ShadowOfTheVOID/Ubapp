@@ -77,7 +77,7 @@ struct TagLobbyView: View {
             .navigationTitle("Tag")
             .onDisappear { model.stop() }
         }
-        .ubappChrome()
+        .jamboreeChrome()
     }
 
     @ViewBuilder

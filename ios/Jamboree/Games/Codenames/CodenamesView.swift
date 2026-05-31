@@ -18,7 +18,7 @@ struct CodenamesView: View {
                             Spacer(minLength: 0)
                             VStack(alignment: .center, spacing: 16) {
                                 VStack(spacing: 4) {
-                                    MonoLabel("Hosting · Codenames", color: UbappTheme.accent)
+                                    MonoLabel("Hosting · Codenames", color: JamboreeTheme.accent)
                                     Text("Waiting for players")
                                         .font(.system(size: 24, weight: .heavy)).kerning(-0.6)
                                         .foregroundStyle(.white)
@@ -51,7 +51,7 @@ struct CodenamesView: View {
                 }
             }
         }
-        .ubappChrome()
+        .jamboreeChrome()
         .navigationTitle("Codenames")
         .onDisappear { model.stop() }
     }
@@ -68,7 +68,7 @@ struct CodenamesView: View {
             }
             Toggle("I'm spymaster ★", isOn: $model.hostIsSpymaster)
                 .onChange(of: model.hostIsSpymaster) { _, on in model.setSpymaster(on) }
-                .font(.system(size: 15)).tint(UbappTheme.accent)
+                .font(.system(size: 15)).tint(JamboreeTheme.accent)
                 .padding(.horizontal, 14).padding(.vertical, 10).ubCard()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -82,14 +82,14 @@ struct CodenamesView: View {
                         Text(p.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
                         if p.isSpymaster {
                             MonoLabel("spy ★", size: 9,
-                                      color: p.team == .red ? cnRed : p.team == .blue ? cnBlue : UbappTheme.faint)
+                                      color: p.team == .red ? cnRed : p.team == .blue ? cnBlue : JamboreeTheme.faint)
                         }
                         Spacer()
                         if let t = p.team {
                             MonoLabel(t.name2, size: 9, color: t == .red ? cnRed : cnBlue)
                         }
                     }
-                    .padding(.vertical, 10).padding(.horizontal, 14).ubCard(radius: UbappRadius.row)
+                    .padding(.vertical, 10).padding(.horizontal, 14).ubCard(radius: JamboreeRadius.row)
                 }
             }
         }
@@ -111,7 +111,7 @@ struct CodenamesView: View {
                     model.applyOptions(CodenamesOptions(boardSize: model.boardSize, assassinCount: v))
                 }
             }
-            .font(.system(size: 15)).tint(UbappTheme.accent).padding(14).ubCard()
+            .font(.system(size: 15)).tint(JamboreeTheme.accent).padding(14).ubCard()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -119,7 +119,7 @@ struct CodenamesView: View {
             Button("Start round") { model.start() }.buttonStyle(UbPrimaryButtonStyle())
         } else {
             Text("Need ≥2 per team with a spymaster on each side.")
-                .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                .font(.system(size: 13)).foregroundStyle(JamboreeTheme.muted)
         }
     }
 
@@ -129,8 +129,8 @@ struct CodenamesView: View {
                 .font(.system(size: 15, weight: .bold)).foregroundStyle(color)
                 .frame(maxWidth: .infinity).padding(.vertical, 14)
                 .background(color.opacity(0.12))
-                .clipShape(RoundedRectangle(cornerRadius: UbappRadius.button, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: UbappRadius.button, style: .continuous)
+                .clipShape(RoundedRectangle(cornerRadius: JamboreeRadius.button, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: JamboreeRadius.button, style: .continuous)
                     .stroke(color.opacity(0.5), lineWidth: 1))
         }
         .buttonStyle(.plain)

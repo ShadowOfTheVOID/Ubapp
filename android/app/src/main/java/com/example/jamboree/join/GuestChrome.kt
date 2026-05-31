@@ -1,4 +1,4 @@
-package com.example.ubapp.join
+package com.example.jamboree.join
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*

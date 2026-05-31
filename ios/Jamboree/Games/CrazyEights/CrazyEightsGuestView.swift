@@ -42,16 +42,16 @@ struct CrazyEightsGuestView: View {
         .onAppear { model.attach(ctx: ctx) }
         .onDisappear { ctx.client.onMessage = nil }
         .sheet(item: $suitPickFor) { card in suitPicker(card: card) }
-        .ubappChrome()
+        .jamboreeChrome()
     }
 
     @ViewBuilder private var lobby: some View {
         VStack(alignment: .leading, spacing: 6) {
-            MonoLabel("Crazy 8s · lobby", color: UbappTheme.accent)
+            MonoLabel("Crazy 8s · lobby", color: JamboreeTheme.accent)
             Text("Waiting for the deal")
                 .font(.system(size: 26, weight: .heavy)).kerning(-0.8).foregroundStyle(.white)
             Text("Playing as \(ctx.yourName)")
-                .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                .font(.system(size: 13)).foregroundStyle(JamboreeTheme.muted)
         }
         TutorialGuestCard(state: model.tutorialState, content: model.tutorialContent,
                           myVote: model.myTutorialVote,
@@ -71,12 +71,12 @@ struct CrazyEightsGuestView: View {
             Avatar(name: p.name, host: p.isHost, size: 32)
             Text(p.name).font(.system(size: 15, weight: p.id == ctx.yourId ? .bold : .semibold))
                 .foregroundStyle(.white)
-            if p.id == ctx.yourId { MonoLabel("you", size: 9, color: UbappTheme.accent) }
+            if p.id == ctx.yourId { MonoLabel("you", size: 9, color: JamboreeTheme.accent) }
             Spacer()
-            if p.isHost { MonoLabel("host", size: 9, color: UbappTheme.faint) }
+            if p.isHost { MonoLabel("host", size: 9, color: JamboreeTheme.faint) }
         }
         .padding(.vertical, 12).padding(.horizontal, 14)
-        .ubCard(radius: UbappRadius.row)
+        .ubCard(radius: JamboreeRadius.row)
     }
 
     @ViewBuilder private var table: some View {
@@ -84,7 +84,7 @@ struct CrazyEightsGuestView: View {
         playersStrip
         tableArea
         if !model.lastEvent.isEmpty {
-            MonoLabel(model.lastEvent, size: 10, color: UbappTheme.muted)
+            MonoLabel(model.lastEvent, size: 10, color: JamboreeTheme.muted)
         }
         handArea
         actionBar
@@ -92,12 +92,12 @@ struct CrazyEightsGuestView: View {
 
     private var turnHeader: some View {
         VStack(alignment: .leading, spacing: 4) {
-            MonoLabel("Crazy 8s", color: UbappTheme.accent)
+            MonoLabel("Crazy 8s", color: JamboreeTheme.accent)
             Text(isMyTurn ? "Your turn" : "\(currentName)'s turn")
                 .font(.system(size: 26, weight: .heavy)).kerning(-0.8)
-                .foregroundStyle(isMyTurn ? UbappTheme.accent : .white)
+                .foregroundStyle(isMyTurn ? JamboreeTheme.accent : .white)
             Text("Match \(suitGlyph(model.activeSuit ?? model.topCard?.suit ?? "")) or rank — or play an 8.")
-                .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                .font(.system(size: 13)).foregroundStyle(JamboreeTheme.muted)
         }
     }
 
@@ -110,13 +110,13 @@ struct CrazyEightsGuestView: View {
                         Avatar(name: p.name, host: p.isHost, size: 26)
                         VStack(alignment: .leading, spacing: 1) {
                             Text(p.name).font(.system(size: 12, weight: .semibold)).foregroundStyle(.white)
-                            MonoLabel("\(p.handCount) cards", size: 9, color: UbappTheme.faint)
+                            MonoLabel("\(p.handCount) cards", size: 9, color: JamboreeTheme.faint)
                         }
                     }
                     .padding(.vertical, 8).padding(.horizontal, 10)
-                    .ubCard(radius: UbappRadius.button,
-                            fill: current ? UbappTheme.accentSoft : UbappTheme.surface,
-                            stroke: current ? UbappTheme.accentLine : UbappTheme.line)
+                    .ubCard(radius: JamboreeRadius.button,
+                            fill: current ? JamboreeTheme.accentSoft : JamboreeTheme.surface,
+                            stroke: current ? JamboreeTheme.accentLine : JamboreeTheme.line)
                 }
             }
         }
@@ -141,16 +141,16 @@ struct CrazyEightsGuestView: View {
                     Color.clear.frame(width: 70, height: 98)
                 }
                 MonoLabel("Suit \(suitGlyph(model.activeSuit ?? model.topCard?.suit ?? ""))",
-                          size: 9, color: UbappTheme.accent)
+                          size: 9, color: JamboreeTheme.accent)
             }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 28)
         .background(
-            RadialGradient(colors: [UbappTheme.accent.opacity(0.12), .clear],
+            RadialGradient(colors: [JamboreeTheme.accent.opacity(0.12), .clear],
                            center: .center, startRadius: 0, endRadius: 180),
         )
-        .clipShape(RoundedRectangle(cornerRadius: UbappRadius.hero, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: JamboreeRadius.hero, style: .continuous))
     }
 
     private var handArea: some View {
@@ -200,7 +200,7 @@ struct CrazyEightsGuestView: View {
     @ViewBuilder
     private func suitPicker(card: CrazyEightsGuestModel.Card) -> some View {
         VStack(spacing: 16) {
-            MonoLabel("Choose the next suit", color: UbappTheme.accent)
+            MonoLabel("Choose the next suit", color: JamboreeTheme.accent)
             let suits = ["clubs", "diamonds", "hearts", "spades"]
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
                 ForEach(suits, id: \.self) { s in
@@ -211,8 +211,8 @@ struct CrazyEightsGuestView: View {
                         Text(suitGlyph(s)).font(.system(size: 40))
                             .frame(maxWidth: .infinity, minHeight: 80)
                             .foregroundStyle(s == "diamonds" || s == "hearts"
-                                             ? UbappTheme.accent : .white)
-                            .ubAccentCard(radius: UbappRadius.button)
+                                             ? JamboreeTheme.accent : .white)
+                            .ubAccentCard(radius: JamboreeRadius.button)
                     }
                     .buttonStyle(.plain)
                 }
@@ -222,7 +222,7 @@ struct CrazyEightsGuestView: View {
         }
         .padding(20)
         .frame(maxWidth: .infinity)
-        .background(UbappTheme.canvas)
+        .background(JamboreeTheme.canvas)
         .presentationDetents([.medium])
     }
 
@@ -230,7 +230,7 @@ struct CrazyEightsGuestView: View {
         let winner = model.players.first { $0.id == model.winnerId }
         let standings = model.players.sorted { $0.handCount < $1.handCount }
         VStack(alignment: .leading, spacing: 6) {
-            MonoLabel("Game over", color: UbappTheme.accent)
+            MonoLabel("Game over", color: JamboreeTheme.accent)
             Text("\(winner?.name ?? "?") wins")
                 .font(.system(size: 28, weight: .heavy)).kerning(-0.8).foregroundStyle(.white)
         }
@@ -243,10 +243,10 @@ struct CrazyEightsGuestView: View {
                         Text(p.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
                         if p.id == model.winnerId { Text("🏆") }
                         Spacer()
-                        MonoLabel("\(p.handCount) left", size: 10, color: UbappTheme.muted)
+                        MonoLabel("\(p.handCount) left", size: 10, color: JamboreeTheme.muted)
                     }
                     .padding(.vertical, 12).padding(.horizontal, 14)
-                    .ubCard(radius: UbappRadius.row)
+                    .ubCard(radius: JamboreeRadius.row)
                 }
             }
         }

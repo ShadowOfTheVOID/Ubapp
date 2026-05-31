@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Ubapp</string>
+	<string>Jamboree</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIconName</key>
@@ -34,7 +34,7 @@
 	<string>Tag games advertise this phone over Bluetooth so other players can find it.</string>
 	<key>NSBonjourServices</key>
 	<array>
-		<string>_ubapp._tcp</string>
+		<string>_jamboree._tcp</string>
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Social games host a small server on this phone so other players can join over Wi-Fi.</string>

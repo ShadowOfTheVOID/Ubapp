@@ -1,4 +1,4 @@
-package com.example.ubapp.games.tag
+package com.example.jamboree.games.tag
 
 import android.Manifest
 import android.app.Activity
@@ -13,9 +13,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.example.ubapp.shared.HostingChrome
-import com.example.ubapp.social.HostServer
-import com.example.ubapp.theme.UbappTheme
+import com.example.jamboree.shared.HostingChrome
+import com.example.jamboree.social.HostServer
+import com.example.jamboree.theme.JamboreeTheme
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.MultiplePermissionsState
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
@@ -67,7 +67,7 @@ fun TagLobbyScreen() {
 
     DisposableEffect(Unit) { onDispose { stopAll() } }
 
-    UbappTheme {
+    JamboreeTheme {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
     Column(
         Modifier

@@ -1,4 +1,4 @@
-package com.example.ubapp.games.tag
+package com.example.jamboree.games.tag
 
 import org.json.JSONArray
 import org.json.JSONObject

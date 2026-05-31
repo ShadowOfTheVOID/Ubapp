@@ -1,4 +1,4 @@
-package com.example.ubapp.stats
+package com.example.jamboree.stats
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
@@ -12,7 +12,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.ubapp.theme.UbappTheme
+import com.example.jamboree.theme.JamboreeTheme
 import java.text.DateFormat
 import java.util.Date
 
@@ -26,7 +26,7 @@ fun StatBoardScreen(onBack: () -> Unit) {
     val isEmpty = data.games.isEmpty() && data.recent.isEmpty()
     val sortedGames = data.games.entries.sortedByDescending { it.value.playCount }
 
-    UbappTheme {
+    JamboreeTheme {
         Scaffold(
             topBar = {
                 TopAppBar(

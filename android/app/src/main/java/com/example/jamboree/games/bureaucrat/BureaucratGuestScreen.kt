@@ -1,4 +1,4 @@
-package com.example.ubapp.games.bureaucrat
+package com.example.jamboree.games.bureaucrat
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -30,16 +30,16 @@ import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import com.example.ubapp.join.GuestContext
-import com.example.ubapp.join.GuestTutorialContent
-import com.example.ubapp.join.GuestTutorialState
-import com.example.ubapp.join.TutorialGuestCard
-import com.example.ubapp.theme.Avatar
-import com.example.ubapp.theme.MonoLabel
-import com.example.ubapp.theme.Ub
-import com.example.ubapp.theme.UbPrimaryButton
-import com.example.ubapp.theme.UbappTheme
-import com.example.ubapp.theme.ubCard
+import com.example.jamboree.join.GuestContext
+import com.example.jamboree.join.GuestTutorialContent
+import com.example.jamboree.join.GuestTutorialState
+import com.example.jamboree.join.TutorialGuestCard
+import com.example.jamboree.theme.Avatar
+import com.example.jamboree.theme.MonoLabel
+import com.example.jamboree.theme.Ub
+import com.example.jamboree.theme.UbPrimaryButton
+import com.example.jamboree.theme.JamboreeTheme
+import com.example.jamboree.theme.ubCard
 import kotlinx.coroutines.delay
 import org.json.JSONArray
 import org.json.JSONObject
@@ -67,7 +67,7 @@ fun BureaucratGuestScreen(ctx: GuestContext) {
     val iAmBureaucrat = s.bureaucratId == ctx.yourId
     val secs = ((s.deadlineMs - now) / 1000).coerceAtLeast(0).toInt()
 
-    UbappTheme {
+    JamboreeTheme {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
             Column(
                 Modifier.verticalScroll(rememberScrollState()).statusBarsPadding()

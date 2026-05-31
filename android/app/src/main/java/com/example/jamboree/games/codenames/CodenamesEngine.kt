@@ -1,4 +1,4 @@
-package com.example.ubapp.games.codenames
+package com.example.jamboree.games.codenames
 
 import kotlin.random.Random
 
@@ -23,7 +23,7 @@ class CodenamesPlayer(val id: String, val name: String, val isHost: Boolean) {
 }
 
 class CodenamesEngine(private val rng: Random = Random.Default) {
-    val tutorialVote = com.example.ubapp.tutorials.TutorialVote()
+    val tutorialVote = com.example.jamboree.tutorials.TutorialVote()
     val players: MutableMap<String, CodenamesPlayer> = linkedMapOf()
     var phase: CodenamesPhase = CodenamesPhase.LOBBY
     var options: CodenamesOptions = CodenamesOptions()

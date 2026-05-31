@@ -11,12 +11,12 @@ struct ImposterGuestView: View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    MonoLabel(phaseLabel, color: UbappTheme.accent)
+                    MonoLabel(phaseLabel, color: JamboreeTheme.accent)
                     if let err = model.error {
-                        Text(err).font(.system(size: 13, weight: .semibold)).foregroundStyle(UbappTheme.accent)
+                        Text(err).font(.system(size: 13, weight: .semibold)).foregroundStyle(JamboreeTheme.accent)
                             .padding(.vertical, 12).padding(.horizontal, 14)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .ubAccentCard(radius: UbappRadius.row)
+                            .ubAccentCard(radius: JamboreeRadius.row)
                     }
                     SeriesBanner(state: model.series)
                     switch model.phase {
@@ -49,7 +49,7 @@ struct ImposterGuestView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { model.attach(ctx: ctx) }
         .onDisappear { ctx.client.onMessage = nil }
-        .ubappChrome()
+        .jamboreeChrome()
     }
 
     private var phaseLabel: String {
@@ -63,10 +63,10 @@ struct ImposterGuestView: View {
 
     private func infoBanner(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 14)).foregroundStyle(UbappTheme.muted)
+            .font(.system(size: 14)).foregroundStyle(JamboreeTheme.muted)
             .padding(.vertical, 14).padding(.horizontal, 16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .ubCard(radius: UbappRadius.row)
+            .ubCard(radius: JamboreeRadius.row)
     }
 
     @ViewBuilder private var lobby: some View {
@@ -74,7 +74,7 @@ struct ImposterGuestView: View {
             Text("Waiting for the host")
                 .font(.system(size: 26, weight: .heavy)).kerning(-0.8).foregroundStyle(.white)
             Text("Playing as \(ctx.yourName)")
-                .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                .font(.system(size: 13)).foregroundStyle(JamboreeTheme.muted)
         }
         TutorialGuestCard(state: model.tutorialState, content: model.tutorialContent,
                           myVote: model.myTutorialVote,
@@ -89,12 +89,12 @@ struct ImposterGuestView: View {
                         Avatar(name: p.name, host: p.isHost, size: 30)
                         Text(p.name).font(.system(size: 15, weight: p.id == ctx.yourId ? .bold : .semibold))
                             .foregroundStyle(.white)
-                        if p.id == ctx.yourId { MonoLabel("you", size: 9, color: UbappTheme.accent) }
+                        if p.id == ctx.yourId { MonoLabel("you", size: 9, color: JamboreeTheme.accent) }
                         Spacer()
-                        if p.isHost { MonoLabel("host", size: 9, color: UbappTheme.faint) }
+                        if p.isHost { MonoLabel("host", size: 9, color: JamboreeTheme.faint) }
                     }
                     .padding(.vertical, 10).padding(.horizontal, 14)
-                    .ubCard(radius: UbappRadius.row)
+                    .ubCard(radius: JamboreeRadius.row)
                 }
             }
         }
@@ -103,9 +103,9 @@ struct ImposterGuestView: View {
     @ViewBuilder private var playing: some View {
         if model.isImposter {
             VStack(alignment: .leading, spacing: 8) {
-                MonoLabel("Your secret role", color: UbappTheme.accent)
+                MonoLabel("Your secret role", color: JamboreeTheme.accent)
                 Text("You are the Imposter.")
-                    .font(.system(size: 32, weight: .heavy)).kerning(-1).foregroundStyle(UbappTheme.accent)
+                    .font(.system(size: 32, weight: .heavy)).kerning(-1).foregroundStyle(JamboreeTheme.accent)
                 if !model.hideCategory {
                     MonoLabel("Category · \(model.category)", size: 10)
                 }
@@ -113,27 +113,27 @@ struct ImposterGuestView: View {
                     Text("Decoy word: \(decoy)")
                         .font(.system(size: 22, weight: .bold)).foregroundStyle(.white)
                     Text("This isn't the real word — bluff carefully.")
-                        .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                        .font(.system(size: 13)).foregroundStyle(JamboreeTheme.muted)
                 } else {
                     Text("Blend in. Give a clue vague enough to survive.")
-                        .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                        .font(.system(size: 13)).foregroundStyle(JamboreeTheme.muted)
                 }
             }
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .ubCard(radius: UbappRadius.panel, fill: UbappTheme.accentSoft, stroke: UbappTheme.accentLine)
+            .ubCard(radius: JamboreeRadius.panel, fill: JamboreeTheme.accentSoft, stroke: JamboreeTheme.accentLine)
         } else {
             VStack(alignment: .leading, spacing: 8) {
-                MonoLabel("Secret word", color: UbappTheme.accent)
+                MonoLabel("Secret word", color: JamboreeTheme.accent)
                 Text(model.word ?? "—")
                     .font(.system(size: 36, weight: .heavy)).kerning(-1).foregroundStyle(.white)
                 MonoLabel("Category · \(model.category)", size: 10)
                 Text("Drop a clue that proves you know it — without giving it away.")
-                    .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                    .font(.system(size: 13)).foregroundStyle(JamboreeTheme.muted)
             }
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .ubCard(radius: UbappRadius.panel)
+            .ubCard(radius: JamboreeRadius.panel)
         }
         if !model.firstPlayerName.isEmpty {
             let who = model.firstPlayerId == ctx.yourId
@@ -177,15 +177,15 @@ struct ImposterGuestView: View {
             HStack(spacing: 8) {
                 if id != "__skip" { Avatar(name: name, size: 24) }
                 Text(name).font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(selected ? UbappTheme.onAccent : .white)
+                    .foregroundStyle(selected ? JamboreeTheme.onAccent : .white)
                 Spacer(minLength: 0)
             }
             .padding(.vertical, 9).padding(.horizontal, 10)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(selected ? UbappTheme.accent : Color.white.opacity(0.05))
+            .background(selected ? JamboreeTheme.accent : Color.white.opacity(0.05))
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .stroke(selected ? Color.clear : UbappTheme.lineStrong, lineWidth: 1))
+                .stroke(selected ? Color.clear : JamboreeTheme.lineStrong, lineWidth: 1))
         }
         .buttonStyle(.plain)
         .disabled(model.voted)
@@ -197,10 +197,10 @@ struct ImposterGuestView: View {
             model.players.first(where: { $0.id == id })?.name
         }
         VStack(alignment: .leading, spacing: 6) {
-            MonoLabel("Result", color: UbappTheme.accent)
+            MonoLabel("Result", color: JamboreeTheme.accent)
             Text(townWins ? "Town wins" : "Imposter wins")
                 .font(.system(size: 30, weight: .heavy)).kerning(-1)
-                .foregroundStyle(townWins ? .white : UbappTheme.accent)
+                .foregroundStyle(townWins ? .white : JamboreeTheme.accent)
         }
         VStack(alignment: .leading, spacing: 10) {
             let label = names.count == 1 ? "imposter was" : "imposters were"
@@ -208,16 +208,16 @@ struct ImposterGuestView: View {
                 .font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
             if let m = model.mostVotedId, let p = model.players.first(where: { $0.id == m }) {
                 Text("You voted out \(p.name) — \(model.imposterCaught ? "correct!" : "wrong.")")
-                    .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                    .font(.system(size: 13)).foregroundStyle(JamboreeTheme.muted)
             } else {
                 Text("The vote tied — no one was eliminated.")
-                    .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                    .font(.system(size: 13)).foregroundStyle(JamboreeTheme.muted)
             }
             MonoLabel("Word · \(model.resultWord) (\(model.category))", size: 10)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .ubCard(radius: UbappRadius.panel)
+        .ubCard(radius: JamboreeRadius.panel)
     }
 }
 

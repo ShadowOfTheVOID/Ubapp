@@ -1,4 +1,4 @@
-package com.example.ubapp.games.bureaucrat
+package com.example.jamboree.games.bureaucrat
 
 /**
  * Decides whether a freshly typed rebuttal collapses under the weight of the

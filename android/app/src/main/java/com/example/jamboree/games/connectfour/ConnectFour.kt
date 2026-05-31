@@ -1,4 +1,4 @@
-package com.example.ubapp.games.connectfour
+package com.example.jamboree.games.connectfour
 
 enum class Disc(val symbol: String) {
     EMPTY(""), RED("R"), YELLOW("Y");

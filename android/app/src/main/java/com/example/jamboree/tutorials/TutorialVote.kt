@@ -1,4 +1,4 @@
-package com.example.ubapp.tutorials
+package com.example.jamboree.tutorials
 
 /**
  * Pure majority-wins yes/no vote used to decide whether a game's pre-game

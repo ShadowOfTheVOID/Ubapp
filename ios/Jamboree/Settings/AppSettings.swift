@@ -10,8 +10,8 @@ import SwiftUI
 final class AppSettings: ObservableObject {
     static let shared = AppSettings()
 
-    nonisolated static let hostNameKey = "ubapp.hostName"
-    nonisolated static let diagnosticsKey = "ubapp.diagnosticsEnabled"
+    nonisolated static let hostNameKey = "jamboree.hostName"
+    nonisolated static let diagnosticsKey = "jamboree.diagnosticsEnabled"
 
     @Published var hostName: String {
         didSet { UserDefaults.standard.set(hostName, forKey: Self.hostNameKey) }

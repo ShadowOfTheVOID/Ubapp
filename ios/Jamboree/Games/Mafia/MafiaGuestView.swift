@@ -46,7 +46,7 @@ struct MafiaGuestView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { model.attach(ctx: ctx) }
         .onDisappear { ctx.client.onMessage = nil }
-        .ubappChrome()
+        .jamboreeChrome()
     }
 
     private var phaseLabel: String {
@@ -61,21 +61,21 @@ struct MafiaGuestView: View {
 
     @ViewBuilder private var header: some View {
         HStack(alignment: .firstTextBaseline) {
-            MonoLabel(phaseLabel, color: UbappTheme.accent)
+            MonoLabel(phaseLabel, color: JamboreeTheme.accent)
             Spacer()
             if model.phase != "lobby" {
                 MonoLabel(iAmAlive ? "alive" : "out",
-                          size: 9, color: iAmAlive ? UbappTheme.online : UbappTheme.faint)
+                          size: 9, color: iAmAlive ? JamboreeTheme.online : JamboreeTheme.faint)
             }
         }
     }
 
     private func errorBanner(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 13, weight: .semibold)).foregroundStyle(UbappTheme.accent)
+            .font(.system(size: 13, weight: .semibold)).foregroundStyle(JamboreeTheme.accent)
             .padding(.vertical, 12).padding(.horizontal, 14)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .ubAccentCard(radius: UbappRadius.row)
+            .ubAccentCard(radius: JamboreeRadius.row)
     }
 
     @ViewBuilder private var lobby: some View {
@@ -83,7 +83,7 @@ struct MafiaGuestView: View {
             Text("Waiting for the host")
                 .font(.system(size: 26, weight: .heavy)).kerning(-0.8).foregroundStyle(.white)
             Text("Playing as \(ctx.yourName)")
-                .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                .font(.system(size: 13)).foregroundStyle(JamboreeTheme.muted)
         }
         TutorialGuestCard(state: model.tutorialState, content: model.tutorialContent,
                           myVote: model.myTutorialVote,
@@ -98,12 +98,12 @@ struct MafiaGuestView: View {
                         Avatar(name: p.name, host: p.isHost, size: 30)
                         Text(p.name).font(.system(size: 15, weight: p.id == ctx.yourId ? .bold : .semibold))
                             .foregroundStyle(.white)
-                        if p.id == ctx.yourId { MonoLabel("you", size: 9, color: UbappTheme.accent) }
+                        if p.id == ctx.yourId { MonoLabel("you", size: 9, color: JamboreeTheme.accent) }
                         Spacer()
-                        if p.isHost { MonoLabel("host", size: 9, color: UbappTheme.faint) }
+                        if p.isHost { MonoLabel("host", size: 9, color: JamboreeTheme.faint) }
                     }
                     .padding(.vertical, 10).padding(.horizontal, 14)
-                    .ubCard(radius: UbappRadius.row)
+                    .ubCard(radius: JamboreeRadius.row)
                 }
             }
         }
@@ -143,10 +143,10 @@ struct MafiaGuestView: View {
     @ViewBuilder private var gameOver: some View {
         let mafiaWin = model.winner == "mafia"
         VStack(alignment: .leading, spacing: 6) {
-            MonoLabel("Game over", color: UbappTheme.accent)
+            MonoLabel("Game over", color: JamboreeTheme.accent)
             Text(mafiaWin ? "Mafia win" : "Town wins")
                 .font(.system(size: 30, weight: .heavy)).kerning(-1)
-                .foregroundStyle(mafiaWin ? UbappTheme.accent : .white)
+                .foregroundStyle(mafiaWin ? JamboreeTheme.accent : .white)
         }
         VStack(alignment: .leading, spacing: 8) {
             MonoLabel("Full reveal")
@@ -159,13 +159,13 @@ struct MafiaGuestView: View {
                         Spacer()
                         Text(entry.role.capitalized)
                             .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(isMafia ? UbappTheme.onAccent : UbappTheme.muted)
+                            .foregroundStyle(isMafia ? JamboreeTheme.onAccent : JamboreeTheme.muted)
                             .padding(.vertical, 5).padding(.horizontal, 10)
-                            .background(isMafia ? UbappTheme.accent : Color.white.opacity(0.06))
+                            .background(isMafia ? JamboreeTheme.accent : Color.white.opacity(0.06))
                             .clipShape(Capsule())
                     }
                     .padding(.vertical, 10).padding(.horizontal, 14)
-                    .ubCard(radius: UbappRadius.row)
+                    .ubCard(radius: JamboreeRadius.row)
                 }
             }
         }
@@ -181,33 +181,33 @@ struct MafiaGuestView: View {
 
     private func infoBanner(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 14)).foregroundStyle(UbappTheme.muted)
+            .font(.system(size: 14)).foregroundStyle(JamboreeTheme.muted)
             .padding(.vertical, 14).padding(.horizontal, 16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .ubCard(radius: UbappRadius.row)
+            .ubCard(radius: JamboreeRadius.row)
     }
 
     @ViewBuilder private var roleCard: some View {
         if let role = model.role {
             let m = roleMeta(role)
             VStack(alignment: .leading, spacing: 6) {
-                MonoLabel("Your secret role", color: UbappTheme.accent)
+                MonoLabel("Your secret role", color: JamboreeTheme.accent)
                 (Text("You are ") + Text(m.name + ".")
-                    .foregroundColor(m.accent ? UbappTheme.accent : .white))
+                    .foregroundColor(m.accent ? JamboreeTheme.accent : .white))
                     .font(.system(size: 32, weight: .heavy)).kerning(-1)
                     .foregroundStyle(.white)
             }
             VStack(alignment: .leading, spacing: 14) {
                 Text(m.letter)
                     .font(.system(size: 28, weight: .heavy)).kerning(-1)
-                    .foregroundStyle(m.accent ? UbappTheme.onAccent : .white)
+                    .foregroundStyle(m.accent ? JamboreeTheme.onAccent : .white)
                     .frame(width: 56, height: 56)
-                    .background(m.accent ? UbappTheme.accent : UbappTheme.surfaceHi)
+                    .background(m.accent ? JamboreeTheme.accent : JamboreeTheme.surfaceHi)
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 VStack(alignment: .leading, spacing: 6) {
-                    MonoLabel("Team \(m.team)", color: m.accent ? UbappTheme.accent : UbappTheme.muted)
+                    MonoLabel("Team \(m.team)", color: m.accent ? JamboreeTheme.accent : JamboreeTheme.muted)
                     Text(m.name).font(.system(size: 22, weight: .heavy)).foregroundStyle(.white)
-                    Text(m.blurb).font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                    Text(m.blurb).font(.system(size: 13)).foregroundStyle(JamboreeTheme.muted)
                 }
                 if role == "mafia", model.mafiaIds.count > 1 {
                     let others = model.mafiaIds.filter { $0 != ctx.yourId }
@@ -225,9 +225,9 @@ struct MafiaGuestView: View {
             }
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .ubCard(radius: UbappRadius.panel,
-                    fill: m.accent ? UbappTheme.accentSoft : UbappTheme.surface,
-                    stroke: m.accent ? UbappTheme.accentLine : UbappTheme.line)
+            .ubCard(radius: JamboreeRadius.panel,
+                    fill: m.accent ? JamboreeTheme.accentSoft : JamboreeTheme.surface,
+                    stroke: m.accent ? JamboreeTheme.accentLine : JamboreeTheme.line)
         }
     }
 
@@ -259,16 +259,16 @@ struct MafiaGuestView: View {
             Avatar(name: p.name, host: p.isHost, size: 28)
             VStack(alignment: .leading, spacing: 1) {
                 Text(p.name).font(.system(size: 12, weight: .semibold))
-                    .strikethrough(!alive).foregroundStyle(alive ? .white : UbappTheme.muted)
+                    .strikethrough(!alive).foregroundStyle(alive ? .white : JamboreeTheme.muted)
                 MonoLabel(alive ? "alive" : "dead", size: 9,
-                          color: alive ? UbappTheme.faint : UbappTheme.accent)
+                          color: alive ? JamboreeTheme.faint : JamboreeTheme.accent)
             }
             Spacer(minLength: 0)
         }
         .padding(.vertical, 8).padding(.horizontal, 10)
-        .ubCard(radius: UbappRadius.button,
-                fill: alive ? UbappTheme.surface : UbappTheme.accentSoft,
-                stroke: alive ? UbappTheme.line : UbappTheme.accentLine)
+        .ubCard(radius: JamboreeRadius.button,
+                fill: alive ? JamboreeTheme.surface : JamboreeTheme.accentSoft,
+                stroke: alive ? JamboreeTheme.line : JamboreeTheme.accentLine)
     }
 
     @ViewBuilder
@@ -308,15 +308,15 @@ struct MafiaGuestView: View {
                 if id != "__skip" { Avatar(name: name, size: 24) }
                 Text(name)
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(selected ? UbappTheme.onAccent : .white)
+                    .foregroundStyle(selected ? JamboreeTheme.onAccent : .white)
                 Spacer(minLength: 0)
             }
             .padding(.vertical, 9).padding(.horizontal, 10)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(selected ? UbappTheme.accent : Color.white.opacity(0.05))
+            .background(selected ? JamboreeTheme.accent : Color.white.opacity(0.05))
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .stroke(selected ? Color.clear : UbappTheme.lineStrong, lineWidth: 1))
+                .stroke(selected ? Color.clear : JamboreeTheme.lineStrong, lineWidth: 1))
         }
         .buttonStyle(.plain)
         .disabled(submitted)

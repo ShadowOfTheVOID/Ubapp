@@ -69,21 +69,21 @@ struct TutorialGuestCard: View {
                     .frame(width: 0, height: 0)
                     .fullScreenCover(isPresented: .constant(true)) {
                         ZStack(alignment: .topLeading) {
-                            UbappTheme.canvas.ignoresSafeArea()
+                            JamboreeTheme.canvas.ignoresSafeArea()
                             VStack(alignment: .leading, spacing: 0) {
                                 HStack {
                                     Text(c.title)
                                         .font(.system(size: 26, weight: .heavy)).kerning(-0.8)
-                                        .foregroundStyle(UbappTheme.foreground)
+                                        .foregroundStyle(JamboreeTheme.foreground)
                                     Spacer()
                                     Text("\(pageIndex + 1) / \(allSections.count)")
-                                        .font(.caption).foregroundStyle(UbappTheme.faint)
+                                        .font(.caption).foregroundStyle(JamboreeTheme.faint)
                                 }
                                 .padding(.bottom, 24)
                                 if pageIndex < allSections.count {
                                     let s = allSections[pageIndex]
-                                    Text(s.heading).font(.headline).foregroundStyle(UbappTheme.foreground)
-                                    Text(s.body).font(.body).foregroundStyle(UbappTheme.muted)
+                                    Text(s.heading).font(.headline).foregroundStyle(JamboreeTheme.foreground)
+                                    Text(s.body).font(.body).foregroundStyle(JamboreeTheme.muted)
                                         .padding(.top, 8)
                                 }
                                 Spacer()
@@ -96,14 +96,14 @@ struct TutorialGuestCard: View {
                                         Button("Next →") { pageIndex += 1 }.buttonStyle(.borderedProminent)
                                     } else {
                                         Text("Waiting for the host to finish reading…")
-                                            .font(.footnote).foregroundStyle(UbappTheme.faint)
+                                            .font(.footnote).foregroundStyle(JamboreeTheme.faint)
                                     }
                                 }
                             }
                             .padding(24)
                             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                         }
-                        .tint(UbappTheme.accent)
+                        .tint(JamboreeTheme.accent)
                     }
             }
         } else if state.result == false {

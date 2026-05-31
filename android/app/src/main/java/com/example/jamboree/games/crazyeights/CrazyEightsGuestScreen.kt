@@ -1,4 +1,4 @@
-package com.example.ubapp.games.crazyeights
+package com.example.jamboree.games.crazyeights
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -22,22 +22,22 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ubapp.ads.AdBanner
-import com.example.ubapp.ads.AdBannerPlacement
-import com.example.ubapp.ads.AdInterstitialController
-import com.example.ubapp.theme.Avatar
-import com.example.ubapp.theme.MonoLabel
-import com.example.ubapp.theme.Ub
-import com.example.ubapp.theme.UbSecondaryButton
-import com.example.ubapp.theme.UbappTheme
-import com.example.ubapp.theme.ubAccentCard
-import com.example.ubapp.theme.ubCard
-import com.example.ubapp.join.GuestContext
-import com.example.ubapp.join.GuestSeriesState
-import com.example.ubapp.join.GuestTutorialContent
-import com.example.ubapp.join.GuestTutorialState
-import com.example.ubapp.join.SeriesBannerCard
-import com.example.ubapp.join.TutorialGuestCard
+import com.example.jamboree.ads.AdBanner
+import com.example.jamboree.ads.AdBannerPlacement
+import com.example.jamboree.ads.AdInterstitialController
+import com.example.jamboree.theme.Avatar
+import com.example.jamboree.theme.MonoLabel
+import com.example.jamboree.theme.Ub
+import com.example.jamboree.theme.UbSecondaryButton
+import com.example.jamboree.theme.JamboreeTheme
+import com.example.jamboree.theme.ubAccentCard
+import com.example.jamboree.theme.ubCard
+import com.example.jamboree.join.GuestContext
+import com.example.jamboree.join.GuestSeriesState
+import com.example.jamboree.join.GuestTutorialContent
+import com.example.jamboree.join.GuestTutorialState
+import com.example.jamboree.join.SeriesBannerCard
+import com.example.jamboree.join.TutorialGuestCard
 import org.json.JSONObject
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -62,7 +62,7 @@ fun CrazyEightsGuestScreen(ctx: GuestContext) {
         }
     }
 
-    UbappTheme {
+    JamboreeTheme {
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
     Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
@@ -140,7 +140,7 @@ fun CrazyEightsGuestScreen(ctx: GuestContext) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally,
                            verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Box(contentAlignment = Alignment.Center) {
-                            com.example.ubapp.games.cards.GridCardBack(width = 70.dp)
+                            com.example.jamboree.games.cards.GridCardBack(width = 70.dp)
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text("${s.drawCount}", fontSize = 22.sp,
                                      fontWeight = FontWeight.Bold, color = Color.White)
@@ -271,13 +271,13 @@ private fun PlayerChip(name: String, host: Boolean, cards: Int, current: Boolean
 
 @Composable
 private fun CardFace(c: CrazyEightsGuestState.Card) {
-    val suit = com.example.ubapp.games.cards.CardSuit.fromWire(c.suit)
+    val suit = com.example.jamboree.games.cards.CardSuit.fromWire(c.suit)
     if (suit != null) {
-        com.example.ubapp.games.cards.NoirCardFace(
+        com.example.jamboree.games.cards.NoirCardFace(
             rank = c.rank, suit = suit, width = 70.dp, wildAccent = true,
         )
     } else {
-        com.example.ubapp.games.cards.GridCardBack(width = 70.dp)
+        com.example.jamboree.games.cards.GridCardBack(width = 70.dp)
     }
 }
 

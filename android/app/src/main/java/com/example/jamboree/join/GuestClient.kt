@@ -1,4 +1,4 @@
-package com.example.ubapp.join
+package com.example.jamboree.join
 
 import android.content.Context
 import android.os.Handler
@@ -117,7 +117,7 @@ class GuestClient(private val url: String, ctx: Context? = null) : GuestLink {
 
         private fun bundledTrustManager(ctx: Context): X509TrustManager? = runCatching {
             val ks = KeyStore.getInstance("PKCS12")
-            ctx.assets.open("ubapp.p12").use { ks.load(it, "ubapp".toCharArray()) }
+            ctx.assets.open("ubapp.p12").use { ks.load(it, "jamboree".toCharArray()) }
             val tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
             tmf.init(ks)
             tmf.trustManagers.filterIsInstance<X509TrustManager>().firstOrNull()

@@ -1,8 +1,8 @@
-package com.example.ubapp.join
+package com.example.jamboree.join
 
 import android.os.Handler
 import android.os.Looper
-import com.example.ubapp.social.HostServer
+import com.example.jamboree.social.HostServer
 import org.json.JSONObject
 
 /**

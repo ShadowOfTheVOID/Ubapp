@@ -1,11 +1,11 @@
-package com.example.ubapp.games.werewolf
+package com.example.jamboree.games.werewolf
 
 import android.content.Context
-import com.example.ubapp.join.LoopbackGuest
-import com.example.ubapp.social.GuestId
-import com.example.ubapp.social.HostServer
-import com.example.ubapp.stats.StatsStore
-import com.example.ubapp.tutorials.GameTutorials
+import com.example.jamboree.join.LoopbackGuest
+import com.example.jamboree.social.GuestId
+import com.example.jamboree.social.HostServer
+import com.example.jamboree.stats.StatsStore
+import com.example.jamboree.tutorials.GameTutorials
 import org.json.JSONArray
 import org.json.JSONObject
 

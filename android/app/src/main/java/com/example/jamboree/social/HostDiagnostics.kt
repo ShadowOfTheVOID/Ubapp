@@ -1,8 +1,8 @@
-package com.example.ubapp.social
+package com.example.jamboree.social
 
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.snapshots.SnapshotStateList
-import com.example.ubapp.settings.AppSettings
+import com.example.jamboree.settings.AppSettings
 
 /**
  * On-screen host instrumentation, gated behind the **Diagnostics**

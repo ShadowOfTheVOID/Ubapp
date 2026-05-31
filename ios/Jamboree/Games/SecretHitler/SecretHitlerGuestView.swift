@@ -44,16 +44,16 @@ struct SecretHitlerGuestView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { model.attach(ctx: ctx) }
         .onDisappear { ctx.client.onMessage = nil }
-        .ubappChrome()
+        .jamboreeChrome()
     }
 
     @ViewBuilder private var lobby: some View {
         VStack(alignment: .leading, spacing: 6) {
-            MonoLabel("Secret Hitler · lobby", color: UbappTheme.accent)
+            MonoLabel("Secret Hitler · lobby", color: JamboreeTheme.accent)
             Text("Waiting for the deal")
                 .font(.system(size: 26, weight: .heavy)).kerning(-0.8).foregroundStyle(.white)
             Text("Playing as \(ctx.yourName) · 5–10 players")
-                .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                .font(.system(size: 13)).foregroundStyle(JamboreeTheme.muted)
         }
         TutorialGuestCard(state: model.tutorialState, content: model.tutorialContent,
                           myVote: model.myTutorialVote,
@@ -69,9 +69,9 @@ struct SecretHitlerGuestView: View {
                         Text(p.name).font(.system(size: 15, weight: p.id == ctx.yourId ? .bold : .semibold))
                             .foregroundStyle(.white)
                         Spacer()
-                        if p.isHost { MonoLabel("host", size: 9, color: UbappTheme.faint) }
+                        if p.isHost { MonoLabel("host", size: 9, color: JamboreeTheme.faint) }
                     }
-                    .padding(.vertical, 10).padding(.horizontal, 14).ubCard(radius: UbappRadius.row)
+                    .padding(.vertical, 10).padding(.horizontal, 14).ubCard(radius: JamboreeRadius.row)
                 }
             }
         }
@@ -93,7 +93,7 @@ struct SecretHitlerGuestView: View {
                         Text(m.name).font(.system(size: 28, weight: .heavy)).kerning(-1).foregroundStyle(.white)
                     }
                 }
-                Text(m.blurb).font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                Text(m.blurb).font(.system(size: 13)).foregroundStyle(JamboreeTheme.muted)
                 if !model.allies.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {
                         MonoLabel("You know", size: 9)
@@ -111,7 +111,7 @@ struct SecretHitlerGuestView: View {
             }
             .padding(18)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .ubCard(radius: UbappRadius.panel, fill: m.color.opacity(0.12), stroke: m.color.opacity(0.45))
+            .ubCard(radius: JamboreeRadius.panel, fill: m.color.opacity(0.12), stroke: m.color.opacity(0.45))
         }
     }
 
@@ -126,31 +126,31 @@ struct SecretHitlerGuestView: View {
                 HStack(spacing: 4) {
                     ForEach(0..<3, id: \.self) { i in
                         RoundedRectangle(cornerRadius: 4)
-                            .fill(i < model.electionTracker ? UbappTheme.accent : Color.white.opacity(0.06))
+                            .fill(i < model.electionTracker ? JamboreeTheme.accent : Color.white.opacity(0.06))
                             .frame(height: 16)
-                            .overlay(RoundedRectangle(cornerRadius: 4).stroke(UbappTheme.lineStrong, lineWidth: 1))
+                            .overlay(RoundedRectangle(cornerRadius: 4).stroke(JamboreeTheme.lineStrong, lineWidth: 1))
                     }
                 }
-                MonoLabel("\(model.electionTracker)/3", size: 9, color: UbappTheme.faint)
+                MonoLabel("\(model.electionTracker)/3", size: 9, color: JamboreeTheme.faint)
             }
-            .padding(.horizontal, 12).padding(.vertical, 10).ubCard(radius: UbappRadius.row)
+            .padding(.horizontal, 12).padding(.vertical, 10).ubCard(radius: JamboreeRadius.row)
         }
     }
 
     private var government: some View {
         HStack(spacing: 14) {
             slatePerson(playerName(model.presidentId), "President")
-            Text("×").font(.system(size: 22)).foregroundStyle(UbappTheme.muted)
+            Text("×").font(.system(size: 22)).foregroundStyle(JamboreeTheme.muted)
             slatePerson(playerName(model.chancellorId ?? model.chancellorNomineeId), "Chancellor")
             Spacer()
         }
-        .padding(14).frame(maxWidth: .infinity, alignment: .leading).ubCard(radius: UbappRadius.row)
+        .padding(14).frame(maxWidth: .infinity, alignment: .leading).ubCard(radius: JamboreeRadius.row)
     }
 
     private func slatePerson(_ name: String, _ role: String) -> some View {
         VStack(spacing: 4) {
             Avatar(name: name, host: role == "President", size: 40)
-            MonoLabel(role, size: 9, color: UbappTheme.accent)
+            MonoLabel(role, size: 9, color: JamboreeTheme.accent)
             Text(name).font(.system(size: 12, weight: .semibold)).foregroundStyle(.white)
         }
     }
@@ -182,7 +182,7 @@ struct SecretHitlerGuestView: View {
                             model.send(["type": "vote", "ja": false]); model.voted = true
                         }
                     }
-                    MonoLabel("\(model.voteProgress)/\(model.voteTotal) voted", size: 9, color: UbappTheme.faint)
+                    MonoLabel("\(model.voteProgress)/\(model.voteTotal) voted", size: 9, color: JamboreeTheme.faint)
                 }
             }
         case "presidentDiscard":
@@ -238,14 +238,14 @@ struct SecretHitlerGuestView: View {
             if amPresident, let inv = model.investigationResult {
                 let party = inv.party.capitalized
                 VStack(alignment: .leading, spacing: 10) {
-                    MonoLabel("Investigation", color: UbappTheme.accent)
+                    MonoLabel("Investigation", color: JamboreeTheme.accent)
                     Text("\(playerName(inv.subjectId)) is \(party)")
                         .font(.system(size: 20, weight: .heavy))
                         .foregroundStyle(inv.party == "fascist" ? SH.fascist : SH.liberal)
-                    Text("Share it or lie about it.").font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                    Text("Share it or lie about it.").font(.system(size: 13)).foregroundStyle(JamboreeTheme.muted)
                     Button("Done") { model.send(["type": "ack_investigation"]) }.buttonStyle(UbPrimaryButtonStyle())
                 }
-                .padding(16).frame(maxWidth: .infinity, alignment: .leading).ubCard(radius: UbappRadius.panel)
+                .padding(16).frame(maxWidth: .infinity, alignment: .leading).ubCard(radius: JamboreeRadius.panel)
             } else { waiting("\(playerName(model.presidentId)) has the investigation result") }
         case "specialElection":
             if amPresident {
@@ -292,9 +292,9 @@ struct SecretHitlerGuestView: View {
                             Avatar(name: p.name, size: 28)
                             Text(p.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
                             Spacer()
-                            Image(systemName: "chevron.right").font(.system(size: 13)).foregroundStyle(UbappTheme.faint)
+                            Image(systemName: "chevron.right").font(.system(size: 13)).foregroundStyle(JamboreeTheme.faint)
                         }
-                        .padding(.vertical, 10).padding(.horizontal, 14).ubCard(radius: UbappRadius.row)
+                        .padding(.vertical, 10).padding(.horizontal, 14).ubCard(radius: JamboreeRadius.row)
                     }
                     .buttonStyle(.plain)
                 }
@@ -341,7 +341,7 @@ struct SecretHitlerGuestView: View {
             Text(liberalWin ? "Liberals win" : "Fascists win")
                 .font(.system(size: 30, weight: .heavy)).kerning(-1).foregroundStyle(color)
             if !reason.isEmpty {
-                Text(reason).font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                Text(reason).font(.system(size: 13)).foregroundStyle(JamboreeTheme.muted)
             }
         }
         tracks
@@ -360,9 +360,9 @@ struct SecretHitlerGuestView: View {
                             .foregroundStyle(role == "hitler" ? .white : (fascistSide ? SH.fascist : SH.liberal))
                     }
                     .padding(.vertical, 10).padding(.horizontal, 14)
-                    .ubCard(radius: UbappRadius.row,
-                            fill: fascistSide ? SH.fascist.opacity(0.10) : UbappTheme.surface,
-                            stroke: fascistSide ? SH.fascist.opacity(0.45) : UbappTheme.line)
+                    .ubCard(radius: JamboreeRadius.row,
+                            fill: fascistSide ? SH.fascist.opacity(0.10) : JamboreeTheme.surface,
+                            stroke: fascistSide ? SH.fascist.opacity(0.45) : JamboreeTheme.line)
                 }
             }
         }
@@ -370,9 +370,9 @@ struct SecretHitlerGuestView: View {
 
     @ViewBuilder private func waiting(_ msg: String) -> some View {
         Text("\(msg)…")
-            .font(.system(size: 14)).foregroundStyle(UbappTheme.muted)
+            .font(.system(size: 14)).foregroundStyle(JamboreeTheme.muted)
             .padding(.vertical, 14).padding(.horizontal, 16)
-            .frame(maxWidth: .infinity, alignment: .leading).ubCard(radius: UbappRadius.row)
+            .frame(maxWidth: .infinity, alignment: .leading).ubCard(radius: JamboreeRadius.row)
     }
 
     private func playerName(_ id: String?) -> String {
@@ -407,7 +407,7 @@ private struct SHTrackView: View {
             HStack {
                 MonoLabel(title, size: 10, color: color)
                 Spacer()
-                MonoLabel("\(filled)/\(max)", size: 9, color: UbappTheme.faint)
+                MonoLabel("\(filled)/\(max)", size: 9, color: JamboreeTheme.faint)
             }
             HStack(spacing: 4) {
                 ForEach(0..<max, id: \.self) { i in
@@ -423,7 +423,7 @@ private struct SHTrackView: View {
             }
         }
         .padding(.horizontal, 12).padding(.vertical, 10)
-        .ubCard(radius: UbappRadius.row, fill: color.opacity(0.10), stroke: color.opacity(0.45))
+        .ubCard(radius: JamboreeRadius.row, fill: color.opacity(0.10), stroke: color.opacity(0.45))
     }
 }
 

@@ -1,4 +1,4 @@
-package com.example.ubapp.theme
+package com.example.jamboree.theme
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -8,9 +8,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 /**
- * Brand tokens for the Ubapp UI redesign — black canvas, neon-magenta
+ * Brand tokens for the Jamboree UI redesign — black canvas, neon-magenta
  * accent, Roboto + monospaced labels. [Ub] is the single source of truth
- * used by every redesigned shared screen and atom (`UbappKit.kt`).
+ * used by every redesigned shared screen and atom (`JamboreeKit.kt`).
  *
  * Per-game screens are not wrapped in this theme — they keep the default
  * MaterialTheme from [MainActivity].
@@ -41,7 +41,7 @@ object Ub {
     }
 }
 
-private val UbappColorScheme = darkColorScheme(
+private val JamboreeColorScheme = darkColorScheme(
     primary = Ub.Accent,
     onPrimary = Ub.OnAccent,
     secondary = Ub.Accent,
@@ -59,8 +59,8 @@ private val UbappColorScheme = darkColorScheme(
 )
 
 @Composable
-fun UbappTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = UbappColorScheme) {
+fun JamboreeTheme(content: @Composable () -> Unit) {
+    MaterialTheme(colorScheme = JamboreeColorScheme) {
         Surface(color = Ub.Canvas, contentColor = Ub.Foreground) {
             content()
         }

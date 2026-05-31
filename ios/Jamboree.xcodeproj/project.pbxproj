@@ -13,7 +13,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		A100000000000000000000A1 /* Ubapp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Ubapp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A100000000000000000000A1 /* Jamboree.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Jamboree.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -22,12 +22,12 @@
 			membershipExceptions = (
 				App/Info.plist,
 			);
-			target = A100000000000000000000E1 /* Ubapp */;
+			target = A100000000000000000000E1 /* Jamboree */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		A100000000000000000000B1 /* Ubapp */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (A100000000000000000000B2 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Ubapp; sourceTree = "<group>"; };
+		A100000000000000000000B1 /* Jamboree */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (A100000000000000000000B2 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Jamboree; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -47,7 +47,7 @@
 		A100000000000000000000D1 = {
 			isa = PBXGroup;
 			children = (
-				A100000000000000000000B1 /* Ubapp */,
+				A100000000000000000000B1 /* Jamboree */,
 				A100000000000000000000D2 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -55,7 +55,7 @@
 		A100000000000000000000D2 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				A100000000000000000000A1 /* Ubapp.app */,
+				A100000000000000000000A1 /* Jamboree.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -63,9 +63,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		A100000000000000000000E1 /* Ubapp */ = {
+		A100000000000000000000E1 /* Jamboree */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = A100000000000000000000F4 /* Build configuration list for PBXNativeTarget "Ubapp" */;
+			buildConfigurationList = A100000000000000000000F4 /* Build configuration list for PBXNativeTarget "Jamboree" */;
 			buildPhases = (
 				A100000000000000000000E2 /* Sources */,
 				A100000000000000000000C1 /* Frameworks */,
@@ -76,11 +76,11 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				A100000000000000000000B1 /* Ubapp */,
+				A100000000000000000000B1 /* Jamboree */,
 			);
-			name = Ubapp;
-			productName = Ubapp;
-			productReference = A100000000000000000000A1 /* Ubapp.app */;
+			name = Jamboree;
+			productName = Jamboree;
+			productReference = A100000000000000000000A1 /* Jamboree.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -98,7 +98,7 @@
 					};
 				};
 			};
-			buildConfigurationList = A100000000000000000000F1 /* Build configuration list for PBXProject "Ubapp" */;
+			buildConfigurationList = A100000000000000000000F1 /* Build configuration list for PBXProject "Jamboree" */;
 			compatibilityVersion = "Xcode 16.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -116,7 +116,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				A100000000000000000000E1 /* Ubapp */,
+				A100000000000000000000E1 /* Jamboree */,
 			);
 		};
 /* End PBXProject section */
@@ -184,13 +184,13 @@
 				DEVELOPMENT_TEAM = J78YGDJG5R;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = Ubapp/App/Info.plist;
+				INFOPLIST_FILE = Jamboree/App/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 2.0;
-				PRODUCT_BUNDLE_IDENTIFIER = org.diydesk.ubapp;
+				PRODUCT_BUNDLE_IDENTIFIER = org.diydesk.jamboree;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_VERSION = 5.0;
@@ -208,13 +208,13 @@
 				DEVELOPMENT_TEAM = J78YGDJG5R;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = Ubapp/App/Info.plist;
+				INFOPLIST_FILE = Jamboree/App/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 2.0;
-				PRODUCT_BUNDLE_IDENTIFIER = org.diydesk.ubapp;
+				PRODUCT_BUNDLE_IDENTIFIER = org.diydesk.jamboree;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_VERSION = 5.0;
@@ -225,7 +225,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		A100000000000000000000F1 /* Build configuration list for PBXProject "Ubapp" */ = {
+		A100000000000000000000F1 /* Build configuration list for PBXProject "Jamboree" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				A100000000000000000000F2 /* Debug */,
@@ -234,7 +234,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		A100000000000000000000F4 /* Build configuration list for PBXNativeTarget "Ubapp" */ = {
+		A100000000000000000000F4 /* Build configuration list for PBXNativeTarget "Jamboree" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				A100000000000000000000F5 /* Debug */,

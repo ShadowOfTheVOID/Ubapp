@@ -1,8 +1,8 @@
-package com.example.ubapp.games.tag
+package com.example.jamboree.games.tag
 
-import com.example.ubapp.join.GuestLink
-import com.example.ubapp.social.GuestId
-import com.example.ubapp.social.HostServer
+import com.example.jamboree.join.GuestLink
+import com.example.jamboree.social.GuestId
+import com.example.jamboree.social.HostServer
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.WebSocket

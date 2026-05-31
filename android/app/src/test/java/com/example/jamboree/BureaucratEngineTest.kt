@@ -1,10 +1,10 @@
-package com.example.ubapp
+package com.example.jamboree
 
-import com.example.ubapp.games.bureaucrat.BureaucratEngine
-import com.example.ubapp.games.bureaucrat.BureaucratOptions
-import com.example.ubapp.games.bureaucrat.BureaucratPhase
-import com.example.ubapp.games.bureaucrat.KeywordContradictionDetector
-import com.example.ubapp.games.bureaucrat.RoundEndReason
+import com.example.jamboree.games.bureaucrat.BureaucratEngine
+import com.example.jamboree.games.bureaucrat.BureaucratOptions
+import com.example.jamboree.games.bureaucrat.BureaucratPhase
+import com.example.jamboree.games.bureaucrat.KeywordContradictionDetector
+import com.example.jamboree.games.bureaucrat.RoundEndReason
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals

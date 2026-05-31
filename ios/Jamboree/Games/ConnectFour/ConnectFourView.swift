@@ -31,7 +31,7 @@ struct ConnectFourView: View {
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .ubappChrome()
+        .jamboreeChrome()
         .navigationTitle("Connect Four")
         .onChange(of: model.isOver) { _, over in
             if over { recordResult() }

@@ -22,9 +22,9 @@ struct JoinFlowView: View {
                let yourId = welcomedId, let yourName = welcomedName {
                 gameView(client: client, game: game, yourId: yourId, yourName: yourName)
             } else if client != nil {
-                connectingView.frame(maxWidth: .infinity, maxHeight: .infinity).ubappChrome()
+                connectingView.frame(maxWidth: .infinity, maxHeight: .infinity).jamboreeChrome()
             } else {
-                joinForm.ubappChrome()
+                joinForm.jamboreeChrome()
             }
         }
         .navigationTitle("Join a game")
@@ -44,40 +44,40 @@ struct JoinFlowView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 VStack(alignment: .leading, spacing: 6) {
-                    MonoLabel("Join", color: UbappTheme.accent)
+                    MonoLabel("Join", color: JamboreeTheme.accent)
                     Text("Enter the app code")
                         .font(.system(size: 30, weight: .heavy)).kerning(-0.9)
                         .foregroundStyle(.white)
                     Text("The host's phone is showing it. Letters and numbers.")
-                        .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                        .font(.system(size: 13)).foregroundStyle(JamboreeTheme.muted)
                 }
                 .padding(.bottom, 28)
 
                 MonoLabel("Your name").padding(.bottom, 8)
                 TextField("", text: $name,
-                          prompt: Text("Display name").foregroundColor(UbappTheme.faint))
+                          prompt: Text("Display name").foregroundColor(JamboreeTheme.faint))
                     .textInputAutocapitalization(.words)
                     .font(.system(size: 16))
                     .padding(14)
-                    .ubCard(radius: UbappRadius.button)
+                    .ubCard(radius: JamboreeRadius.button)
                     .padding(.bottom, 16)
 
                 MonoLabel("App code").padding(.bottom, 8)
                 TextField("", text: $rawCode,
-                          prompt: Text("ABCD-EFG").foregroundColor(UbappTheme.faint))
+                          prompt: Text("ABCD-EFG").foregroundColor(JamboreeTheme.faint))
                     .textInputAutocapitalization(.characters)
                     .autocorrectionDisabled()
                     .font(.system(size: 22, weight: .bold, design: .monospaced))
                     .tracking(4)
                     .padding(16)
-                    .ubCard(radius: UbappRadius.button)
+                    .ubCard(radius: JamboreeRadius.button)
 
                 Text("Or paste the IP shown under the host's QR.")
-                    .font(.system(size: 12)).foregroundStyle(UbappTheme.muted)
+                    .font(.system(size: 12)).foregroundStyle(JamboreeTheme.muted)
                     .padding(.top, 8)
 
                 if !status.isEmpty {
-                    Text(status).foregroundStyle(UbappTheme.accent)
+                    Text(status).foregroundStyle(JamboreeTheme.accent)
                         .font(.system(size: 13)).padding(.top, 12)
                 }
 
@@ -93,10 +93,10 @@ struct JoinFlowView: View {
 
     @ViewBuilder private var connectingView: some View {
         VStack(spacing: 16) {
-            ProgressView().tint(UbappTheme.accent)
-            Text("Connecting to \(pendingHost ?? "host")…").foregroundStyle(UbappTheme.muted)
+            ProgressView().tint(JamboreeTheme.accent)
+            Text("Connecting to \(pendingHost ?? "host")…").foregroundStyle(JamboreeTheme.muted)
             if !status.isEmpty {
-                Text(status).foregroundStyle(UbappTheme.accent).font(.system(size: 13))
+                Text(status).foregroundStyle(JamboreeTheme.accent).font(.system(size: 13))
             }
             Button("Cancel") { reset() }.buttonStyle(UbSecondaryButtonStyle()).frame(maxWidth: 200)
         }

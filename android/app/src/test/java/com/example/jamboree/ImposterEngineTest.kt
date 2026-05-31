@@ -1,8 +1,8 @@
-package com.example.ubapp
+package com.example.jamboree
 
-import com.example.ubapp.games.imposter.ImposterEngine
-import com.example.ubapp.games.imposter.ImposterPhase
-import com.example.ubapp.games.imposter.ImposterWinner
+import com.example.jamboree.games.imposter.ImposterEngine
+import com.example.jamboree.games.imposter.ImposterPhase
+import com.example.jamboree.games.imposter.ImposterWinner
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals

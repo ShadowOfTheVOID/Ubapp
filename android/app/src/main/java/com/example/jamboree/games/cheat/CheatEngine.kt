@@ -1,4 +1,4 @@
-package com.example.ubapp.games.cheat
+package com.example.jamboree.games.cheat
 
 import kotlin.random.Random
 
@@ -69,7 +69,7 @@ class CheatPlayer(val id: String, val name: String, val isHost: Boolean) {
  *    player can still call bluff or [acceptWin] to confirm.
  */
 class CheatEngine(private val rng: Random = Random.Default) {
-    val tutorialVote = com.example.ubapp.tutorials.TutorialVote()
+    val tutorialVote = com.example.jamboree.tutorials.TutorialVote()
     val players: MutableMap<String, CheatPlayer> = linkedMapOf()
     private val order: MutableList<String> = mutableListOf()
     val orderSnapshot: List<String> get() = order.toList()

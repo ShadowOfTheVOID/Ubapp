@@ -3,7 +3,7 @@ import UIKit
 import CoreImage.CIFilterBuiltins
 
 // Reusable brand atoms for the redesigned shared screens. Everything here
-// reads from `UbappTheme` / `UbappRadius` — no literal colors or sizes.
+// reads from `JamboreeTheme` / `JamboreeRadius` — no literal colors or sizes.
 
 // MARK: - Typography
 
@@ -12,9 +12,9 @@ import CoreImage.CIFilterBuiltins
 struct MonoLabel: View {
     let text: String
     var size: CGFloat = 11
-    var color: Color = UbappTheme.muted
+    var color: Color = JamboreeTheme.muted
 
-    init(_ text: String, size: CGFloat = 11, color: Color = UbappTheme.muted) {
+    init(_ text: String, size: CGFloat = 11, color: Color = JamboreeTheme.muted) {
         self.text = text
         self.size = size
         self.color = color
@@ -34,7 +34,7 @@ struct MonoValue: View {
     var size: CGFloat = 13
     var weight: Font.Weight = .bold
     var tracking: CGFloat = 0
-    var color: Color = UbappTheme.foreground
+    var color: Color = JamboreeTheme.foreground
 
     var body: some View {
         Text(text)
@@ -64,7 +64,7 @@ struct PipMark: View {
         ZStack {
             ForEach(0..<4, id: \.self) { i in
                 Circle()
-                    .fill(i == accentIndex ? UbappTheme.accent : color)
+                    .fill(i == accentIndex ? JamboreeTheme.accent : color)
                     .frame(width: r, height: r)
                     .position(positions[i])
             }
@@ -73,7 +73,7 @@ struct PipMark: View {
     }
 }
 
-/// `ubapp` wordmark with optional magenta dot.
+/// `jamboree` wordmark with optional magenta dot.
 struct Wordmark: View {
     var size: CGFloat = 22
     var color: Color = .white
@@ -81,13 +81,13 @@ struct Wordmark: View {
 
     var body: some View {
         HStack(alignment: .bottom, spacing: size * 0.04) {
-            Text("ubapp")
+            Text("jamboree")
                 .font(.system(size: size, weight: .heavy))
                 .kerning(-size * 0.04)
                 .foregroundStyle(color)
             if dot {
                 Circle()
-                    .fill(UbappTheme.accent)
+                    .fill(JamboreeTheme.accent)
                     .frame(width: size * 0.16, height: size * 0.16)
                     .offset(y: -size * 0.02)
             }
@@ -105,11 +105,11 @@ struct Avatar: View {
         Text(String(name.prefix(1)))
             .font(.system(size: size * 0.42, weight: .bold))
             .kerning(-size * 0.02)
-            .foregroundStyle(host ? UbappTheme.onAccent : UbappTheme.foreground)
+            .foregroundStyle(host ? JamboreeTheme.onAccent : JamboreeTheme.foreground)
             .frame(width: size, height: size)
-            .background(host ? UbappTheme.accent : Color.white.opacity(0.10))
+            .background(host ? JamboreeTheme.accent : Color.white.opacity(0.10))
             .clipShape(Circle())
-            .overlay(host ? nil : Circle().stroke(UbappTheme.line, lineWidth: 1))
+            .overlay(host ? nil : Circle().stroke(JamboreeTheme.line, lineWidth: 1))
     }
 }
 
@@ -122,11 +122,11 @@ struct UbPrimaryButtonStyle: ButtonStyle {
         configuration.label
             .font(.system(size: fontSize, weight: .bold))
             .kerning(-0.2)
-            .foregroundStyle(UbappTheme.onAccent)
+            .foregroundStyle(JamboreeTheme.onAccent)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
-            .background(UbappTheme.accent.opacity(configuration.isPressed ? 0.85 : 1))
-            .clipShape(RoundedRectangle(cornerRadius: UbappRadius.button, style: .continuous))
+            .background(JamboreeTheme.accent.opacity(configuration.isPressed ? 0.85 : 1))
+            .clipShape(RoundedRectangle(cornerRadius: JamboreeRadius.button, style: .continuous))
     }
 }
 
@@ -136,14 +136,14 @@ struct UbSecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: fontSize, weight: .semibold))
-            .foregroundStyle(UbappTheme.foreground)
+            .foregroundStyle(JamboreeTheme.foreground)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
             .background(Color.white.opacity(configuration.isPressed ? 0.12 : 0.06))
-            .clipShape(RoundedRectangle(cornerRadius: UbappRadius.button, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: JamboreeRadius.button, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: UbappRadius.button, style: .continuous)
-                    .stroke(UbappTheme.line, lineWidth: 1),
+                RoundedRectangle(cornerRadius: JamboreeRadius.button, style: .continuous)
+                    .stroke(JamboreeTheme.line, lineWidth: 1),
             )
     }
 }
@@ -152,9 +152,9 @@ struct UbSecondaryButtonStyle: ButtonStyle {
 
 extension View {
     /// Surface card with hairline border at the given radius.
-    func ubCard(radius: CGFloat = UbappRadius.card,
-                fill: Color = UbappTheme.surface,
-                stroke: Color = UbappTheme.line) -> some View {
+    func ubCard(radius: CGFloat = JamboreeRadius.card,
+                fill: Color = JamboreeTheme.surface,
+                stroke: Color = JamboreeTheme.line) -> some View {
         self
             .background(fill)
             .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
@@ -165,8 +165,8 @@ extension View {
     }
 
     /// Accent-tinted hero/callout container (join CTA, suit picker).
-    func ubAccentCard(radius: CGFloat = UbappRadius.card) -> some View {
-        ubCard(radius: radius, fill: UbappTheme.accentSoft, stroke: UbappTheme.accentLine)
+    func ubAccentCard(radius: CGFloat = JamboreeRadius.card) -> some View {
+        ubCard(radius: radius, fill: JamboreeTheme.accentSoft, stroke: JamboreeTheme.accentLine)
     }
 }
 

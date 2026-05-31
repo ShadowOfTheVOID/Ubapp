@@ -1,4 +1,4 @@
-package com.example.ubapp.social
+package com.example.jamboree.social
 
 import android.app.Activity
 import android.app.Application
@@ -84,7 +84,7 @@ class HostServer(
     /** Returns the URL guests should open. null if no usable IPv4 (Wi-Fi,
      *  tethered hotspot, USB tether, or cellular) is available. */
     fun startServer(): String? {
-        appCtx?.let { com.example.ubapp.settings.AppSettings.diagnosticsEnabled(it) }
+        appCtx?.let { com.example.jamboree.settings.AppSettings.diagnosticsEnabled(it) }
         if (sslFactory != null) makeSecure(sslFactory, null)
         start(SOCKET_READ_TIMEOUT, false)
         running = true
@@ -237,7 +237,7 @@ class HostServer(
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width,initial-scale=1">
-          <title>Ubapp guest</title>
+          <title>Jamboree guest</title>
           <style>
             body { font-family: -apple-system, system-ui, sans-serif; background:#0d1117; color:#e6edf3; margin:0; padding:24px; }
             .card { background:#161b22; padding:20px; border-radius:14px; max-width:480px; margin:auto; }
@@ -255,9 +255,9 @@ class HostServer(
         fun buildSslSocketFactory(ctx: Context): javax.net.ssl.SSLServerSocketFactory? =
             runCatching {
                 val ks = KeyStore.getInstance("PKCS12")
-                ctx.assets.open("ubapp.p12").use { ks.load(it, "ubapp".toCharArray()) }
+                ctx.assets.open("ubapp.p12").use { ks.load(it, "jamboree".toCharArray()) }
                 val kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm())
-                kmf.init(ks, "ubapp".toCharArray())
+                kmf.init(ks, "jamboree".toCharArray())
                 val ssl = SSLContext.getInstance("TLS")
                 ssl.init(kmf.keyManagers, null, null)
                 ssl.serverSocketFactory

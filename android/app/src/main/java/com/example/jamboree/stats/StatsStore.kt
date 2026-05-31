@@ -1,4 +1,4 @@
-package com.example.ubapp.stats
+package com.example.jamboree.stats
 
 import android.content.Context
 import org.json.JSONArray
@@ -23,12 +23,12 @@ data class StatsData(
 
 /**
  * Host-local play statistics, persisted as JSON in the shared
- * `ubapp.settings` prefs file (same store as [com.example.ubapp.settings.AppSettings]).
+ * `jamboree.settings` prefs file (same store as [com.example.jamboree.settings.AppSettings]).
  * [applyRecord] is pure and kept byte-equivalent with the Swift
  * `StatsStore.apply` — it is the regression net for both platforms.
  */
 object StatsStore {
-    private const val PREFS = "ubapp.settings"
+    private const val PREFS = "jamboree.settings"
     private const val KEY = "stats"
     const val RECENT_CAP = 50
 

@@ -1,4 +1,4 @@
-package com.example.ubapp.games.connectfour
+package com.example.jamboree.games.connectfour
 
 /**
  * Depth-limited negamax with alpha-beta pruning + simple line-score heuristic

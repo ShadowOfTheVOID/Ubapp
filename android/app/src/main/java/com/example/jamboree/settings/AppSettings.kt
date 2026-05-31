@@ -1,4 +1,4 @@
-package com.example.ubapp.settings
+package com.example.jamboree.settings
 
 import android.content.Context
 
@@ -11,7 +11,7 @@ import android.content.Context
  *   host connection log in the hosting screen.
  */
 object AppSettings {
-    private const val PREFS = "ubapp.settings"
+    private const val PREFS = "jamboree.settings"
     private const val KEY_HOST_NAME = "hostName"
     private const val KEY_DIAGNOSTICS = "diagnosticsEnabled"
 

@@ -1,7 +1,7 @@
-package com.example.ubapp
+package com.example.jamboree
 
-import com.example.ubapp.stats.StatsData
-import com.example.ubapp.stats.StatsStore
+import com.example.jamboree.stats.StatsData
+import com.example.jamboree.stats.StatsStore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

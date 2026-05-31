@@ -32,7 +32,7 @@ final class HostServer {
     private var connections: [GuestId: NWConnection] = [:]
     private let connectionsLock = NSLock()
     private var nextId = 0
-    private let queue = DispatchQueue(label: "ubapp.host.server")
+    private let queue = DispatchQueue(label: "jamboree.host.server")
 
     private func withConnections<T>(_ body: (inout [GuestId: NWConnection]) -> T) -> T {
         connectionsLock.lock()
@@ -118,9 +118,9 @@ final class HostServer {
     /// The self-signed certificate extracted from the bundled PKCS12.
     /// Used by both the server (to present) and guest clients (to pin).
     static let bundledCert: SecCertificate? = {
-        guard let url = Bundle.main.url(forResource: "ubapp", withExtension: "p12"),
+        guard let url = Bundle.main.url(forResource: "jamboree", withExtension: "p12"),
               let data = try? Data(contentsOf: url) else { return nil }
-        let opts: [String: Any] = [kSecImportExportPassphrase as String: "ubapp"]
+        let opts: [String: Any] = [kSecImportExportPassphrase as String: "jamboree"]
         var items: CFArray?
         guard SecPKCS12Import(data as CFData, opts as CFDictionary, &items) == errSecSuccess,
               let arr = items as? [[String: Any]], let first = arr.first,
@@ -131,9 +131,9 @@ final class HostServer {
     /// Builds TLS NWParameters using the bundled self-signed PKCS12 identity.
     /// Returns nil (falls back to plain TCP) if the resource is missing.
     private static func tlsParameters() -> NWParameters? {
-        guard let url = Bundle.main.url(forResource: "ubapp", withExtension: "p12"),
+        guard let url = Bundle.main.url(forResource: "jamboree", withExtension: "p12"),
               let p12Data = try? Data(contentsOf: url) else { return nil }
-        let opts: [String: Any] = [kSecImportExportPassphrase as String: "ubapp"]
+        let opts: [String: Any] = [kSecImportExportPassphrase as String: "jamboree"]
         var items: CFArray?
         guard SecPKCS12Import(p12Data as CFData, opts as CFDictionary, &items) == errSecSuccess,
               let arr = items as? [[String: Any]], let first = arr.first,
@@ -453,7 +453,7 @@ final class HostServer {
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
-      <title>Ubapp guest</title>
+      <title>Jamboree guest</title>
       <style>
         body { font-family: -apple-system, system-ui, sans-serif; background:#0d1117; color:#e6edf3; margin:0; padding:24px; }
         .card { background:#161b22; padding:20px; border-radius:14px; max-width:480px; margin:auto; }

@@ -12,18 +12,18 @@ struct WerewolfGuestView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     HStack(alignment: .firstTextBaseline) {
-                        MonoLabel(phaseLabel, color: UbappTheme.accent)
+                        MonoLabel(phaseLabel, color: JamboreeTheme.accent)
                         Spacer()
                         if model.phase != "lobby" {
                             MonoLabel(iAmAlive ? "alive" : "out",
-                                      size: 9, color: iAmAlive ? UbappTheme.online : UbappTheme.faint)
+                                      size: 9, color: iAmAlive ? JamboreeTheme.online : JamboreeTheme.faint)
                         }
                     }
                     if let err = model.error {
-                        Text(err).font(.system(size: 13, weight: .semibold)).foregroundStyle(UbappTheme.accent)
+                        Text(err).font(.system(size: 13, weight: .semibold)).foregroundStyle(JamboreeTheme.accent)
                             .padding(.vertical, 12).padding(.horizontal, 14)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .ubAccentCard(radius: UbappRadius.row)
+                            .ubAccentCard(radius: JamboreeRadius.row)
                     }
                     switch model.phase {
                     case "lobby":      lobby
@@ -59,7 +59,7 @@ struct WerewolfGuestView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { model.attach(ctx: ctx) }
         .onDisappear { ctx.client.onMessage = nil }
-        .ubappChrome()
+        .jamboreeChrome()
     }
 
     private var phaseLabel: String {
@@ -78,7 +78,7 @@ struct WerewolfGuestView: View {
             Text("Waiting for the host")
                 .font(.system(size: 26, weight: .heavy)).kerning(-0.8).foregroundStyle(.white)
             Text("Playing as \(ctx.yourName)")
-                .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                .font(.system(size: 13)).foregroundStyle(JamboreeTheme.muted)
         }
         TutorialGuestCard(state: model.tutorialState, content: model.tutorialContent,
                           myVote: model.myTutorialVote,
@@ -93,12 +93,12 @@ struct WerewolfGuestView: View {
                         Avatar(name: p.name, host: p.isHost, size: 30)
                         Text(p.name).font(.system(size: 15, weight: p.id == ctx.yourId ? .bold : .semibold))
                             .foregroundStyle(.white)
-                        if p.id == ctx.yourId { MonoLabel("you", size: 9, color: UbappTheme.accent) }
+                        if p.id == ctx.yourId { MonoLabel("you", size: 9, color: JamboreeTheme.accent) }
                         Spacer()
-                        if p.isHost { MonoLabel("host", size: 9, color: UbappTheme.faint) }
+                        if p.isHost { MonoLabel("host", size: 9, color: JamboreeTheme.faint) }
                     }
                     .padding(.vertical, 10).padding(.horizontal, 14)
-                    .ubCard(radius: UbappRadius.row)
+                    .ubCard(radius: JamboreeRadius.row)
                 }
             }
         }
@@ -138,7 +138,7 @@ struct WerewolfGuestView: View {
     @ViewBuilder private var hunterShot: some View {
         if model.hunterId == ctx.yourId {
             VStack(alignment: .leading, spacing: 10) {
-                MonoLabel("Take one with you", color: UbappTheme.accent)
+                MonoLabel("Take one with you", color: JamboreeTheme.accent)
                 let cols = [GridItem(.flexible()), GridItem(.flexible())]
                 LazyVGrid(columns: cols, spacing: 8) {
                     ForEach(model.alive.filter { $0.id != ctx.yourId }, id: \.id) { p in
@@ -160,10 +160,10 @@ struct WerewolfGuestView: View {
     @ViewBuilder private var gameOver: some View {
         let wolvesWin = model.winner == "werewolves"
         VStack(alignment: .leading, spacing: 6) {
-            MonoLabel("Game over", color: UbappTheme.accent)
+            MonoLabel("Game over", color: JamboreeTheme.accent)
             Text(wolvesWin ? "Werewolves win" : "Village wins")
                 .font(.system(size: 30, weight: .heavy)).kerning(-1)
-                .foregroundStyle(wolvesWin ? UbappTheme.accent : .white)
+                .foregroundStyle(wolvesWin ? JamboreeTheme.accent : .white)
         }
         VStack(alignment: .leading, spacing: 8) {
             MonoLabel("Full reveal")
@@ -176,13 +176,13 @@ struct WerewolfGuestView: View {
                         Spacer()
                         Text(entry.role.capitalized)
                             .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(isWolf ? UbappTheme.onAccent : UbappTheme.muted)
+                            .foregroundStyle(isWolf ? JamboreeTheme.onAccent : JamboreeTheme.muted)
                             .padding(.vertical, 5).padding(.horizontal, 10)
-                            .background(isWolf ? UbappTheme.accent : Color.white.opacity(0.06))
+                            .background(isWolf ? JamboreeTheme.accent : Color.white.opacity(0.06))
                             .clipShape(Capsule())
                     }
                     .padding(.vertical, 10).padding(.horizontal, 14)
-                    .ubCard(radius: UbappRadius.row)
+                    .ubCard(radius: JamboreeRadius.row)
                 }
             }
         }
@@ -194,10 +194,10 @@ struct WerewolfGuestView: View {
 
     private func infoBanner(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 14)).foregroundStyle(UbappTheme.muted)
+            .font(.system(size: 14)).foregroundStyle(JamboreeTheme.muted)
             .padding(.vertical, 14).padding(.horizontal, 16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .ubCard(radius: UbappRadius.row)
+            .ubCard(radius: JamboreeRadius.row)
     }
 
     @ViewBuilder private var roleCard: some View {
@@ -207,17 +207,17 @@ struct WerewolfGuestView: View {
                 HStack(spacing: 14) {
                     Text(m.letter)
                         .font(.system(size: 24, weight: .heavy))
-                        .foregroundStyle(m.accent ? UbappTheme.onAccent : .white)
+                        .foregroundStyle(m.accent ? JamboreeTheme.onAccent : .white)
                         .frame(width: 48, height: 48)
-                        .background(m.accent ? UbappTheme.accent : UbappTheme.surfaceHi)
+                        .background(m.accent ? JamboreeTheme.accent : JamboreeTheme.surfaceHi)
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     VStack(alignment: .leading, spacing: 2) {
                         MonoLabel("Your role", size: 9,
-                                  color: m.accent ? UbappTheme.accent : UbappTheme.muted)
+                                  color: m.accent ? JamboreeTheme.accent : JamboreeTheme.muted)
                         Text(m.name).font(.system(size: 20, weight: .heavy)).foregroundStyle(.white)
                     }
                 }
-                Text(m.blurb).font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                Text(m.blurb).font(.system(size: 13)).foregroundStyle(JamboreeTheme.muted)
                 if role == "werewolf", model.wolfIds.count > 1 {
                     let others = model.wolfIds.filter { $0 != ctx.yourId }.map { playerName($0) }
                     if !others.isEmpty {
@@ -231,9 +231,9 @@ struct WerewolfGuestView: View {
             }
             .padding(18)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .ubCard(radius: UbappRadius.panel,
-                    fill: m.accent ? UbappTheme.accentSoft : UbappTheme.surface,
-                    stroke: m.accent ? UbappTheme.accentLine : UbappTheme.line)
+            .ubCard(radius: JamboreeRadius.panel,
+                    fill: m.accent ? JamboreeTheme.accentSoft : JamboreeTheme.surface,
+                    stroke: m.accent ? JamboreeTheme.accentLine : JamboreeTheme.line)
         }
     }
 
@@ -249,10 +249,10 @@ struct WerewolfGuestView: View {
                             Spacer()
                             Text(r.isWerewolf ? "WEREWOLF" : "not a wolf")
                                 .font(.system(size: 11, weight: .bold, design: .monospaced))
-                                .foregroundStyle(r.isWerewolf ? UbappTheme.accent : UbappTheme.online)
+                                .foregroundStyle(r.isWerewolf ? JamboreeTheme.accent : JamboreeTheme.online)
                         }
                         .padding(.vertical, 10).padding(.horizontal, 14)
-                        .ubCard(radius: UbappRadius.row)
+                        .ubCard(radius: JamboreeRadius.row)
                     }
                 }
             }
@@ -285,16 +285,16 @@ struct WerewolfGuestView: View {
             Avatar(name: p.name, host: p.isHost, size: 28)
             VStack(alignment: .leading, spacing: 1) {
                 Text(p.name).font(.system(size: 12, weight: .semibold))
-                    .strikethrough(!alive).foregroundStyle(alive ? .white : UbappTheme.muted)
+                    .strikethrough(!alive).foregroundStyle(alive ? .white : JamboreeTheme.muted)
                 MonoLabel(alive ? "alive" : "dead", size: 9,
-                          color: alive ? UbappTheme.faint : UbappTheme.accent)
+                          color: alive ? JamboreeTheme.faint : JamboreeTheme.accent)
             }
             Spacer(minLength: 0)
         }
         .padding(.vertical, 8).padding(.horizontal, 10)
-        .ubCard(radius: UbappRadius.button,
-                fill: alive ? UbappTheme.surface : UbappTheme.accentSoft,
-                stroke: alive ? UbappTheme.line : UbappTheme.accentLine)
+        .ubCard(radius: JamboreeRadius.button,
+                fill: alive ? JamboreeTheme.surface : JamboreeTheme.accentSoft,
+                stroke: alive ? JamboreeTheme.line : JamboreeTheme.accentLine)
     }
 
     @ViewBuilder
@@ -331,15 +331,15 @@ struct WerewolfGuestView: View {
             HStack(spacing: 8) {
                 if id != "__skip" { Avatar(name: name, size: 24) }
                 Text(name).font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(selected ? UbappTheme.onAccent : .white)
+                    .foregroundStyle(selected ? JamboreeTheme.onAccent : .white)
                 Spacer(minLength: 0)
             }
             .padding(.vertical, 9).padding(.horizontal, 10)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(selected ? UbappTheme.accent : Color.white.opacity(0.05))
+            .background(selected ? JamboreeTheme.accent : Color.white.opacity(0.05))
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .stroke(selected ? Color.clear : UbappTheme.lineStrong, lineWidth: 1))
+                .stroke(selected ? Color.clear : JamboreeTheme.lineStrong, lineWidth: 1))
         }
         .buttonStyle(.plain)
         .disabled(submitted)

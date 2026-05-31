@@ -1,9 +1,9 @@
-package com.example.ubapp
+package com.example.jamboree
 
-import com.example.ubapp.games.mafia.MafiaEngine
-import com.example.ubapp.games.mafia.MafiaPhase
-import com.example.ubapp.games.mafia.MafiaRole
-import com.example.ubapp.games.mafia.MafiaWinner
+import com.example.jamboree.games.mafia.MafiaEngine
+import com.example.jamboree.games.mafia.MafiaPhase
+import com.example.jamboree.games.mafia.MafiaRole
+import com.example.jamboree.games.mafia.MafiaWinner
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals

@@ -1,4 +1,4 @@
-package com.example.ubapp.games.president
+package com.example.jamboree.games.president
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -21,20 +21,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ubapp.theme.Avatar
-import com.example.ubapp.theme.LobbyPlayerRow
-import com.example.ubapp.theme.MonoLabel
-import com.example.ubapp.theme.Ub
-import com.example.ubapp.theme.UbPrimaryButton
-import com.example.ubapp.theme.UbSecondaryButton
-import com.example.ubapp.theme.UbappTheme
-import com.example.ubapp.theme.ubCard
-import com.example.ubapp.join.GuestContext
-import com.example.ubapp.join.GuestSeriesState
-import com.example.ubapp.join.GuestTutorialContent
-import com.example.ubapp.join.GuestTutorialState
-import com.example.ubapp.join.SeriesBannerCard
-import com.example.ubapp.join.TutorialGuestCard
+import com.example.jamboree.theme.Avatar
+import com.example.jamboree.theme.LobbyPlayerRow
+import com.example.jamboree.theme.MonoLabel
+import com.example.jamboree.theme.Ub
+import com.example.jamboree.theme.UbPrimaryButton
+import com.example.jamboree.theme.UbSecondaryButton
+import com.example.jamboree.theme.JamboreeTheme
+import com.example.jamboree.theme.ubCard
+import com.example.jamboree.join.GuestContext
+import com.example.jamboree.join.GuestSeriesState
+import com.example.jamboree.join.GuestTutorialContent
+import com.example.jamboree.join.GuestTutorialState
+import com.example.jamboree.join.SeriesBannerCard
+import com.example.jamboree.join.TutorialGuestCard
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -50,7 +50,7 @@ fun PresidentGuestScreen(ctx: GuestContext) {
     }
     @Suppress("UNUSED_EXPRESSION") tick
 
-    UbappTheme {
+    JamboreeTheme {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
             Column(
                 Modifier
@@ -262,11 +262,11 @@ private fun SwapPhase(s: PresidentGuestState, ctx: GuestContext, selected: Snaps
 
 @Composable
 private fun CardFace(c: PresidentGuestState.Card) {
-    val suit = com.example.ubapp.games.cards.CardSuit.fromWire(c.suit)
+    val suit = com.example.jamboree.games.cards.CardSuit.fromWire(c.suit)
     if (suit != null) {
-        com.example.ubapp.games.cards.NoirCardFace(rank = c.rank, suit = suit, width = 70.dp)
+        com.example.jamboree.games.cards.NoirCardFace(rank = c.rank, suit = suit, width = 70.dp)
     } else {
-        com.example.ubapp.games.cards.GridCardBack(width = 70.dp)
+        com.example.jamboree.games.cards.GridCardBack(width = 70.dp)
     }
 }
 

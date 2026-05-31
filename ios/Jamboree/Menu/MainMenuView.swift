@@ -29,9 +29,9 @@ struct MainMenuView: View {
                 .padding(.bottom, 40)
             }
             .scrollIndicators(.hidden)
-            .background(UbappTheme.canvas.ignoresSafeArea())
+            .background(JamboreeTheme.canvas.ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)
-            .tint(UbappTheme.accent)
+            .tint(JamboreeTheme.accent)
             .onAppear { ATTManager.requestIfNeeded() }
         }
     }
@@ -47,16 +47,16 @@ struct MainMenuView: View {
                 NavigationLink { SettingsView() } label: {
                     Image(systemName: "gearshape")
                         .font(.system(size: 18, weight: .regular))
-                        .foregroundStyle(UbappTheme.accent)
+                        .foregroundStyle(JamboreeTheme.accent)
                 }
             }
-            Text("ubapp")
+            Text("jamboree")
                 .font(.system(size: 34, weight: .heavy))
                 .kerning(-1.0)
                 .foregroundStyle(.white)
             Text("Pass the QR — everyone plays in their browser.")
                 .font(.system(size: 13))
-                .foregroundStyle(UbappTheme.muted)
+                .foregroundStyle(JamboreeTheme.muted)
         }
         .padding(.horizontal, 20)
         .padding(.top, 16)
@@ -68,11 +68,11 @@ struct MainMenuView: View {
             HStack(spacing: 14) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(UbappTheme.accent.opacity(0.22))
+                        .fill(JamboreeTheme.accent.opacity(0.22))
                         .frame(width: 44, height: 44)
                     Image(systemName: "qrcode.viewfinder")
                         .font(.system(size: 22, weight: .regular))
-                        .foregroundStyle(UbappTheme.accent)
+                        .foregroundStyle(JamboreeTheme.accent)
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Join a game")
@@ -80,12 +80,12 @@ struct MainMenuView: View {
                         .foregroundStyle(.white)
                     Text("Scan the host's QR or enter a code.")
                         .font(.system(size: 12))
-                        .foregroundStyle(UbappTheme.muted)
+                        .foregroundStyle(JamboreeTheme.muted)
                 }
                 Spacer(minLength: 8)
                 Image(systemName: "chevron.right")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(UbappTheme.muted)
+                    .foregroundStyle(JamboreeTheme.muted)
             }
             .padding(.vertical, 14)
             .padding(.horizontal, 16)
@@ -106,7 +106,7 @@ struct MainMenuView: View {
         HStack(alignment: .firstTextBaseline) {
             MonoLabel(title)
             Spacer()
-            if let trailing { MonoLabel(trailing, size: 10, color: UbappTheme.faint) }
+            if let trailing { MonoLabel(trailing, size: 10, color: JamboreeTheme.faint) }
         }
         .padding(.horizontal, 20)
         .padding(.top, topPadding == 0 ? 0 : topPadding)
@@ -130,7 +130,7 @@ struct MainMenuView: View {
                         .foregroundStyle(.white)
                     Text(meta.desc)
                         .font(.system(size: 12))
-                        .foregroundStyle(UbappTheme.muted)
+                        .foregroundStyle(JamboreeTheme.muted)
                         .lineLimit(1)
                     HStack(spacing: 10) {
                         MonoLabel(meta.players, size: 9)
@@ -141,7 +141,7 @@ struct MainMenuView: View {
                 Spacer(minLength: 8)
                 Image(systemName: "chevron.right")
                     .font(.system(size: 16, weight: .light))
-                    .foregroundStyle(UbappTheme.faint)
+                    .foregroundStyle(JamboreeTheme.faint)
             }
             .padding(14)
             .ubCard()

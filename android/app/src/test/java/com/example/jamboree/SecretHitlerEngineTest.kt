@@ -1,11 +1,11 @@
-package com.example.ubapp
+package com.example.jamboree
 
-import com.example.ubapp.games.secrethitler.SecretHitlerEngine
-import com.example.ubapp.games.secrethitler.SecretHitlerPhase
-import com.example.ubapp.games.secrethitler.SecretHitlerPolicy
-import com.example.ubapp.games.secrethitler.SecretHitlerRole
-import com.example.ubapp.games.secrethitler.SecretHitlerWinReason
-import com.example.ubapp.games.secrethitler.SecretHitlerWinner
+import com.example.jamboree.games.secrethitler.SecretHitlerEngine
+import com.example.jamboree.games.secrethitler.SecretHitlerPhase
+import com.example.jamboree.games.secrethitler.SecretHitlerPolicy
+import com.example.jamboree.games.secrethitler.SecretHitlerRole
+import com.example.jamboree.games.secrethitler.SecretHitlerWinReason
+import com.example.jamboree.games.secrethitler.SecretHitlerWinner
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals

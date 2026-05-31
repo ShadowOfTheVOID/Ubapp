@@ -1,4 +1,4 @@
-package com.example.ubapp.games.secrethitler
+package com.example.jamboree.games.secrethitler
 
 import kotlin.random.Random
 
@@ -47,7 +47,7 @@ data class SecretHitlerInvestigation(val subjectId: String, val party: SecretHit
  * never touches network or UI code.
  */
 class SecretHitlerEngine(private val rng: Random = Random.Default) {
-    val tutorialVote = com.example.ubapp.tutorials.TutorialVote()
+    val tutorialVote = com.example.jamboree.tutorials.TutorialVote()
 
     val players: MutableMap<String, SecretHitlerPlayer> = linkedMapOf()
     val seatOrder: MutableList<String> = mutableListOf()

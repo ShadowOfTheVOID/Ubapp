@@ -1,4 +1,4 @@
-package com.example.ubapp.tutorials
+package com.example.jamboree.tutorials
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button

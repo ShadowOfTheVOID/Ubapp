@@ -74,5 +74,5 @@ final class ManualProximity: ProximitySource {
     }
 }
 
-/// Stable service UUID used to identify Ubapp tag peers in BLE adverts and scans.
-let kUbappTagServiceUuid = "12340000-cafe-1337-1337-deadbeefcafe"
+/// Stable service UUID used to identify Jamboree tag peers in BLE adverts and scans.
+let kJamboreeTagServiceUuid = "12340000-cafe-1337-1337-deadbeefcafe"

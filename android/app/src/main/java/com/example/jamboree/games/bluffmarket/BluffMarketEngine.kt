@@ -1,4 +1,4 @@
-package com.example.ubapp.games.bluffmarket
+package com.example.jamboree.games.bluffmarket
 
 import kotlin.random.Random
 
@@ -48,7 +48,7 @@ class BluffPlayer(val id: String, val name: String, val isHost: Boolean) {
 }
 
 class BluffMarketEngine(private val rng: Random = Random.Default) {
-    val tutorialVote = com.example.ubapp.tutorials.TutorialVote()
+    val tutorialVote = com.example.jamboree.tutorials.TutorialVote()
     val players: MutableMap<String, BluffPlayer> = linkedMapOf()
     private val seating: MutableList<String> = mutableListOf()
     val seatingSnapshot: List<String> get() = seating.toList()

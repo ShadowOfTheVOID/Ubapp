@@ -24,7 +24,7 @@ struct HostingChrome: View {
                         Label("Stop hosting", systemImage: "stop.circle")
                     }
                     .buttonStyle(UbSecondaryButtonStyle())
-                    .tint(UbappTheme.accent)
+                    .tint(JamboreeTheme.accent)
                 }
             }
             .frame(maxWidth: .infinity)
@@ -50,7 +50,7 @@ struct HostingChrome: View {
                     } label: {
                         Image(systemName: copied ? "checkmark" : "doc.on.doc")
                             .font(.system(size: 13))
-                            .foregroundStyle(copied ? UbappTheme.online : UbappTheme.muted)
+                            .foregroundStyle(copied ? JamboreeTheme.online : JamboreeTheme.muted)
                             .frame(width: 28, height: 28)
                             .background(Color.white.opacity(0.08))
                             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
@@ -60,24 +60,24 @@ struct HostingChrome: View {
             }
 
             MonoValue(text: url.host.map { "\($0):\(url.port ?? Int(JoinCode.defaultPort))" } ?? url.absoluteString,
-                      size: 11, weight: .regular, color: UbappTheme.faint)
+                      size: 11, weight: .regular, color: JamboreeTheme.faint)
 
             Text("Browser guests scan the QR. App guests open “Join a game” and type the code.")
                 .font(.system(size: 12))
-                .foregroundStyle(UbappTheme.muted)
+                .foregroundStyle(JamboreeTheme.muted)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(22)
         .frame(maxWidth: .infinity)
-        .ubCard(radius: UbappRadius.hero)
+        .ubCard(radius: JamboreeRadius.hero)
     }
 
     private var diagnostics: some View {
         ScrollView {
             Text(diag.lines.joined(separator: "\n"))
                 .font(.system(.caption2, design: .monospaced))
-                .foregroundStyle(UbappTheme.muted)
+                .foregroundStyle(JamboreeTheme.muted)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .textSelection(.enabled)
         }

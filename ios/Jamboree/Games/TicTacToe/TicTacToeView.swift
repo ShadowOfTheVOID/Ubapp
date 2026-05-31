@@ -31,7 +31,7 @@ struct TicTacToeView: View {
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .ubappChrome()
+        .jamboreeChrome()
         .navigationTitle("Tic-Tac-Toe")
         .onChange(of: model.isOver) { _, over in
             if over { recordResult() }

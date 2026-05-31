@@ -1,4 +1,4 @@
-package com.example.ubapp.games.imposter
+package com.example.jamboree.games.imposter
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,22 +16,22 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ubapp.ads.AdBanner
-import com.example.ubapp.ads.AdBannerPlacement
-import com.example.ubapp.ads.AdInterstitialController
-import com.example.ubapp.theme.Avatar
-import com.example.ubapp.theme.LobbyPlayerRow
-import com.example.ubapp.theme.MonoLabel
-import com.example.ubapp.theme.Ub
-import com.example.ubapp.theme.UbPrimaryButton
-import com.example.ubapp.theme.UbappTheme
-import com.example.ubapp.theme.ubCard
-import com.example.ubapp.join.GuestContext
-import com.example.ubapp.join.GuestSeriesState
-import com.example.ubapp.join.GuestTutorialContent
-import com.example.ubapp.join.GuestTutorialState
-import com.example.ubapp.join.SeriesBannerCard
-import com.example.ubapp.join.TutorialGuestCard
+import com.example.jamboree.ads.AdBanner
+import com.example.jamboree.ads.AdBannerPlacement
+import com.example.jamboree.ads.AdInterstitialController
+import com.example.jamboree.theme.Avatar
+import com.example.jamboree.theme.LobbyPlayerRow
+import com.example.jamboree.theme.MonoLabel
+import com.example.jamboree.theme.Ub
+import com.example.jamboree.theme.UbPrimaryButton
+import com.example.jamboree.theme.JamboreeTheme
+import com.example.jamboree.theme.ubCard
+import com.example.jamboree.join.GuestContext
+import com.example.jamboree.join.GuestSeriesState
+import com.example.jamboree.join.GuestTutorialContent
+import com.example.jamboree.join.GuestTutorialState
+import com.example.jamboree.join.SeriesBannerCard
+import com.example.jamboree.join.TutorialGuestCard
 import org.json.JSONObject
 
 @Composable
@@ -54,7 +54,7 @@ fun ImposterGuestScreen(ctx: GuestContext) {
         }
     }
 
-    UbappTheme {
+    JamboreeTheme {
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
     Box(Modifier.weight(1f), contentAlignment = Alignment.TopCenter) {
@@ -184,7 +184,7 @@ fun ImposterGuestScreen(ctx: GuestContext) {
         AdInterstitialController(show = showInterstitial) { showInterstitial = false }
     }
     } // Box(fillMaxSize)
-    } // UbappTheme
+    } // JamboreeTheme
 }
 
 private fun phaseLabel(s: ImposterGuestState): String = when (s.phase) {

@@ -1,10 +1,10 @@
-package com.example.ubapp
+package com.example.jamboree
 
-import com.example.ubapp.games.codenames.CardKind
-import com.example.ubapp.games.codenames.CodenamesEngine
-import com.example.ubapp.games.codenames.CodenamesOptions
-import com.example.ubapp.games.codenames.CodenamesPhase
-import com.example.ubapp.games.codenames.Team
+import com.example.jamboree.games.codenames.CardKind
+import com.example.jamboree.games.codenames.CodenamesEngine
+import com.example.jamboree.games.codenames.CodenamesOptions
+import com.example.jamboree.games.codenames.CodenamesPhase
+import com.example.jamboree.games.codenames.Team
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals

@@ -25,16 +25,16 @@ struct CheatGuestView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { model.attach(ctx: ctx) }
         .onDisappear { ctx.client.onMessage = nil }
-        .ubappChrome()
+        .jamboreeChrome()
     }
 
     @ViewBuilder private var lobby: some View {
         VStack(alignment: .leading, spacing: 6) {
-            MonoLabel("Cheat · lobby", color: UbappTheme.accent)
+            MonoLabel("Cheat · lobby", color: JamboreeTheme.accent)
             Text("Waiting for the deal")
                 .font(.system(size: 26, weight: .heavy)).kerning(-0.8).foregroundStyle(.white)
             Text("Playing as \(ctx.yourName)")
-                .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                .font(.system(size: 13)).foregroundStyle(JamboreeTheme.muted)
         }
         TutorialGuestCard(state: model.tutorialState, content: model.tutorialContent,
                           myVote: model.myTutorialVote,
@@ -50,10 +50,10 @@ struct CheatGuestView: View {
                         Text(p.name).font(.system(size: 15, weight: p.id == ctx.yourId ? .bold : .semibold))
                             .foregroundStyle(.white)
                         Spacer()
-                        if p.isHost { MonoLabel("host", size: 9, color: UbappTheme.faint) }
+                        if p.isHost { MonoLabel("host", size: 9, color: JamboreeTheme.faint) }
                     }
                     .padding(.vertical, 10).padding(.horizontal, 14)
-                    .ubCard(radius: UbappRadius.row)
+                    .ubCard(radius: JamboreeRadius.row)
                 }
             }
         }
@@ -61,17 +61,17 @@ struct CheatGuestView: View {
 
     @ViewBuilder private var table: some View {
         VStack(alignment: .leading, spacing: 4) {
-            MonoLabel("Cheat", color: UbappTheme.accent)
+            MonoLabel("Cheat", color: JamboreeTheme.accent)
             Text(isMyTurn && model.phase == "playing" ? "Your turn" : "\(currentName)'s turn")
                 .font(.system(size: 26, weight: .heavy)).kerning(-0.8)
-                .foregroundStyle(isMyTurn && model.phase == "playing" ? UbappTheme.accent : .white)
+                .foregroundStyle(isMyTurn && model.phase == "playing" ? JamboreeTheme.accent : .white)
             Text("Claim \(rankName(model.expectedRank)) face-down — lie if you must.")
-                .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                .font(.system(size: 13)).foregroundStyle(JamboreeTheme.muted)
         }
         playersStrip
         pileCard
         if let reveal = model.lastReveal { revealCard(reveal) }
-        if !model.lastEvent.isEmpty { MonoLabel(model.lastEvent, size: 10, color: UbappTheme.muted) }
+        if !model.lastEvent.isEmpty { MonoLabel(model.lastEvent, size: 10, color: JamboreeTheme.muted) }
         if model.phase == "pendingWin" { pendingWinControls }
         hand
         actionRow
@@ -86,13 +86,13 @@ struct CheatGuestView: View {
                         Avatar(name: p.name, host: p.isHost, size: 26)
                         VStack(alignment: .leading, spacing: 1) {
                             Text(p.name).font(.system(size: 12, weight: .semibold)).foregroundStyle(.white)
-                            MonoLabel("\(p.handCount) cards", size: 9, color: UbappTheme.faint)
+                            MonoLabel("\(p.handCount) cards", size: 9, color: JamboreeTheme.faint)
                         }
                     }
                     .padding(.vertical, 8).padding(.horizontal, 10)
-                    .ubCard(radius: UbappRadius.button,
-                            fill: current ? UbappTheme.accentSoft : UbappTheme.surface,
-                            stroke: current ? UbappTheme.accentLine : UbappTheme.line)
+                    .ubCard(radius: JamboreeRadius.button,
+                            fill: current ? JamboreeTheme.accentSoft : JamboreeTheme.surface,
+                            stroke: current ? JamboreeTheme.accentLine : JamboreeTheme.line)
                 }
             }
         }
@@ -117,19 +117,19 @@ struct CheatGuestView: View {
                 let accuser = model.players.first { $0.id == lp.playerId }?.name ?? "?"
                 Text("\(accuser) claimed \(lp.count) × \(rankName(lp.claimedRank))")
                     .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(UbappTheme.onAccent)
+                    .foregroundStyle(JamboreeTheme.onAccent)
                     .padding(.vertical, 5).padding(.horizontal, 12)
-                    .background(UbappTheme.accent).clipShape(Capsule())
+                    .background(JamboreeTheme.accent).clipShape(Capsule())
             }
-            MonoLabel("Next expected · \(rankName(model.expectedRank))", size: 9, color: UbappTheme.accent)
+            MonoLabel("Next expected · \(rankName(model.expectedRank))", size: 9, color: JamboreeTheme.accent)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 24)
         .background(
-            RadialGradient(colors: [UbappTheme.accent.opacity(0.12), .clear],
+            RadialGradient(colors: [JamboreeTheme.accent.opacity(0.12), .clear],
                            center: .center, startRadius: 0, endRadius: 180),
         )
-        .clipShape(RoundedRectangle(cornerRadius: UbappRadius.hero, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: JamboreeRadius.hero, style: .continuous))
     }
 
     @ViewBuilder
@@ -139,7 +139,7 @@ struct CheatGuestView: View {
         let loser = model.players.first { $0.id == r.loserId }?.name ?? "?"
         VStack(alignment: .leading, spacing: 10) {
             MonoLabel(r.truthful ? "Truthful claim" : "Caught cheating!",
-                      color: r.truthful ? UbappTheme.online : UbappTheme.accent)
+                      color: r.truthful ? JamboreeTheme.online : JamboreeTheme.accent)
             Text("\(caller) called bluff on \(accused) · \(rankName(r.claimedRank))")
                 .font(.system(size: 13)).foregroundStyle(.white)
             ScrollView(.horizontal, showsIndicators: false) {
@@ -150,19 +150,19 @@ struct CheatGuestView: View {
                 }
             }
             Text("\(loser) picks up the pile.")
-                .font(.system(size: 12)).foregroundStyle(UbappTheme.muted)
+                .font(.system(size: 12)).foregroundStyle(JamboreeTheme.muted)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .ubCard(radius: UbappRadius.panel,
-                fill: r.truthful ? UbappTheme.surface : UbappTheme.accentSoft,
-                stroke: r.truthful ? UbappTheme.line : UbappTheme.accentLine)
+        .ubCard(radius: JamboreeRadius.panel,
+                fill: r.truthful ? JamboreeTheme.surface : JamboreeTheme.accentSoft,
+                stroke: r.truthful ? JamboreeTheme.line : JamboreeTheme.accentLine)
     }
 
     @ViewBuilder private var pendingWinControls: some View {
         let w = model.players.first { $0.id == model.winnerId }
         VStack(alignment: .leading, spacing: 10) {
-            MonoLabel("Pending win", color: UbappTheme.accent)
+            MonoLabel("Pending win", color: JamboreeTheme.accent)
             Text("\(w?.name ?? "?") played their last card claiming \(rankName(model.lastPlay?.claimedRank ?? 0)).")
                 .font(.system(size: 13)).foregroundStyle(.white)
             if ctx.yourId != model.winnerId {
@@ -174,12 +174,12 @@ struct CheatGuestView: View {
                 }
             } else {
                 Text("Wait for the others to call bluff or accept.")
-                    .font(.system(size: 12)).foregroundStyle(UbappTheme.muted)
+                    .font(.system(size: 12)).foregroundStyle(JamboreeTheme.muted)
             }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .ubCard(radius: UbappRadius.panel)
+        .ubCard(radius: JamboreeRadius.panel)
     }
 
     private var hand: some View {
@@ -198,7 +198,7 @@ struct CheatGuestView: View {
                             .opacity(isMyTurn && model.phase == "playing" ? 1 : 0.6)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .stroke(selected.contains(key) ? UbappTheme.accent : Color.clear, lineWidth: 3),
+                                    .stroke(selected.contains(key) ? JamboreeTheme.accent : Color.clear, lineWidth: 3),
                             )
                             .offset(y: selected.contains(key) ? -8 : 0)
                     }
@@ -238,7 +238,7 @@ struct CheatGuestView: View {
         let winner = model.players.first { $0.id == model.winnerId }
         let standings = model.players.sorted { $0.handCount < $1.handCount }
         VStack(alignment: .leading, spacing: 6) {
-            MonoLabel("Game over", color: UbappTheme.accent)
+            MonoLabel("Game over", color: JamboreeTheme.accent)
             Text("\(winner?.name ?? "?") wins")
                 .font(.system(size: 28, weight: .heavy)).kerning(-0.8).foregroundStyle(.white)
         }
@@ -251,10 +251,10 @@ struct CheatGuestView: View {
                         Text(p.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
                         if p.id == model.winnerId { Text("🏆") }
                         Spacer()
-                        MonoLabel("\(p.handCount) left", size: 10, color: UbappTheme.muted)
+                        MonoLabel("\(p.handCount) left", size: 10, color: JamboreeTheme.muted)
                     }
                     .padding(.vertical, 12).padding(.horizontal, 14)
-                    .ubCard(radius: UbappRadius.row)
+                    .ubCard(radius: JamboreeRadius.row)
                 }
             }
         }

@@ -1,4 +1,4 @@
-package com.example.ubapp.games.crazyeights
+package com.example.jamboree.games.crazyeights
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -21,18 +21,18 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ubapp.theme.Avatar
-import com.example.ubapp.theme.MonoLabel
-import com.example.ubapp.theme.Ub
-import com.example.ubapp.theme.UbPrimaryButton
-import com.example.ubapp.theme.UbappTheme
-import com.example.ubapp.theme.ubCard
-import com.example.ubapp.join.GuestContext
-import com.example.ubapp.shared.HostingChrome
-import com.example.ubapp.settings.AppSettings
-import com.example.ubapp.tutorials.GameTutorials
-import com.example.ubapp.tutorials.TutorialVoteCard
-import com.example.ubapp.tutorials.snapshot
+import com.example.jamboree.theme.Avatar
+import com.example.jamboree.theme.MonoLabel
+import com.example.jamboree.theme.Ub
+import com.example.jamboree.theme.UbPrimaryButton
+import com.example.jamboree.theme.JamboreeTheme
+import com.example.jamboree.theme.ubCard
+import com.example.jamboree.join.GuestContext
+import com.example.jamboree.shared.HostingChrome
+import com.example.jamboree.settings.AppSettings
+import com.example.jamboree.tutorials.GameTutorials
+import com.example.jamboree.tutorials.TutorialVoteCard
+import com.example.jamboree.tutorials.snapshot
 
 /**
  * Host screen. Lobby is host-owned (QR, options, "Start round"); once the
@@ -57,7 +57,7 @@ fun CrazyEightsScreen() {
     val e = server.engine
     @Suppress("UNUSED_EXPRESSION") tick
 
-    UbappTheme {
+    JamboreeTheme {
     if (e.phase == CrazyEightsPhase.LOBBY) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(

@@ -1,10 +1,10 @@
-package com.example.ubapp
+package com.example.jamboree
 
-import com.example.ubapp.games.werewolf.WerewolfEngine
-import com.example.ubapp.games.werewolf.WerewolfOptions
-import com.example.ubapp.games.werewolf.WerewolfPhase
-import com.example.ubapp.games.werewolf.WerewolfRole
-import com.example.ubapp.games.werewolf.WerewolfWinner
+import com.example.jamboree.games.werewolf.WerewolfEngine
+import com.example.jamboree.games.werewolf.WerewolfOptions
+import com.example.jamboree.games.werewolf.WerewolfPhase
+import com.example.jamboree.games.werewolf.WerewolfRole
+import com.example.jamboree.games.werewolf.WerewolfWinner
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals

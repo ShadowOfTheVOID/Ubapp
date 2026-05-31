@@ -1,4 +1,4 @@
-package com.example.ubapp.shared
+package com.example.jamboree.shared
 
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
@@ -27,16 +27,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ubapp.join.JoinCode
-import com.example.ubapp.settings.AppSettings
-import com.example.ubapp.social.HostDiagnostics
-import com.example.ubapp.ads.AdBanner
-import com.example.ubapp.ads.AdBannerPlacement
-import com.example.ubapp.theme.MonoLabel
-import com.example.ubapp.theme.Ub
-import com.example.ubapp.theme.UbPrimaryButton
-import com.example.ubapp.theme.UbSecondaryButton
-import com.example.ubapp.theme.ubCard
+import com.example.jamboree.join.JoinCode
+import com.example.jamboree.settings.AppSettings
+import com.example.jamboree.social.HostDiagnostics
+import com.example.jamboree.ads.AdBanner
+import com.example.jamboree.ads.AdBannerPlacement
+import com.example.jamboree.theme.MonoLabel
+import com.example.jamboree.theme.Ub
+import com.example.jamboree.theme.UbPrimaryButton
+import com.example.jamboree.theme.UbSecondaryButton
+import com.example.jamboree.theme.ubCard
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
 

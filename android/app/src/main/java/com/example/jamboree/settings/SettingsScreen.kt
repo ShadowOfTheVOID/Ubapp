@@ -1,4 +1,4 @@
-package com.example.ubapp.settings
+package com.example.jamboree.settings
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,11 +19,11 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ubapp.ads.AdManager
-import com.example.ubapp.theme.MonoLabel
-import com.example.ubapp.theme.Ub
-import com.example.ubapp.theme.UbappTheme
-import com.example.ubapp.theme.ubCard
+import com.example.jamboree.ads.AdManager
+import com.example.jamboree.theme.MonoLabel
+import com.example.jamboree.theme.Ub
+import com.example.jamboree.theme.JamboreeTheme
+import com.example.jamboree.theme.ubCard
 
 @Composable
 fun SettingsScreen(onBack: () -> Unit) {
@@ -32,7 +32,7 @@ fun SettingsScreen(onBack: () -> Unit) {
     var diagnostics by remember { mutableStateOf(AppSettings.diagnosticsEnabled(ctx)) }
     var adFree by remember { mutableStateOf(AdManager.isAdFree(ctx)) }
 
-    UbappTheme {
+    JamboreeTheme {
         Column(
             Modifier
                 .fillMaxSize()

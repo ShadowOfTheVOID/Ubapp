@@ -2,7 +2,7 @@ import CoreBluetooth
 import Foundation
 
 /// Combined BLE central (scan) + peripheral (advertise) for one tag round.
-/// Your phone sees other Ubapp peers AND advertises so others see you.
+/// Your phone sees other Jamboree peers AND advertises so others see you.
 ///
 /// Peer id is carried in the advertisement's local name (kCBAdvDataLocalName)
 /// because CBPeripheralManager only honors the local-name and service-UUID
@@ -24,7 +24,7 @@ final class BleProximityRuntime: NSObject, ProximitySource {
     private var wantsScan = false
     private var wantsAdvertise = false
 
-    init(selfPeerId: String, serviceUuid: String = kUbappTagServiceUuid) {
+    init(selfPeerId: String, serviceUuid: String = kJamboreeTagServiceUuid) {
         self.selfPeerId = selfPeerId
         self.serviceUuid = CBUUID(string: serviceUuid)
         super.init()

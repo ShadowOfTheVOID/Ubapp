@@ -1,14 +1,14 @@
 import SwiftUI
 
-/// Brand tokens for the Ubapp UI redesign — black canvas, neon-magenta
+/// Brand tokens for the Jamboree UI redesign — black canvas, neon-magenta
 /// accent, system sans + monospaced labels. These are the single source of
-/// truth used by every redesigned screen and atom (`UbappKit.swift`).
+/// truth used by every redesigned screen and atom (`JamboreeKit.swift`).
 ///
 /// Per-game views may still set their own palettes, but the shared chrome
 /// (menu, lobby, join, settings) and the new atoms read from here. Apply
-/// `ubappChrome()` on each non-game root rather than the enclosing
+/// `jamboreeChrome()` on each non-game root rather than the enclosing
 /// `NavigationStack`, so pushed game screens still render normally.
-enum UbappTheme {
+enum JamboreeTheme {
     // Core brand
     static let accent = Color(hex: 0xFF2E88)        // primary action, host pip, focus
     static let onAccent = Color(hex: 0x2A0010)      // ink on magenta
@@ -36,7 +36,7 @@ enum UbappTheme {
 
 /// Corner radii from the spec: chips 8, buttons 12, rows 14, cards 16,
 /// panels 18, hero blocks 22.
-enum UbappRadius {
+enum JamboreeRadius {
     static let chip: CGFloat = 8
     static let button: CGFloat = 12
     static let row: CGFloat = 14
@@ -58,18 +58,18 @@ extension Color {
     }
 }
 
-private struct UbappChromeModifier: ViewModifier {
+private struct JamboreeChromeModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .background(UbappTheme.canvas.ignoresSafeArea())
-            .tint(UbappTheme.accent)
-            .foregroundStyle(UbappTheme.foreground)
-            .toolbarBackground(UbappTheme.canvas, for: .navigationBar)
+            .background(JamboreeTheme.canvas.ignoresSafeArea())
+            .tint(JamboreeTheme.accent)
+            .foregroundStyle(JamboreeTheme.foreground)
+            .toolbarBackground(JamboreeTheme.canvas, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
     }
 }
 
 extension View {
-    func ubappChrome() -> some View { modifier(UbappChromeModifier()) }
+    func jamboreeChrome() -> some View { modifier(JamboreeChromeModifier()) }
 }

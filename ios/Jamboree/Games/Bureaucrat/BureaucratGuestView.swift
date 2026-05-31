@@ -48,7 +48,7 @@ struct BureaucratGuestView: View {
         .onAppear { model.attach(ctx: ctx) }
         .onDisappear { ctx.client.onMessage = nil }
         .onReceive(ticker) { t in if model.phase == "rebuttal" { now = t } }
-        .ubappChrome()
+        .jamboreeChrome()
     }
 
     // MARK: - Phases
@@ -76,11 +76,11 @@ struct BureaucratGuestView: View {
             MonoLabel("Rules")
             Text("First to \(model.targetScore) wins · \(model.challengeTokens) loopholes each · \(model.rebuttalSeconds)s to rebut · \(model.aiAssist ? "AI rebuttal check on" : "timer only")")
                 .font(.system(size: 13))
-                .foregroundStyle(UbappTheme.muted)
+                .foregroundStyle(JamboreeTheme.muted)
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .ubCard(fill: UbappTheme.surface, stroke: UbappTheme.line)
+        .ubCard(fill: JamboreeTheme.surface, stroke: JamboreeTheme.line)
 
         MonoLabel("In the room · \(model.players.count)")
 
@@ -91,16 +91,16 @@ struct BureaucratGuestView: View {
                     .font(.system(size: 15, weight: p.id == ctx.yourId ? .bold : .semibold))
                     .foregroundStyle(.white)
                 if p.id == ctx.yourId {
-                    MonoLabel("you", size: 9, color: UbappTheme.accent)
+                    MonoLabel("you", size: 9, color: JamboreeTheme.accent)
                 }
                 Spacer()
                 if p.isHost {
-                    MonoLabel("host", size: 9, color: UbappTheme.faint)
+                    MonoLabel("host", size: 9, color: JamboreeTheme.faint)
                 }
             }
             .padding(.vertical, 10)
             .padding(.horizontal, 14)
-            .ubCard(radius: UbappRadius.row)
+            .ubCard(radius: JamboreeRadius.row)
         }
     }
 
@@ -122,7 +122,7 @@ struct BureaucratGuestView: View {
     }
 
     @ViewBuilder private var roundOver: some View {
-        MonoLabel("End of Round \(model.roundNumber)", color: UbappTheme.accent)
+        MonoLabel("End of Round \(model.roundNumber)", color: JamboreeTheme.accent)
 
         // Seat-rotates banner
         HStack(spacing: 12) {
@@ -140,14 +140,14 @@ struct BureaucratGuestView: View {
                 if let next = model.nextBureaucratName, !next.isEmpty {
                     Text(roundOverText)
                         .font(.system(size: 13))
-                        .foregroundStyle(UbappTheme.muted)
+                        .foregroundStyle(JamboreeTheme.muted)
                 }
             }
             Spacer()
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .ubCard(radius: 16, fill: UbappTheme.accentSoft, stroke: UbappTheme.accentLine)
+        .ubCard(radius: 16, fill: JamboreeTheme.accentSoft, stroke: JamboreeTheme.accentLine)
 
         standingsScoreboard
 
@@ -157,7 +157,7 @@ struct BureaucratGuestView: View {
     @ViewBuilder private var gameOver: some View {
         ZStack(alignment: .top) {
             RadialGradient(
-                gradient: Gradient(colors: [UbappTheme.accent.opacity(0.16), .clear]),
+                gradient: Gradient(colors: [JamboreeTheme.accent.opacity(0.16), .clear]),
                 center: .top,
                 startRadius: 0,
                 endRadius: 200
@@ -180,7 +180,7 @@ struct BureaucratGuestView: View {
                     .foregroundStyle(Color(hex: 0x3DDC84))
                 Text("First past \(model.targetScore) points.")
                     .font(.system(size: 14))
-                    .foregroundStyle(UbappTheme.muted)
+                    .foregroundStyle(JamboreeTheme.muted)
                 Spacer().frame(height: 8)
             }
             .frame(maxWidth: .infinity)
@@ -193,7 +193,7 @@ struct BureaucratGuestView: View {
 
     private var arguingHeader: some View {
         HStack {
-            MonoLabel("The Bureaucrat · Round \(model.roundNumber)", size: 10, color: UbappTheme.accent)
+            MonoLabel("The Bureaucrat · Round \(model.roundNumber)", size: 10, color: JamboreeTheme.accent)
             Spacer()
         }
     }
@@ -202,7 +202,7 @@ struct BureaucratGuestView: View {
         HStack(spacing: 14) {
             Avatar(name: model.bureaucratName.isEmpty ? "?" : model.bureaucratName, host: true, size: 40)
             VStack(alignment: .leading, spacing: 4) {
-                MonoLabel("In the hot seat", size: 9, color: UbappTheme.accent)
+                MonoLabel("In the hot seat", size: 9, color: JamboreeTheme.accent)
                 Text("\(model.bureaucratName.isEmpty ? "Unknown" : model.bureaucratName) is the Bureaucrat")
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(.white)
@@ -211,25 +211,25 @@ struct BureaucratGuestView: View {
             VStack(alignment: .trailing, spacing: 4) {
                 Text("\(model.policyLog.filter { !$0.isRebuttal }.count)")
                     .font(.system(size: 18, weight: .bold, design: .monospaced))
-                    .foregroundStyle(UbappTheme.faint)
-                MonoLabel("rulings", size: 8, color: UbappTheme.faint)
+                    .foregroundStyle(JamboreeTheme.faint)
+                MonoLabel("rulings", size: 8, color: JamboreeTheme.faint)
             }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .ubCard(fill: UbappTheme.surface, stroke: UbappTheme.accentLine)
+        .ubCard(fill: JamboreeTheme.surface, stroke: JamboreeTheme.accentLine)
     }
 
     private var taskCard: some View {
         VStack(alignment: .leading, spacing: 8) {
-            MonoLabel("The task before the office", color: UbappTheme.accent)
+            MonoLabel("The task before the office", color: JamboreeTheme.accent)
             Text(model.task)
                 .font(.system(size: 19, weight: .heavy))
                 .foregroundStyle(.white)
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .ubCard(radius: UbappRadius.panel, fill: UbappTheme.accentSoft, stroke: UbappTheme.accentLine)
+        .ubCard(radius: JamboreeRadius.panel, fill: JamboreeTheme.accentSoft, stroke: JamboreeTheme.accentLine)
     }
 
     private var denialComposer: some View {
@@ -237,7 +237,7 @@ struct BureaucratGuestView: View {
             MonoLabel("Issue a ruling")
             Text("Every denial becomes binding policy. Be specific — but specifics can be turned against you.")
                 .font(.system(size: 13))
-                .foregroundStyle(UbappTheme.muted)
+                .foregroundStyle(JamboreeTheme.muted)
             TextField("e.g. Form 7B is required for all exemptions.", text: $denialDraft, axis: .vertical)
                 .lineLimit(2...5)
                 .textFieldStyle(.roundedBorder)
@@ -264,7 +264,7 @@ struct BureaucratGuestView: View {
             MonoLabel("Challenge tokens · \(left) left")
             Text("Argue out loud. When you've trapped the Bureaucrat in their own logic, call a loophole — they must rebut before the clock runs out.")
                 .font(.system(size: 13))
-                .foregroundStyle(UbappTheme.muted)
+                .foregroundStyle(JamboreeTheme.muted)
             Button("Call loophole") {
                 model.send(["type": "call_loophole"])
             }
@@ -281,12 +281,12 @@ struct BureaucratGuestView: View {
             HStack {
                 MonoLabel("Denial ledger · this round")
                 Spacer()
-                MonoLabel("Every word is on record", size: 8, color: UbappTheme.faint)
+                MonoLabel("Every word is on record", size: 8, color: JamboreeTheme.faint)
             }
             if model.policyLog.isEmpty {
                 Text("No policy on record yet. The Bureaucrat has said nothing binding… for now.")
                     .font(.system(size: 13))
-                    .foregroundStyle(UbappTheme.muted)
+                    .foregroundStyle(JamboreeTheme.muted)
             } else {
                 ForEach(Array(model.policyLog.enumerated()), id: \.offset) { item in
                     let e = item.element
@@ -319,7 +319,7 @@ struct BureaucratGuestView: View {
                             }
                             .padding(.vertical, 10)
                             .padding(.horizontal, 12)
-                            .ubCard(radius: UbappRadius.card)
+                            .ubCard(radius: JamboreeRadius.card)
                         }
                     }
                 }
@@ -334,21 +334,21 @@ struct BureaucratGuestView: View {
             HStack(spacing: 16) {
                 TimerRing(seconds: secondsLeft, totalSeconds: model.rebuttalSeconds)
                 VStack(alignment: .leading, spacing: 5) {
-                    MonoLabel("Challenge · Rebuttal window", size: 9, color: UbappTheme.accent)
+                    MonoLabel("Challenge · Rebuttal window", size: 9, color: JamboreeTheme.accent)
                     Text("\(model.challengerName.isEmpty ? "A challenger" : model.challengerName) challenges the ruling")
                         .font(.system(size: 17, weight: .bold))
                         .foregroundStyle(.white)
                     if let latest = model.policyLog.last(where: { !$0.isRebuttal }) {
                         Text("\"\(latest.text)\"")
                             .font(.system(size: 12))
-                            .foregroundStyle(UbappTheme.muted)
+                            .foregroundStyle(JamboreeTheme.muted)
                             .lineLimit(2)
                     }
                 }
             }
             if let latest = model.policyLog.last(where: { !$0.isRebuttal }) {
                 VStack(alignment: .leading, spacing: 4) {
-                    MonoLabel("Contested ruling", size: 9, color: UbappTheme.faint)
+                    MonoLabel("Contested ruling", size: 9, color: JamboreeTheme.faint)
                     Text(latest.text)
                         .font(.system(size: 13))
                         .foregroundStyle(.white)
@@ -356,7 +356,7 @@ struct BureaucratGuestView: View {
                 }
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .ubCard(radius: UbappRadius.row, fill: UbappTheme.surface, stroke: UbappTheme.line)
+                .ubCard(radius: JamboreeRadius.row, fill: JamboreeTheme.surface, stroke: JamboreeTheme.line)
             }
         }
         .padding(16)
@@ -375,7 +375,7 @@ struct BureaucratGuestView: View {
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(UbappTheme.accentLine, lineWidth: 1)
+                .stroke(JamboreeTheme.accentLine, lineWidth: 1)
         )
     }
 
@@ -422,7 +422,7 @@ struct BureaucratGuestView: View {
             if speechUnavailable {
                 Text("Voice not supported — type instead.")
                     .font(.system(size: 13))
-                    .foregroundStyle(UbappTheme.muted)
+                    .foregroundStyle(JamboreeTheme.muted)
                 TextField("Your rebuttal…", text: $rebuttalDraft, axis: .vertical)
                     .lineLimit(2...5)
                     .textFieldStyle(.roundedBorder)
@@ -438,14 +438,14 @@ struct BureaucratGuestView: View {
                 .buttonStyle(UbPrimaryButtonStyle())
                 if !speakTranscript.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
-                        MonoLabel("Transcript", size: 9, color: UbappTheme.faint)
+                        MonoLabel("Transcript", size: 9, color: JamboreeTheme.faint)
                         Text(speakTranscript)
                             .font(.system(size: 14))
                             .foregroundStyle(.white)
                     }
                     .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .ubCard(radius: UbappRadius.row, fill: UbappTheme.surfaceHi, stroke: UbappTheme.line)
+                    .ubCard(radius: JamboreeRadius.row, fill: JamboreeTheme.surfaceHi, stroke: JamboreeTheme.line)
                 }
             }
             detectorRow
@@ -484,12 +484,12 @@ struct BureaucratGuestView: View {
     private var detectorRow: some View {
         HStack(spacing: 8) {
             Circle()
-                .fill(model.aiAssist ? Color(hex: 0x3DDC84) : UbappTheme.muted)
+                .fill(model.aiAssist ? Color(hex: 0x3DDC84) : JamboreeTheme.muted)
                 .frame(width: 8, height: 8)
             MonoLabel(
                 "Detector: \(model.aiAssist ? "Listening…" : "Timer only")",
                 size: 9,
-                color: model.aiAssist ? Color(hex: 0x3DDC84) : UbappTheme.muted
+                color: model.aiAssist ? Color(hex: 0x3DDC84) : JamboreeTheme.muted
             )
         }
     }
@@ -546,7 +546,7 @@ struct BureaucratGuestView: View {
                 .foregroundStyle(.white)
             Text("If the Bureaucrat can't rebut in time, the challenger takes the round.")
                 .font(.system(size: 13))
-                .foregroundStyle(UbappTheme.faint)
+                .foregroundStyle(JamboreeTheme.faint)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -567,7 +567,7 @@ struct BureaucratGuestView: View {
                     HStack(spacing: 10) {
                         Text("\(rankIdx + 1)")
                             .font(.system(size: 13, weight: .medium, design: .monospaced))
-                            .foregroundStyle(UbappTheme.faint)
+                            .foregroundStyle(JamboreeTheme.faint)
                             .frame(width: 18, alignment: .trailing)
                         Avatar(name: model.nameOf(row.key), host: false, size: 28)
                         VStack(alignment: .leading, spacing: 3) {
@@ -578,13 +578,13 @@ struct BureaucratGuestView: View {
                                 if isMe {
                                     Text("· you")
                                         .font(.system(size: 13))
-                                        .foregroundStyle(UbappTheme.accent)
+                                        .foregroundStyle(JamboreeTheme.accent)
                                 }
                             }
                             GeometryReader { geo in
                                 ZStack(alignment: .leading) {
-                                    Capsule().fill(UbappTheme.line).frame(height: 5)
-                                    Capsule().fill(UbappTheme.accent)
+                                    Capsule().fill(JamboreeTheme.line).frame(height: 5)
+                                    Capsule().fill(JamboreeTheme.accent)
                                         .frame(
                                             width: geo.size.width * CGFloat(pts) / CGFloat(maxScore),
                                             height: 5
@@ -598,14 +598,14 @@ struct BureaucratGuestView: View {
                             Text("\(pts)")
                                 .font(.system(size: 18, weight: .bold))
                                 .foregroundStyle(.white)
-                            MonoLabel("pts", size: 8, color: UbappTheme.faint)
+                            MonoLabel("pts", size: 8, color: JamboreeTheme.faint)
                         }
                     }
                     .padding(.vertical, 10)
                     .padding(.horizontal, 14)
-                    .ubCard(radius: UbappRadius.row,
-                            fill: isMe ? UbappTheme.accentSoft : UbappTheme.surface,
-                            stroke: isMe ? UbappTheme.accentLine : UbappTheme.line)
+                    .ubCard(radius: JamboreeRadius.row,
+                            fill: isMe ? JamboreeTheme.accentSoft : JamboreeTheme.surface,
+                            stroke: isMe ? JamboreeTheme.accentLine : JamboreeTheme.line)
                 }
             }
         }
@@ -629,9 +629,9 @@ struct BureaucratGuestView: View {
                     }
                     .padding(.vertical, 10)
                     .padding(.horizontal, 14)
-                    .ubCard(radius: UbappRadius.row,
-                            fill: lead ? UbappTheme.accentSoft : UbappTheme.surface,
-                            stroke: lead ? UbappTheme.accentLine : UbappTheme.line)
+                    .ubCard(radius: JamboreeRadius.row,
+                            fill: lead ? JamboreeTheme.accentSoft : JamboreeTheme.surface,
+                            stroke: lead ? JamboreeTheme.accentLine : JamboreeTheme.line)
                 }
             }
         }
@@ -653,11 +653,11 @@ struct BureaucratGuestView: View {
     private func infoBanner(_ text: String) -> some View {
         Text(text)
             .font(.system(size: 14))
-            .foregroundStyle(UbappTheme.muted)
+            .foregroundStyle(JamboreeTheme.muted)
             .padding(.vertical, 14)
             .padding(.horizontal, 16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .ubCard(radius: UbappRadius.row)
+            .ubCard(radius: JamboreeRadius.row)
     }
 }
 
@@ -667,11 +667,11 @@ struct BureaucratGuestView: View {
 /// rotated and slightly transparent.
 private struct BureaucratStamp: View {
     let label: String
-    var color: Color = UbappTheme.accent
+    var color: Color = JamboreeTheme.accent
     var size: CGFloat = 13
     var rotate: Double = -8.0
 
-    init(_ label: String, color: Color = UbappTheme.accent, size: CGFloat = 13, rotate: Double = -8.0) {
+    init(_ label: String, color: Color = JamboreeTheme.accent, size: CGFloat = 13, rotate: Double = -8.0) {
         self.label = label
         self.color = color
         self.size = size
@@ -704,8 +704,8 @@ private struct LedgerRow: View {
     private var verdictColor: Color {
         switch verdict {
         case "APPROVED": return Color(hex: 0x3DDC84)
-        case "DENIED":   return UbappTheme.accent
-        default:         return UbappTheme.muted
+        case "DENIED":   return JamboreeTheme.accent
+        default:         return JamboreeTheme.muted
         }
     }
 
@@ -713,7 +713,7 @@ private struct LedgerRow: View {
         HStack(alignment: .top, spacing: 10) {
             Text("#\(number)")
                 .font(.system(size: 9, weight: .medium, design: .monospaced))
-                .foregroundStyle(UbappTheme.faint)
+                .foregroundStyle(JamboreeTheme.faint)
                 .frame(width: 30, alignment: .leading)
 
             Text(reason)
@@ -737,8 +737,8 @@ private struct LedgerRow: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .ubCard(
             radius: 12,
-            fill: isCited ? UbappTheme.accentSoft : Color.white.opacity(0.03),
-            stroke: isCited ? UbappTheme.accentLine : UbappTheme.line
+            fill: isCited ? JamboreeTheme.accentSoft : Color.white.opacity(0.03),
+            stroke: isCited ? JamboreeTheme.accentLine : JamboreeTheme.line
         )
     }
 }
@@ -756,12 +756,12 @@ private struct TimerRing: View {
     var body: some View {
         ZStack {
             Circle()
-                .stroke(UbappTheme.lineStrong, lineWidth: 4)
+                .stroke(JamboreeTheme.lineStrong, lineWidth: 4)
 
             Circle()
                 .trim(from: 0, to: progress)
                 .stroke(
-                    UbappTheme.accent,
+                    JamboreeTheme.accent,
                     style: StrokeStyle(lineWidth: 4, lineCap: .round)
                 )
                 .rotationEffect(.degrees(-90))
@@ -775,7 +775,7 @@ private struct TimerRing: View {
                 Text("SEC")
                     .font(.system(size: 8, weight: .medium, design: .monospaced))
                     .tracking(1.2)
-                    .foregroundStyle(UbappTheme.muted)
+                    .foregroundStyle(JamboreeTheme.muted)
             }
         }
         .frame(width: 64, height: 64)
@@ -792,11 +792,11 @@ private struct TokenDots: View {
         HStack(spacing: gap) {
             ForEach(0..<max(total, 0), id: \.self) { i in
                 Circle()
-                    .fill(i < filled ? UbappTheme.accent : Color.white.opacity(0.14))
+                    .fill(i < filled ? JamboreeTheme.accent : Color.white.opacity(0.14))
                     .frame(width: 6, height: 6)
                     .overlay(
                         i < filled ? nil :
-                            Circle().stroke(UbappTheme.line, lineWidth: 0.5)
+                            Circle().stroke(JamboreeTheme.line, lineWidth: 0.5)
                     )
             }
         }

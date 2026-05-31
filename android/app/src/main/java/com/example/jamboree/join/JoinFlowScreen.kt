@@ -1,4 +1,4 @@
-package com.example.ubapp.join
+package com.example.jamboree.join
 
 import android.app.Activity
 import android.view.WindowManager
@@ -19,22 +19,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ubapp.theme.MonoLabel
-import com.example.ubapp.theme.Ub
-import com.example.ubapp.theme.UbPrimaryButton
-import com.example.ubapp.theme.UbSecondaryButton
-import com.example.ubapp.theme.ubCard
-import com.example.ubapp.games.bluffmarket.BluffMarketGuestScreen
-import com.example.ubapp.games.cheat.CheatGuestScreen
-import com.example.ubapp.games.codenames.CodenamesGuestScreen
-import com.example.ubapp.games.crazyeights.CrazyEightsGuestScreen
-import com.example.ubapp.games.imposter.ImposterGuestScreen
-import com.example.ubapp.games.president.PresidentGuestScreen
-import com.example.ubapp.games.mafia.MafiaGuestScreen
-import com.example.ubapp.games.bureaucrat.BureaucratGuestScreen
-import com.example.ubapp.games.secrethitler.SecretHitlerGuestScreen
-import com.example.ubapp.games.werewolf.WerewolfGuestScreen
-import com.example.ubapp.theme.UbappTheme
+import com.example.jamboree.theme.MonoLabel
+import com.example.jamboree.theme.Ub
+import com.example.jamboree.theme.UbPrimaryButton
+import com.example.jamboree.theme.UbSecondaryButton
+import com.example.jamboree.theme.ubCard
+import com.example.jamboree.games.bluffmarket.BluffMarketGuestScreen
+import com.example.jamboree.games.cheat.CheatGuestScreen
+import com.example.jamboree.games.codenames.CodenamesGuestScreen
+import com.example.jamboree.games.crazyeights.CrazyEightsGuestScreen
+import com.example.jamboree.games.imposter.ImposterGuestScreen
+import com.example.jamboree.games.president.PresidentGuestScreen
+import com.example.jamboree.games.mafia.MafiaGuestScreen
+import com.example.jamboree.games.bureaucrat.BureaucratGuestScreen
+import com.example.jamboree.games.secrethitler.SecretHitlerGuestScreen
+import com.example.jamboree.games.werewolf.WerewolfGuestScreen
+import com.example.jamboree.theme.JamboreeTheme
 import org.json.JSONObject
 
 /** Bundle handed to a per-game guest screen. */
@@ -84,13 +84,13 @@ fun JoinFlowScreen() {
             "bluff_market" -> BluffMarketGuestScreen(ctx)
             "secret_hitler" -> SecretHitlerGuestScreen(ctx)
             "bureaucrat" -> BureaucratGuestScreen(ctx)
-            "tag" -> com.example.ubapp.games.tag.TagGuestScreen(ctx)
+            "tag" -> com.example.jamboree.games.tag.TagGuestScreen(ctx)
             else -> Text("Unknown game: $game")
         }
         return
     }
 
-    UbappTheme {
+    JamboreeTheme {
     Column(
         Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(20.dp),
     ) {

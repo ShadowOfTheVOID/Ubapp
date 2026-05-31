@@ -1,4 +1,4 @@
-package com.example.ubapp.games.president
+package com.example.jamboree.games.president
 
 import kotlin.random.Random
 
@@ -84,7 +84,7 @@ data class PresSwap(
 
 /** Pure President / Scum / Asshole engine. */
 class PresidentEngine(private val rng: Random = Random.Default) {
-    val tutorialVote = com.example.ubapp.tutorials.TutorialVote()
+    val tutorialVote = com.example.jamboree.tutorials.TutorialVote()
     val players: MutableMap<String, PresidentPlayer> = linkedMapOf()
     private val seating: MutableList<String> = mutableListOf()
     val seatingSnapshot: List<String> get() = seating.toList()

@@ -15,12 +15,12 @@ struct SettingsView: View {
                             .foregroundStyle(.white)
                         Spacer()
                         TextField("", text: $settings.hostName,
-                                  prompt: Text("Host").foregroundColor(UbappTheme.faint))
+                                  prompt: Text("Host").foregroundColor(JamboreeTheme.faint))
                             .textInputAutocapitalization(.words)
                             .autocorrectionDisabled()
                             .multilineTextAlignment(.trailing)
                             .font(.system(size: 15))
-                            .foregroundStyle(UbappTheme.accent)
+                            .foregroundStyle(JamboreeTheme.accent)
                     }
                     .padding(.vertical, 14)
                     .padding(.horizontal, 16)
@@ -34,7 +34,7 @@ struct SettingsView: View {
                             .font(.system(size: 15))
                             .foregroundStyle(.white)
                     }
-                    .tint(UbappTheme.accent)
+                    .tint(JamboreeTheme.accent)
                     .padding(.vertical, 10)
                     .padding(.horizontal, 16)
                     .ubCard()
@@ -87,7 +87,7 @@ struct SettingsView: View {
             .padding(20)
         }
         .scrollIndicators(.hidden)
-        .ubappChrome()
+        .jamboreeChrome()
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -100,7 +100,7 @@ struct SettingsView: View {
             content()
             Text(footer)
                 .font(.system(size: 12))
-                .foregroundStyle(UbappTheme.muted)
+                .foregroundStyle(JamboreeTheme.muted)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }

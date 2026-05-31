@@ -1,4 +1,4 @@
-package com.example.ubapp.games.tag
+package com.example.jamboree.games.tag
 
 data class ProximityEvent(val peerId: String, val rssi: Int, val atMs: Long)
 
@@ -56,5 +56,5 @@ class ManualProximity : ProximitySource {
     }
 }
 
-/** Stable service UUID used to identify Ubapp tag peers in BLE adverts and scans. */
-const val UBAPP_TAG_SERVICE_UUID = "12340000-cafe-1337-1337-deadbeefcafe"
+/** Stable service UUID used to identify Jamboree tag peers in BLE adverts and scans. */
+const val JAMBOREE_TAG_SERVICE_UUID = "12340000-cafe-1337-1337-deadbeefcafe"

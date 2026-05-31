@@ -1,4 +1,4 @@
-package com.example.ubapp.games.tictactoe
+package com.example.jamboree.games.tictactoe
 
 enum class Mark(val symbol: String) {
     EMPTY(""), X("X"), O("O");

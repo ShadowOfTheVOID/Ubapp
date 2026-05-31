@@ -1,4 +1,4 @@
-package com.example.ubapp.games.tag
+package com.example.jamboree.games.tag
 
 import android.Manifest
 import android.app.Activity
@@ -14,15 +14,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.example.ubapp.join.GuestContext
-import com.example.ubapp.theme.UbappTheme
+import com.example.jamboree.join.GuestContext
+import com.example.jamboree.theme.JamboreeTheme
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 
 /**
  * Native screen an app peer sees after joining a Tag host by code via
  * "Join a game". Runs the same [TagSession] (mirror engine + BLE proximity)
- * the host runs, but its transport rides the [com.example.ubapp.join.GuestLink]
+ * the host runs, but its transport rides the [com.example.jamboree.join.GuestLink]
  * socket the join flow already opened. Foreground + screen-on for the round.
  */
 @OptIn(ExperimentalPermissionsApi::class)
@@ -50,7 +50,7 @@ fun TagGuestScreen(gctx: GuestContext) {
     }
     DisposableEffect(Unit) { onDispose { stopAll() } }
 
-    UbappTheme {
+    JamboreeTheme {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(
                 Modifier

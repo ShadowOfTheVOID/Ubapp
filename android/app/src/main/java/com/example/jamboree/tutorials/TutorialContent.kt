@@ -1,4 +1,4 @@
-package com.example.ubapp.tutorials
+package com.example.jamboree.tutorials
 
 /** One short page in a tutorial. */
 data class TutorialSection(val heading: String, val body: String) {

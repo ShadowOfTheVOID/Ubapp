@@ -1,4 +1,4 @@
-package com.example.ubapp.menu
+package com.example.jamboree.menu
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -17,33 +17,33 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.ubapp.games.bluffmarket.BluffMarketScreen
-import com.example.ubapp.games.bureaucrat.BureaucratScreen
-import com.example.ubapp.games.cheat.CheatScreen
-import com.example.ubapp.games.codenames.CodenamesScreen
-import com.example.ubapp.games.connectfour.ConnectFourScreen
-import com.example.ubapp.games.crazyeights.CrazyEightsScreen
-import com.example.ubapp.games.president.PresidentScreen
-import com.example.ubapp.games.imposter.ImposterScreen
-import com.example.ubapp.games.mafia.MafiaScreen
-import com.example.ubapp.games.realtime.RealtimeScreen
-import com.example.ubapp.games.secrethitler.SecretHitlerScreen
-import com.example.ubapp.games.tag.TagLobbyScreen
-import com.example.ubapp.games.tictactoe.TicTacToeScreen
-import com.example.ubapp.games.werewolf.WerewolfScreen
-import com.example.ubapp.join.JoinFlowScreen
-import com.example.ubapp.settings.SettingsScreen
-import com.example.ubapp.social.SocialScreen
-import com.example.ubapp.stats.StatBoardScreen
-import com.example.ubapp.theme.GameGlyph
-import com.example.ubapp.theme.GameGlyphView
-import com.example.ubapp.theme.MonoLabel
-import com.example.ubapp.theme.PipMark
-import com.example.ubapp.theme.Ub
-import com.example.ubapp.theme.UbappTheme
-import com.example.ubapp.theme.Wordmark
-import com.example.ubapp.theme.ubAccentCard
-import com.example.ubapp.theme.ubCard
+import com.example.jamboree.games.bluffmarket.BluffMarketScreen
+import com.example.jamboree.games.bureaucrat.BureaucratScreen
+import com.example.jamboree.games.cheat.CheatScreen
+import com.example.jamboree.games.codenames.CodenamesScreen
+import com.example.jamboree.games.connectfour.ConnectFourScreen
+import com.example.jamboree.games.crazyeights.CrazyEightsScreen
+import com.example.jamboree.games.president.PresidentScreen
+import com.example.jamboree.games.imposter.ImposterScreen
+import com.example.jamboree.games.mafia.MafiaScreen
+import com.example.jamboree.games.realtime.RealtimeScreen
+import com.example.jamboree.games.secrethitler.SecretHitlerScreen
+import com.example.jamboree.games.tag.TagLobbyScreen
+import com.example.jamboree.games.tictactoe.TicTacToeScreen
+import com.example.jamboree.games.werewolf.WerewolfScreen
+import com.example.jamboree.join.JoinFlowScreen
+import com.example.jamboree.settings.SettingsScreen
+import com.example.jamboree.social.SocialScreen
+import com.example.jamboree.stats.StatBoardScreen
+import com.example.jamboree.theme.GameGlyph
+import com.example.jamboree.theme.GameGlyphView
+import com.example.jamboree.theme.MonoLabel
+import com.example.jamboree.theme.PipMark
+import com.example.jamboree.theme.Ub
+import com.example.jamboree.theme.JamboreeTheme
+import com.example.jamboree.theme.Wordmark
+import com.example.jamboree.theme.ubAccentCard
+import com.example.jamboree.theme.ubCard
 
 private data class MenuItem(
     val route: String,
@@ -109,7 +109,7 @@ fun MainMenu() {
     val nav = rememberNavController()
     NavHost(navController = nav, startDestination = "menu") {
         composable("menu") {
-            UbappTheme {
+            JamboreeTheme {
                 Column(
                     Modifier
                         .fillMaxSize()
@@ -141,7 +141,7 @@ fun MainMenu() {
         composable("realtime") { RealtimeScreen() }
         composable("tictactoe") { TicTacToeScreen() }
         composable("connect_four") { ConnectFourScreen() }
-        composable("social") { UbappTheme { SocialScreen() } }
+        composable("social") { JamboreeTheme { SocialScreen() } }
         composable("statboard") { StatBoardScreen(onBack = { nav.popBackStack() }) }
         composable("join") { JoinFlowScreen() }
         composable("settings") { SettingsScreen(onBack = { nav.popBackStack() }) }
@@ -162,7 +162,7 @@ private fun Header(onSettings: () -> Unit) {
             Text("⚙", color = Ub.Accent, fontSize = 20.sp,
                  modifier = Modifier.clickable(onClick = onSettings))
         }
-        Text("ubapp", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold,
+        Text("jamboree", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold,
              letterSpacing = (-1).sp, color = Color_White)
         Text("Pass the QR — everyone plays in their browser.",
              fontSize = 13.sp, color = Ub.Muted)

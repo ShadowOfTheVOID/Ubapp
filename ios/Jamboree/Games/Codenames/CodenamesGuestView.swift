@@ -38,16 +38,16 @@ struct CodenamesGuestView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { model.attach(ctx: ctx) }
         .onDisappear { ctx.client.onMessage = nil }
-        .ubappChrome()
+        .jamboreeChrome()
     }
 
     @ViewBuilder private var lobby: some View {
         VStack(alignment: .leading, spacing: 6) {
-            MonoLabel("Codenames · lobby", color: UbappTheme.accent)
+            MonoLabel("Codenames · lobby", color: JamboreeTheme.accent)
             Text("Pick your team")
                 .font(.system(size: 26, weight: .heavy)).kerning(-0.8).foregroundStyle(.white)
             Text("Playing as \(ctx.yourName)")
-                .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                .font(.system(size: 13)).foregroundStyle(JamboreeTheme.muted)
         }
         TutorialGuestCard(state: model.tutorialState, content: model.tutorialContent,
                           myVote: model.myTutorialVote,
@@ -79,12 +79,12 @@ struct CodenamesGuestView: View {
                         }
                     }
                     .padding(.vertical, 10).padding(.horizontal, 14)
-                    .ubCard(radius: UbappRadius.row)
+                    .ubCard(radius: JamboreeRadius.row)
                 }
             }
         }
         Text("Need ≥2 per team and a spymaster each. Host starts when ready.")
-            .font(.system(size: 12)).foregroundStyle(UbappTheme.muted)
+            .font(.system(size: 12)).foregroundStyle(JamboreeTheme.muted)
     }
 
     private func teamPickButton(_ title: String, team: String, color: Color) -> some View {
@@ -94,8 +94,8 @@ struct CodenamesGuestView: View {
                 .foregroundStyle(model.myTeam == team ? .white : color)
                 .frame(maxWidth: .infinity).padding(.vertical, 14)
                 .background(model.myTeam == team ? color : color.opacity(0.12))
-                .clipShape(RoundedRectangle(cornerRadius: UbappRadius.button, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: UbappRadius.button, style: .continuous)
+                .clipShape(RoundedRectangle(cornerRadius: JamboreeRadius.button, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: JamboreeRadius.button, style: .continuous)
                     .stroke(color.opacity(0.5), lineWidth: 1))
         }
         .buttonStyle(.plain)
@@ -111,7 +111,7 @@ struct CodenamesGuestView: View {
             Button("End turn") { model.send(["type": "end_turn"]) }
                 .buttonStyle(UbSecondaryButtonStyle())
         }
-        if !model.lastEvent.isEmpty { MonoLabel(model.lastEvent, size: 10, color: UbappTheme.muted) }
+        if !model.lastEvent.isEmpty { MonoLabel(model.lastEvent, size: 10, color: JamboreeTheme.muted) }
     }
 
     @ViewBuilder private var header: some View {
@@ -123,14 +123,14 @@ struct CodenamesGuestView: View {
                     .font(.system(size: 28, weight: .heavy)).kerning(-0.8)
                     .foregroundStyle(CN.color(w))
                 if !model.endReason.isEmpty {
-                    Text(model.endReason).font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                    Text(model.endReason).font(.system(size: 13)).foregroundStyle(JamboreeTheme.muted)
                 }
             }
         } else {
             let team = model.currentTeam ?? ""
             let mine = model.currentTeam == model.myTeam
             VStack(alignment: .leading, spacing: 4) {
-                MonoLabel("Codenames", color: UbappTheme.accent)
+                MonoLabel("Codenames", color: JamboreeTheme.accent)
                 Text(mine ? (model.isSpymaster ? "Your clue" : "Your team guesses")
                           : "\(team.capitalized)'s turn")
                     .font(.system(size: 24, weight: .heavy)).kerning(-0.7)
@@ -154,8 +154,8 @@ struct CodenamesGuestView: View {
         .padding(.vertical, 12).padding(.horizontal, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(color.opacity(0.10))
-        .clipShape(RoundedRectangle(cornerRadius: UbappRadius.row, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: UbappRadius.row, style: .continuous)
+        .clipShape(RoundedRectangle(cornerRadius: JamboreeRadius.row, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: JamboreeRadius.row, style: .continuous)
             .stroke(color.opacity(0.35), lineWidth: 1))
     }
 
@@ -173,22 +173,22 @@ struct CodenamesGuestView: View {
                     .frame(width: 44, height: 44)
                     .background(CN.color(model.currentTeam ?? ""))
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                MonoLabel("\(model.guessesLeft) left", size: 9, color: UbappTheme.faint)
+                MonoLabel("\(model.guessesLeft) left", size: 9, color: JamboreeTheme.faint)
             }
             .padding(14)
             .frame(maxWidth: .infinity)
-            .ubCard(radius: UbappRadius.panel)
+            .ubCard(radius: JamboreeRadius.panel)
         } else if model.isSpymaster, model.currentTeam == model.myTeam, model.phase != "gameOver" {
             VStack(alignment: .leading, spacing: 10) {
                 MonoLabel("Compose clue · one word + a number")
                 HStack(spacing: 10) {
                     TextField("", text: $clueText,
-                              prompt: Text("WORD").foregroundColor(UbappTheme.faint))
+                              prompt: Text("WORD").foregroundColor(JamboreeTheme.faint))
                         .textInputAutocapitalization(.characters).autocorrectionDisabled()
                         .font(.system(size: 18, weight: .bold, design: .serif))
-                        .padding(12).ubCard(radius: UbappRadius.button)
+                        .padding(12).ubCard(radius: JamboreeRadius.button)
                     Stepper("\(clueNumber)", value: $clueNumber, in: 0...9)
-                        .fixedSize().tint(UbappTheme.accent)
+                        .fixedSize().tint(JamboreeTheme.accent)
                 }
                 Button("Give clue →") {
                     let c = clueText.trimmingCharacters(in: .whitespaces)
@@ -211,9 +211,9 @@ struct CodenamesGuestView: View {
         }
         .padding(8)
         .background(Color(hex: 0x1A1A1A))
-        .clipShape(RoundedRectangle(cornerRadius: UbappRadius.card, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: UbappRadius.card, style: .continuous)
-            .stroke(UbappTheme.line, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: JamboreeRadius.card, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: JamboreeRadius.card, style: .continuous)
+            .stroke(JamboreeTheme.line, lineWidth: 1))
     }
 
     @ViewBuilder

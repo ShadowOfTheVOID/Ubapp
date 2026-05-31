@@ -1,4 +1,4 @@
-package com.example.ubapp.games.connectfour
+package com.example.jamboree.games.connectfour
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -13,10 +13,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.example.ubapp.stats.StatsStore
-import com.example.ubapp.stats.SeriesScore
-import com.example.ubapp.theme.UbappTheme
-import com.example.ubapp.tutorials.GameTutorials
+import com.example.jamboree.stats.StatsStore
+import com.example.jamboree.stats.SeriesScore
+import com.example.jamboree.theme.JamboreeTheme
+import com.example.jamboree.tutorials.GameTutorials
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -58,7 +58,7 @@ fun ConnectFourScreen() {
         ?: if (model.isDraw) "Draw" else (if (model.current == Disc.RED) "Red" else "Yellow") + " to play"
     val disc = when { options.cols <= 6 -> 44; options.cols == 7 -> 38; else -> 32 }.dp
 
-    UbappTheme {
+    JamboreeTheme {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
     Column(
         Modifier.widthIn(max = 520.dp).fillMaxWidth().padding(16.dp),

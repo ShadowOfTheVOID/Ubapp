@@ -1,4 +1,4 @@
-package com.example.ubapp.games.bureaucrat
+package com.example.jamboree.games.bureaucrat
 
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment

@@ -1,4 +1,4 @@
-package com.example.ubapp.theme
+package com.example.jamboree.theme
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background

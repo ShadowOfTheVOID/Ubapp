@@ -2,7 +2,7 @@ import SwiftUI
 import GoogleMobileAds
 
 @main
-struct UbappApp: App {
+struct JamboreeApp: App {
     init() {
         GADMobileAds.sharedInstance().start()
     }

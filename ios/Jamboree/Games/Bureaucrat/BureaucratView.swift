@@ -20,7 +20,7 @@ struct BureaucratView: View {
                                 HStack(spacing: 14) {
                                     GlyphBureaucrat(size: 56)
                                     VStack(alignment: .leading, spacing: 4) {
-                                        MonoLabel("Hosting · The Bureaucrat", color: UbappTheme.accent)
+                                        MonoLabel("Hosting · The Bureaucrat", color: JamboreeTheme.accent)
                                         Text("Waiting for players")
                                             .font(.system(size: 24, weight: .heavy)).kerning(-0.6)
                                             .foregroundStyle(.white)
@@ -53,7 +53,7 @@ struct BureaucratView: View {
                 }
             }
         }
-        .ubappChrome()
+        .jamboreeChrome()
         .navigationTitle("The Bureaucrat")
         .onDisappear { model.stop() }
     }
@@ -67,9 +67,9 @@ struct BureaucratView: View {
                         Avatar(name: p.name, host: p.isHost, size: 30)
                         Text(p.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
                         Spacer()
-                        if p.isHost { MonoLabel("host", size: 9, color: UbappTheme.faint) }
+                        if p.isHost { MonoLabel("host", size: 9, color: JamboreeTheme.faint) }
                     }
-                    .padding(.vertical, 10).padding(.horizontal, 14).ubCard(radius: UbappRadius.row)
+                    .padding(.vertical, 10).padding(.horizontal, 14).ubCard(radius: JamboreeRadius.row)
                 }
             }
         }
@@ -107,7 +107,7 @@ struct BureaucratView: View {
                     .frame(maxWidth: 160)
                 }
             }
-            .font(.system(size: 15)).tint(UbappTheme.accent).padding(14).ubCard()
+            .font(.system(size: 15)).tint(JamboreeTheme.accent).padding(14).ubCard()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -116,7 +116,7 @@ struct BureaucratView: View {
                 .buttonStyle(UbPrimaryButtonStyle())
         } else {
             Text("Need at least 3 players to start.")
-                .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                .font(.system(size: 13)).foregroundStyle(JamboreeTheme.muted)
         }
     }
 
@@ -132,7 +132,7 @@ struct GlyphBureaucrat: View {
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: size * 0.18, style: .continuous)
-                .fill(UbappTheme.surfaceHi)
+                .fill(JamboreeTheme.surfaceHi)
 
             let rectW = size * 0.62
             let rectH = size * 0.42
@@ -140,11 +140,11 @@ struct GlyphBureaucrat: View {
 
             ZStack {
                 RoundedRectangle(cornerRadius: size * 0.06, style: .continuous)
-                    .stroke(UbappTheme.accent, lineWidth: strokeW)
+                    .stroke(JamboreeTheme.accent, lineWidth: strokeW)
                     .frame(width: rectW, height: rectH)
 
                 RoundedRectangle(cornerRadius: 2, style: .continuous)
-                    .fill(UbappTheme.accent)
+                    .fill(JamboreeTheme.accent)
                     .frame(width: rectW * 0.64, height: max(2, rectH * 0.175))
             }
             .rotationEffect(.degrees(-9))

@@ -26,16 +26,16 @@ struct PresidentGuestView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { model.attach(ctx: ctx) }
         .onDisappear { ctx.client.onMessage = nil }
-        .ubappChrome()
+        .jamboreeChrome()
     }
 
     @ViewBuilder private var lobby: some View {
         VStack(alignment: .leading, spacing: 6) {
-            MonoLabel("President · lobby", color: UbappTheme.accent)
+            MonoLabel("President · lobby", color: JamboreeTheme.accent)
             Text("Waiting for the deal")
                 .font(.system(size: 26, weight: .heavy)).kerning(-0.8).foregroundStyle(.white)
             Text("Playing as \(ctx.yourName)")
-                .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                .font(.system(size: 13)).foregroundStyle(JamboreeTheme.muted)
         }
         TutorialGuestCard(state: model.tutorialState, content: model.tutorialContent,
                           myVote: model.myTutorialVote,
@@ -51,10 +51,10 @@ struct PresidentGuestView: View {
                         Text(p.name).font(.system(size: 15, weight: p.id == ctx.yourId ? .bold : .semibold))
                             .foregroundStyle(.white)
                         Spacer()
-                        if p.isHost { MonoLabel("host", size: 9, color: UbappTheme.faint) }
+                        if p.isHost { MonoLabel("host", size: 9, color: JamboreeTheme.faint) }
                     }
                     .padding(.vertical, 10).padding(.horizontal, 14)
-                    .ubCard(radius: UbappRadius.row)
+                    .ubCard(radius: JamboreeRadius.row)
                 }
             }
         }
@@ -62,18 +62,18 @@ struct PresidentGuestView: View {
 
     @ViewBuilder private var table: some View {
         VStack(alignment: .leading, spacing: 4) {
-            MonoLabel("President · round \(model.roundNumber)", color: UbappTheme.accent)
+            MonoLabel("President · round \(model.roundNumber)", color: JamboreeTheme.accent)
             Text(isMyTurn ? "Your turn" : "\(currentName)'s turn")
                 .font(.system(size: 26, weight: .heavy)).kerning(-0.8)
-                .foregroundStyle(isMyTurn ? UbappTheme.accent : .white)
+                .foregroundStyle(isMyTurn ? JamboreeTheme.accent : .white)
             Text(model.trick == nil
                  ? (isMyTurn ? "Your lead — play anything." : "Awaiting the lead.")
                  : "Beat the open trick or pass.")
-                .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                .font(.system(size: 13)).foregroundStyle(JamboreeTheme.muted)
         }
         playersStrip
         trickCard
-        if !model.lastEvent.isEmpty { MonoLabel(model.lastEvent, size: 10, color: UbappTheme.muted) }
+        if !model.lastEvent.isEmpty { MonoLabel(model.lastEvent, size: 10, color: JamboreeTheme.muted) }
         hand
         actionRow
     }
@@ -88,18 +88,18 @@ struct PresidentGuestView: View {
                         VStack(alignment: .leading, spacing: 1) {
                             Text(p.name).font(.system(size: 12, weight: .semibold)).foregroundStyle(.white)
                             if p.finished {
-                                MonoLabel(rankLabel(p.rank), size: 9, color: UbappTheme.accent)
+                                MonoLabel(rankLabel(p.rank), size: 9, color: JamboreeTheme.accent)
                             } else if model.passed.contains(p.id) {
-                                MonoLabel("passed", size: 9, color: UbappTheme.faint)
+                                MonoLabel("passed", size: 9, color: JamboreeTheme.faint)
                             } else {
-                                MonoLabel("\(p.handCount) cards", size: 9, color: UbappTheme.faint)
+                                MonoLabel("\(p.handCount) cards", size: 9, color: JamboreeTheme.faint)
                             }
                         }
                     }
                     .padding(.vertical, 8).padding(.horizontal, 10)
-                    .ubCard(radius: UbappRadius.button,
-                            fill: current ? UbappTheme.accentSoft : UbappTheme.surface,
-                            stroke: current ? UbappTheme.accentLine : UbappTheme.line)
+                    .ubCard(radius: JamboreeRadius.button,
+                            fill: current ? JamboreeTheme.accentSoft : JamboreeTheme.surface,
+                            stroke: current ? JamboreeTheme.accentLine : JamboreeTheme.line)
                 }
             }
         }
@@ -107,7 +107,7 @@ struct PresidentGuestView: View {
 
     private var trickCard: some View {
         VStack(spacing: 10) {
-            MonoLabel(model.trick == nil ? "Open lead" : "To beat", size: 10, color: UbappTheme.accent)
+            MonoLabel(model.trick == nil ? "Open lead" : "To beat", size: 10, color: JamboreeTheme.accent)
             if let t = model.trick {
                 Text("\(t.kind.capitalized)\(t.length > 0 ? " · \(t.length)" : "")")
                     .font(.system(size: 18, weight: .bold)).foregroundStyle(.white)
@@ -121,16 +121,16 @@ struct PresidentGuestView: View {
                 let cards = lp.cards.map { rankShort($0.rank) + suitGlyph($0.suit) }.joined(separator: " ")
                 Text("\(pname): \(cards)")
                     .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(UbappTheme.muted)
+                    .foregroundStyle(JamboreeTheme.muted)
             }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 24)
         .background(
-            RadialGradient(colors: [UbappTheme.accent.opacity(0.12), .clear],
+            RadialGradient(colors: [JamboreeTheme.accent.opacity(0.12), .clear],
                            center: .center, startRadius: 0, endRadius: 180),
         )
-        .clipShape(RoundedRectangle(cornerRadius: UbappRadius.hero, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: JamboreeRadius.hero, style: .continuous))
     }
 
     private var hand: some View {
@@ -146,7 +146,7 @@ struct PresidentGuestView: View {
                         cardChip(card)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .stroke(selected.contains(key) ? UbappTheme.accent : Color.clear, lineWidth: 3),
+                                    .stroke(selected.contains(key) ? JamboreeTheme.accent : Color.clear, lineWidth: 3),
                             )
                             .offset(y: selected.contains(key) ? -8 : 0)
                     }
@@ -185,10 +185,10 @@ struct PresidentGuestView: View {
 
     @ViewBuilder private var swapping: some View {
         VStack(alignment: .leading, spacing: 10) {
-            MonoLabel("Round \(model.roundNumber) · swap", color: UbappTheme.accent)
+            MonoLabel("Round \(model.roundNumber) · swap", color: JamboreeTheme.accent)
             if model.swapPrompts.isEmpty {
                 Text("Waiting for others to swap cards…")
-                    .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                    .font(.system(size: 13)).foregroundStyle(JamboreeTheme.muted)
             } else {
                 ForEach(Array(model.swapPrompts.enumerated()), id: \.offset) { _, p in
                     VStack(alignment: .leading, spacing: 8) {
@@ -196,7 +196,7 @@ struct PresidentGuestView: View {
                             Text("Give \(p.count) card\(p.count == 1 ? "" : "s") of your choice to \(p.toName)")
                                 .font(.system(size: 15, weight: .bold)).foregroundStyle(.white)
                             Text("Pick \(p.count) below, then send.")
-                                .font(.system(size: 12)).foregroundStyle(UbappTheme.muted)
+                                .font(.system(size: 12)).foregroundStyle(JamboreeTheme.muted)
                             let picked = pickedCards()
                             Button("Send \(picked.count)/\(p.count) → \(p.toName)") {
                                 guard picked.count == p.count else { return }
@@ -217,7 +217,7 @@ struct PresidentGuestView: View {
                     }
                     .padding(16)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .ubCard(radius: UbappRadius.panel)
+                    .ubCard(radius: JamboreeRadius.panel)
                 }
             }
         }
@@ -231,7 +231,7 @@ struct PresidentGuestView: View {
             return ao < bo
         }
         VStack(alignment: .leading, spacing: 6) {
-            MonoLabel("Round over", color: UbappTheme.accent)
+            MonoLabel("Round over", color: JamboreeTheme.accent)
             Text("Final tiers")
                 .font(.system(size: 28, weight: .heavy)).kerning(-0.8).foregroundStyle(.white)
         }
@@ -241,23 +241,23 @@ struct PresidentGuestView: View {
                 HStack(spacing: 12) {
                     Text(p.finishOrder == 0 ? "?" : String(p.finishOrder))
                         .font(.system(size: 14, weight: .bold, design: .monospaced))
-                        .foregroundStyle(UbappTheme.faint).frame(width: 18)
+                        .foregroundStyle(JamboreeTheme.faint).frame(width: 18)
                     Avatar(name: p.name, host: p.isHost, size: 30)
                     Text(p.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
                     Spacer()
                     Text(rankLabel(p.rank))
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(isPres ? UbappTheme.onAccent : UbappTheme.muted)
+                        .foregroundStyle(isPres ? JamboreeTheme.onAccent : JamboreeTheme.muted)
                         .padding(.vertical, 5).padding(.horizontal, 10)
-                        .background(isPres ? UbappTheme.accent : Color.white.opacity(0.06))
+                        .background(isPres ? JamboreeTheme.accent : Color.white.opacity(0.06))
                         .clipShape(Capsule())
                 }
                 .padding(.vertical, 10).padding(.horizontal, 14)
-                .ubCard(radius: UbappRadius.row)
+                .ubCard(radius: JamboreeRadius.row)
             }
         }
         Text("Waiting for the host to start the next round…")
-            .font(.system(size: 12)).foregroundStyle(UbappTheme.muted)
+            .font(.system(size: 12)).foregroundStyle(JamboreeTheme.muted)
     }
 
     @ViewBuilder

@@ -1,4 +1,4 @@
-package com.example.ubapp.theme
+package com.example.jamboree.theme
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -86,7 +86,7 @@ fun MonoLabel(text: String, size: Int = 11, color: Color = Ub.Muted) {
     )
 }
 
-/** `ubapp` wordmark with optional magenta dot. */
+/** `jamboree` wordmark with optional magenta dot. */
 @Composable
 fun Wordmark(size: Int = 22, color: Color = Color.White, dot: Boolean = false) {
     androidx.compose.foundation.layout.Row(
@@ -94,7 +94,7 @@ fun Wordmark(size: Int = 22, color: Color = Color.White, dot: Boolean = false) {
         horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy((size * 0.04f).dp),
     ) {
         Text(
-            "ubapp",
+            "jamboree",
             fontSize = size.sp,
             fontWeight = FontWeight.ExtraBold,
             letterSpacing = (-size * 0.04f).sp,
