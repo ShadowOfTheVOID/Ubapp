@@ -147,7 +147,7 @@
     selected:new Set(), options:{allowHouseRules:false, revolution:false},
     series:{rounds:0, scores:{}},
     tutorial:{isOpen:false,yesCount:0,noCount:0,eligibleCount:0,result:null,tutorialShown:false},
-    tutorialContent:null, myTutorialVote:null };
+    tutorialContent:null, myTutorialVote:null, tutorialPage:0 };
 
   function send(o){ if (ws.readyState===1) ws.send(JSON.stringify(o)); }
 
@@ -246,9 +246,13 @@
     const t = state.tutorial, c = state.tutorialContent;
     if (t.result !== true || t.tutorialShown) return '';
     if (!c) return `<div class="tutorial-card">Loading tutorial…</div>`;
-    const ruleSecs = c.sections.map(s => `<div><h3>${esc(s.heading)}</h3><p>${esc(s.body)}</p></div>`).join('');
-    const menuSecs = (c.menuSections || []).map(s => `<div><h3>${esc(s.heading)}</h3><p>${esc(s.body)}</p></div>`).join('');
-    return `<div class="tutorial-card"><h2>${esc(c.title)}</h2>${ruleSecs}${menuSecs ? `<div class="menu-label">Using this screen</div>${menuSecs}` : ''}<p class="wait">Waiting for the host to finish reading.</p></div>`;
+    const all = [...c.sections, ...(c.menuSections||[])];
+    if (!all.length) return '';
+    const pg = state.tutorialPage||0, total = all.length, s = all[pg];
+    const prevBtn = pg > 0 ? `<button class="secondary" id="tut-prev" style="flex:1">← Back</button>` : '';
+    const nextBtn = pg < total-1 ? `<button id="tut-next" style="flex:1">Next →</button>` : '';
+    const waitMsg = pg >= total-1 ? `<p class="wait" style="margin-top:8px">Waiting for the host to finish reading.</p>` : '';
+    return `<div class="tutorial-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h2 style="margin:0">${esc(c.title)}</h2><span style="color:var(--faint,#9da7b3);font-size:13px">${pg+1} / ${total}</span></div><h3>${esc(s.heading)}</h3><p>${esc(s.body)}</p>${prevBtn||nextBtn?`<div class="vote-row" style="margin-top:12px">${prevBtn}${nextBtn}</div>`:''}${waitMsg}</div>`;
   }
 
   function viewTutorialVote(){
@@ -269,6 +273,9 @@
     const y = document.getElementById('tut-yes'), n = document.getElementById('tut-no');
     if (y) y.addEventListener('click', () => { state.myTutorialVote=true; send({type:'tutorial_vote', yes:true}); render(); });
     if (n) n.addEventListener('click', () => { state.myTutorialVote=false; send({type:'tutorial_vote', yes:false}); render(); });
+    const prev = document.getElementById('tut-prev'), next = document.getElementById('tut-next');
+    if (prev) prev.addEventListener('click', () => { state.tutorialPage = Math.max(0, (state.tutorialPage||0)-1); render(); });
+    if (next) next.addEventListener('click', () => { const a = state.tutorialContent ? [...state.tutorialContent.sections, ...(state.tutorialContent.menuSections||[])] : []; state.tutorialPage = Math.min(a.length-1, (state.tutorialPage||0)+1); render(); });
   }
 
   function renderTable(){
