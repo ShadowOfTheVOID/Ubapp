@@ -1,26 +1,34 @@
 import SwiftUI
+import GoogleMobileAds
 
-/// Lobby / between-rounds banner slot.
-/// Replace the placeholder body with GADBannerView once the AdMob SDK is integrated.
 struct AdBannerView: View {
     @ObservedObject private var ads = AdManager.shared
 
     var body: some View {
         if !ads.isAdFree {
-            HStack {
-                Spacer()
-                Text("Ad")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(UbappTheme.muted)
-                Spacer()
-            }
-            .frame(height: 50)
-            .background(UbappTheme.surface)
-            .overlay(
-                RoundedRectangle(cornerRadius: UbappRadius.card, style: .continuous)
-                    .stroke(Color.white.opacity(0.07), lineWidth: 1)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: UbappRadius.card, style: .continuous))
+            GADBannerRepresentable()
+                .frame(height: 50)
         }
     }
+}
+
+private struct GADBannerRepresentable: UIViewRepresentable {
+    // TODO: Replace with your live Banner ad unit ID from the AdMob dashboard.
+    // Create two unit IDs (one per placement) under your iOS app in AdMob.
+    private static let adUnitID = "ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX"
+
+    func makeUIView(context: Context) -> GADBannerView {
+        let banner = GADBannerView(adSize: GADAdSizeBanner)
+        banner.adUnitID = Self.adUnitID
+        banner.rootViewController = UIApplication.shared
+            .connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first(where: \.isKeyWindow)?
+            .rootViewController
+        banner.load(GADRequest())
+        return banner
+    }
+
+    func updateUIView(_ uiView: GADBannerView, context: Context) {}
 }

@@ -24,6 +24,8 @@
 	<string>1</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>GADApplicationIdentifier</key>
+	<string>ca-app-pub-XXXXXXXXXXXXXXXX~XXXXXXXXXX</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Tag games use Bluetooth to detect nearby players in the same room.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
