@@ -64,6 +64,9 @@ dependencies {
     // AdMob — banner + interstitial placements.
     implementation("com.google.android.gms:play-services-ads:23.3.0")
 
+    // UMP — GDPR / CCPA consent form required by Google Play policy.
+    implementation("com.google.android.ump:user-messaging-platform:3.0.0")
+
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlin:kotlin-test")
 }
