@@ -6,6 +6,7 @@ import android.content.Context
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import com.example.ubapp.ads.AdManager
 import fi.iki.elonen.NanoHTTPD
 import fi.iki.elonen.NanoWSD
 import java.net.NetworkInterface
@@ -159,7 +160,13 @@ class HostServer(
 
     override fun serveHttp(session: IHTTPSession): Response {
         dlog("serveHttp: ${session.method} ${session.uri}")
-        return newFixedLengthResponse(Response.Status.OK, "text/html; charset=utf-8", html)
+        // If the host owns the ad-free upgrade, suppress ads for the browser
+        // guests this host serves by flagging the page before it loads.
+        val adFree = appCtx?.let { AdManager.isAdFree(it) } ?: false
+        val body = if (adFree)
+            html.replaceFirst("</head>", "<script>window.UB_AD_FREE=true</script></head>")
+        else html
+        return newFixedLengthResponse(Response.Status.OK, "text/html; charset=utf-8", body)
     }
 
     override fun openWebSocket(handshake: IHTTPSession): WebSocket {

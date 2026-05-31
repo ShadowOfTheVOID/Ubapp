@@ -6,6 +6,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -18,6 +19,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ubapp.ads.AdManager
 import com.example.ubapp.theme.MonoLabel
 import com.example.ubapp.theme.Ub
 import com.example.ubapp.theme.UbappTheme
@@ -28,6 +30,7 @@ fun SettingsScreen(onBack: () -> Unit) {
     val ctx = LocalContext.current
     var hostName by remember { mutableStateOf(AppSettings.hostName(ctx)) }
     var diagnostics by remember { mutableStateOf(AppSettings.diagnosticsEnabled(ctx)) }
+    var adFree by remember { mutableStateOf(AdManager.isAdFree(ctx)) }
 
     UbappTheme {
         Column(
@@ -85,6 +88,31 @@ fun SettingsScreen(onBack: () -> Unit) {
                         checked = diagnostics,
                         onCheckedChange = { diagnostics = it; AppSettings.setDiagnostics(ctx, it) },
                     )
+                }
+            }
+
+            Group("Upgrade",
+                  "One-time purchase. Removes all ad banners and post-game interstitials permanently. No content is locked.") {
+                if (adFree) {
+                    Row(
+                        Modifier.fillMaxWidth().ubCard().padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Remove Ads", Modifier.weight(1f), fontSize = 15.sp, color = Ub.Foreground)
+                        Text("Purchased ✓", fontSize = 13.sp, color = Ub.Accent)
+                    }
+                } else {
+                    Row(
+                        Modifier.fillMaxWidth().ubCard().padding(horizontal = 16.dp, vertical = 14.dp)
+                            .clickable {
+                                // TODO: launch Play Billing flow via BillingClient
+                                // On purchase success, call: AdManager.setAdFree(ctx, true); adFree = true
+                            },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Remove Ads", Modifier.weight(1f), fontSize = 15.sp, color = Ub.Foreground)
+                        Text("\$2.99", fontSize = 13.sp, color = Ub.Accent)
+                    }
                 }
             }
         }

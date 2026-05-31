@@ -6,18 +6,34 @@ struct CodenamesGuestView: View {
     @StateObject private var model = CodenamesGuestModel()
     @State private var clueText: String = ""
     @State private var clueNumber: Int = 1
+    @State private var showInterstitial = false
+    @State private var interstitialFired = false
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                SeriesBanner(state: model.series)
-                if model.phase == "lobby" { lobby } else { board }
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    SeriesBanner(state: model.series)
+                    if model.phase == "lobby" { lobby } else { board }
+                }
+                .frame(maxWidth: 560, alignment: .leading)
+                .frame(maxWidth: .infinity)
+                .padding(20)
             }
-            .frame(maxWidth: 560, alignment: .leading)
-            .frame(maxWidth: .infinity)
-            .padding(20)
+            .scrollIndicators(.hidden)
+            if model.phase == "gameOver" {
+                AdBannerView(placement: .betweenRounds)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+            }
         }
-        .scrollIndicators(.hidden)
+        .adInterstitial(isPresented: $showInterstitial)
+        .onChange(of: model.phase) { _, newPhase in
+            if newPhase == "gameOver" && !interstitialFired {
+                interstitialFired = true
+                showInterstitial = true
+            }
+        }
         .navigationTitle("Codenames")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { model.attach(ctx: ctx) }

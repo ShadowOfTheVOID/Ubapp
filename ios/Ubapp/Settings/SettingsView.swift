@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject private var settings = AppSettings.shared
+    @ObservedObject private var ads = AdManager.shared
 
     var body: some View {
         ScrollView {
@@ -37,6 +38,50 @@ struct SettingsView: View {
                     .padding(.vertical, 10)
                     .padding(.horizontal, 16)
                     .ubCard()
+                }
+
+                group(title: "Upgrade",
+                      footer: "One-time purchase. Removes all ad banners and post-game interstitials permanently. No content is locked.") {
+                    if ads.isAdFree {
+                        HStack {
+                            Text("Remove Ads")
+                                .font(.system(size: 15)).foregroundStyle(.white)
+                            Spacer()
+                            Text("Purchased ✓")
+                                .font(.system(size: 13)).foregroundStyle(UbappTheme.accent)
+                        }
+                        .padding(.vertical, 14).padding(.horizontal, 16)
+                        .ubCard()
+                    } else {
+                        VStack(spacing: 10) {
+                            Button {
+                                ads.purchase()
+                            } label: {
+                                HStack {
+                                    Text("Remove Ads")
+                                        .font(.system(size: 15)).foregroundStyle(.white)
+                                    Spacer()
+                                    if ads.isPurchasing {
+                                        ProgressView().tint(UbappTheme.accent)
+                                    } else {
+                                        Text("$2.99")
+                                            .font(.system(size: 13)).foregroundStyle(UbappTheme.accent)
+                                    }
+                                }
+                                .padding(.vertical, 14).padding(.horizontal, 16)
+                                .ubCard()
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(ads.isPurchasing)
+                            Button("Restore Purchase") { ads.restorePurchases() }
+                                .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                                .disabled(ads.isPurchasing)
+                        }
+                        if let err = ads.purchaseError {
+                            Text(err)
+                                .font(.system(size: 12)).foregroundStyle(UbappTheme.accent)
+                        }
+                    }
                 }
             }
             .padding(20)

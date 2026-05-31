@@ -7,6 +7,9 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
 
+    <!-- AdMob advertising ID (required for Android 13+) -->
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
+
     <!-- HostServer (browser guests over Wi-Fi) -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
@@ -19,6 +22,10 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Ubapp">
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-8315138960777125~4781750086" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

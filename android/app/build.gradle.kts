@@ -58,6 +58,15 @@ dependencies {
     // Detector falls back to the keyword detector when the asset is absent.
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.19.2")
 
+    // One-time IAP to remove ads. Wire up BillingClient in AdManager when ready.
+    implementation("com.android.billingclient:billing-ktx:7.0.0")
+
+    // AdMob — banner + interstitial placements.
+    implementation("com.google.android.gms:play-services-ads:23.3.0")
+
+    // UMP — GDPR / CCPA consent form required by Google Play policy.
+    implementation("com.google.android.ump:user-messaging-platform:3.0.0")
+
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlin:kotlin-test")
 }

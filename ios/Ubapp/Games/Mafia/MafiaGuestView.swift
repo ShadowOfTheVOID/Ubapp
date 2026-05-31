@@ -5,27 +5,43 @@ import SwiftUI
 struct MafiaGuestView: View {
     let ctx: GuestContext
     @StateObject private var model = MafiaGuestModel()
+    @State private var showInterstitial = false
+    @State private var interstitialFired = false
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                header
-                if let e = model.error { errorBanner(e) }
-                switch model.phase {
-                case "lobby":     lobby
-                case "night":     night
-                case "dayReveal": dayReveal
-                case "dayVote":   dayVote
-                case "gameOver":  gameOver
-                default:          waiting
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    header
+                    if let e = model.error { errorBanner(e) }
+                    switch model.phase {
+                    case "lobby":     lobby
+                    case "night":     night
+                    case "dayReveal": dayReveal
+                    case "dayVote":   dayVote
+                    case "gameOver":  gameOver
+                    default:          waiting
+                    }
+                    playersSection
                 }
-                playersSection
+                .frame(maxWidth: 520, alignment: .leading)
+                .frame(maxWidth: .infinity)
+                .padding(20)
             }
-            .frame(maxWidth: 520, alignment: .leading)
-            .frame(maxWidth: .infinity)
-            .padding(20)
+            .scrollIndicators(.hidden)
+            if model.phase == "gameOver" {
+                AdBannerView(placement: .betweenRounds)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+            }
         }
-        .scrollIndicators(.hidden)
+        .adInterstitial(isPresented: $showInterstitial)
+        .onChange(of: model.phase) { _, newPhase in
+            if newPhase == "gameOver" && !interstitialFired {
+                interstitialFired = true
+                showInterstitial = true
+            }
+        }
         .navigationTitle("Mafia")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { model.attach(ctx: ctx) }

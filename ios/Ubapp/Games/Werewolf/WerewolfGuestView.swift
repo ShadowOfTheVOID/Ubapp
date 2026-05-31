@@ -4,41 +4,57 @@ import SwiftUI
 struct WerewolfGuestView: View {
     let ctx: GuestContext
     @StateObject private var model = WerewolfGuestModel()
+    @State private var showInterstitial = false
+    @State private var interstitialFired = false
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(alignment: .firstTextBaseline) {
-                    MonoLabel(phaseLabel, color: UbappTheme.accent)
-                    Spacer()
-                    if model.phase != "lobby" {
-                        MonoLabel(iAmAlive ? "alive" : "out",
-                                  size: 9, color: iAmAlive ? UbappTheme.online : UbappTheme.faint)
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack(alignment: .firstTextBaseline) {
+                        MonoLabel(phaseLabel, color: UbappTheme.accent)
+                        Spacer()
+                        if model.phase != "lobby" {
+                            MonoLabel(iAmAlive ? "alive" : "out",
+                                      size: 9, color: iAmAlive ? UbappTheme.online : UbappTheme.faint)
+                        }
                     }
+                    if let err = model.error {
+                        Text(err).font(.system(size: 13, weight: .semibold)).foregroundStyle(UbappTheme.accent)
+                            .padding(.vertical, 12).padding(.horizontal, 14)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .ubAccentCard(radius: UbappRadius.row)
+                    }
+                    switch model.phase {
+                    case "lobby":      lobby
+                    case "night":      night
+                    case "dayReveal":  dayReveal
+                    case "dayVote":    dayVote
+                    case "hunterShot": hunterShot
+                    case "gameOver":   gameOver
+                    default:           infoBanner("Waiting…")
+                    }
+                    seerFindings
+                    playersSection
                 }
-                if let err = model.error {
-                    Text(err).font(.system(size: 13, weight: .semibold)).foregroundStyle(UbappTheme.accent)
-                        .padding(.vertical, 12).padding(.horizontal, 14)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .ubAccentCard(radius: UbappRadius.row)
-                }
-                switch model.phase {
-                case "lobby":      lobby
-                case "night":      night
-                case "dayReveal":  dayReveal
-                case "dayVote":    dayVote
-                case "hunterShot": hunterShot
-                case "gameOver":   gameOver
-                default:           infoBanner("Waiting…")
-                }
-                seerFindings
-                playersSection
+                .frame(maxWidth: 520, alignment: .leading)
+                .frame(maxWidth: .infinity)
+                .padding(20)
             }
-            .frame(maxWidth: 520, alignment: .leading)
-            .frame(maxWidth: .infinity)
-            .padding(20)
+            .scrollIndicators(.hidden)
+            if model.phase == "gameOver" {
+                AdBannerView(placement: .betweenRounds)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+            }
         }
-        .scrollIndicators(.hidden)
+        .adInterstitial(isPresented: $showInterstitial)
+        .onChange(of: model.phase) { _, newPhase in
+            if newPhase == "gameOver" && !interstitialFired {
+                interstitialFired = true
+                showInterstitial = true
+            }
+        }
         .navigationTitle("Werewolf")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { model.attach(ctx: ctx) }
