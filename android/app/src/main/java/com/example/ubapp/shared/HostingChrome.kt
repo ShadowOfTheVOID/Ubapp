@@ -31,6 +31,7 @@ import com.example.ubapp.join.JoinCode
 import com.example.ubapp.settings.AppSettings
 import com.example.ubapp.social.HostDiagnostics
 import com.example.ubapp.ads.AdBanner
+import com.example.ubapp.ads.AdBannerPlacement
 import com.example.ubapp.theme.MonoLabel
 import com.example.ubapp.theme.Ub
 import com.example.ubapp.theme.UbPrimaryButton
@@ -98,7 +99,7 @@ fun HostingChrome(joinUrl: String?, onStart: () -> Unit, onStop: (() -> Unit)? =
                 fontSize = 12.sp, color = Ub.Muted, textAlign = TextAlign.Center,
             )
         }
-        AdBanner()
+        AdBanner(AdBannerPlacement.LOBBY)
 
         val ctx = LocalContext.current
         if (AppSettings.diagnosticsEnabled(ctx) && HostDiagnostics.lines.isNotEmpty()) {

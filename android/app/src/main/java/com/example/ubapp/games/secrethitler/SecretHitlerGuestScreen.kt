@@ -18,7 +18,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ubapp.ads.AdBanner
-import com.example.ubapp.ads.AdInterstitialOverlay
+import com.example.ubapp.ads.AdBannerPlacement
+import com.example.ubapp.ads.AdInterstitialController
 import com.example.ubapp.theme.Avatar
 import com.example.ubapp.theme.LobbyPlayerRow
 import com.example.ubapp.theme.MonoLabel
@@ -133,11 +134,11 @@ fun SecretHitlerGuestScreen(ctx: GuestContext) {
     }
     } // Box(weight 1f)
     if (s.phase == gameOverPhase) {
-        AdBanner(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp))
+        AdBanner(AdBannerPlacement.BETWEEN_ROUNDS, Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp))
     }
     } // Column(fillMaxSize)
     if (showInterstitial) {
-        AdInterstitialOverlay { showInterstitial = false }
+        AdInterstitialController(show = showInterstitial) { showInterstitial = false }
     }
     } // Box(fillMaxSize)
     } // UbappTheme

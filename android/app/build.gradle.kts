@@ -61,6 +61,9 @@ dependencies {
     // One-time IAP to remove ads. Wire up BillingClient in AdManager when ready.
     implementation("com.android.billingclient:billing-ktx:7.0.0")
 
+    // AdMob — banner + interstitial placements.
+    implementation("com.google.android.gms:play-services-ads:23.3.0")
+
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlin:kotlin-test")
 }
