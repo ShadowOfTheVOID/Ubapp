@@ -1,25 +1,36 @@
 import SwiftUI
 import GoogleMobileAds
 
+enum AdBannerPlacement {
+    case lobby
+    case betweenRounds
+
+    var adUnitID: String {
+        switch self {
+        case .lobby:         return "ca-app-pub-8315138960777125/2156576421"
+        case .betweenRounds: return "ca-app-pub-8315138960777125/4183973964"
+        }
+    }
+}
+
 struct AdBannerView: View {
+    let placement: AdBannerPlacement
     @ObservedObject private var ads = AdManager.shared
 
     var body: some View {
         if !ads.isAdFree {
-            GADBannerRepresentable()
+            GADBannerRepresentable(adUnitID: placement.adUnitID)
                 .frame(height: 50)
         }
     }
 }
 
 private struct GADBannerRepresentable: UIViewRepresentable {
-    // TODO: Replace with your live Banner ad unit ID from the AdMob dashboard.
-    // Create two unit IDs (one per placement) under your iOS app in AdMob.
-    private static let adUnitID = "ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX"
+    let adUnitID: String
 
     func makeUIView(context: Context) -> GADBannerView {
         let banner = GADBannerView(adSize: GADAdSizeBanner)
-        banner.adUnitID = Self.adUnitID
+        banner.adUnitID = adUnitID
         banner.rootViewController = UIApplication.shared
             .connectedScenes
             .compactMap { $0 as? UIWindowScene }

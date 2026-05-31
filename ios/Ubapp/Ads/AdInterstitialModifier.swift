@@ -42,8 +42,7 @@ private struct AdInterstitialModifier: ViewModifier {
 
 @MainActor
 private final class InterstitialLoader: NSObject, ObservableObject, GADFullScreenContentDelegate {
-    // TODO: Replace with your live Interstitial ad unit ID from the AdMob dashboard.
-    private static let adUnitID = "ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX"
+    private static let adUnitID = "ca-app-pub-8315138960777125/4386164266"
 
     private var ad: GADInterstitialAd?
     private var onDismiss: (() -> Void)?

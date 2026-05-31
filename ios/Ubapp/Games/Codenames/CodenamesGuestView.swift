@@ -22,7 +22,7 @@ struct CodenamesGuestView: View {
             }
             .scrollIndicators(.hidden)
             if model.phase == "gameOver" {
-                AdBannerView()
+                AdBannerView(placement: .betweenRounds)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 12)
             }
