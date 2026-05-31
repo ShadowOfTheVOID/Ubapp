@@ -376,7 +376,7 @@
     const prevBtn = pg > 0 ? `<button class="secondary" id="tut-prev" style="flex:1">← Back</button>` : '';
     const nextBtn = pg < total-1 ? `<button id="tut-next" style="flex:1">Next →</button>` : '';
     const waitMsg = pg >= total-1 ? `<p class="wait" style="margin-top:8px">Waiting for the host to finish reading.</p>` : '';
-    return `<div class="tutorial-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h2 style="margin:0">${escapeHtml(c.title)}</h2><span style="color:var(--faint,#9da7b3);font-size:13px">${pg+1} / ${total}</span></div><h3>${escapeHtml(s.heading)}</h3><p>${escapeHtml(s.body)}</p>${prevBtn||nextBtn?`<div class="vote-row" style="margin-top:12px">${prevBtn}${nextBtn}</div>`:''}${waitMsg}</div>`;
+    return `<div class="tutorial-card" style="position:fixed;inset:0;border-radius:0;z-index:100;overflow-y:auto;display:flex;flex-direction:column"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h2 style="margin:0">${escapeHtml(c.title)}</h2><span style="color:var(--faint,#9da7b3);font-size:13px">${pg+1} / ${total}</span></div><h3>${escapeHtml(s.heading)}</h3><p>${escapeHtml(s.body)}</p><div style="flex:1"></div>${prevBtn||nextBtn?`<div class="vote-row" style="margin-top:12px">${prevBtn}${nextBtn}</div>`:''}${waitMsg}</div>`;
   }
 
   function viewTutorialVote() {
