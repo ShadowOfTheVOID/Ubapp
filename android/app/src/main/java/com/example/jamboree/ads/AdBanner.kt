@@ -1,4 +1,4 @@
-package com.example.ubapp.ads
+package com.example.jamboree.ads
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier

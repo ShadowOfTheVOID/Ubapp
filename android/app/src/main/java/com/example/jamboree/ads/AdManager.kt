@@ -1,4 +1,4 @@
-package com.example.ubapp.ads
+package com.example.jamboree.ads
 
 import android.content.Context
 
@@ -6,13 +6,13 @@ import android.content.Context
  * Manages ad-free state.
  *
  * IAP wiring: integrate Google Play Billing Library and call [setAdFree] from
- * the purchase callback when the SKU "com.ubapp.adfree" is acknowledged.
+ * the purchase callback when the SKU "com.jamboree.adfree" is acknowledged.
  * The Play Billing dependency is in build.gradle.kts.
  */
 object AdManager {
-    private const val PREFS = "ubapp.ads"
+    private const val PREFS = "jamboree.ads"
     private const val KEY_AD_FREE = "adFree"
-    const val SKU = "com.ubapp.adfree"
+    const val SKU = "com.jamboree.adfree"
 
     private fun prefs(ctx: Context) = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 

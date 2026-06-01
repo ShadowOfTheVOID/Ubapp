@@ -6,7 +6,7 @@ import android.content.Context
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import com.example.ubapp.ads.AdManager
+import com.example.jamboree.ads.AdManager
 import fi.iki.elonen.NanoHTTPD
 import fi.iki.elonen.NanoWSD
 import java.net.NetworkInterface

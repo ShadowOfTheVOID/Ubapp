@@ -48,7 +48,7 @@ struct SettingsView: View {
                                 .font(.system(size: 15)).foregroundStyle(.white)
                             Spacer()
                             Text("Purchased ✓")
-                                .font(.system(size: 13)).foregroundStyle(UbappTheme.accent)
+                                .font(.system(size: 13)).foregroundStyle(JamboreeTheme.accent)
                         }
                         .padding(.vertical, 14).padding(.horizontal, 16)
                         .ubCard()
@@ -62,10 +62,10 @@ struct SettingsView: View {
                                         .font(.system(size: 15)).foregroundStyle(.white)
                                     Spacer()
                                     if ads.isPurchasing {
-                                        ProgressView().tint(UbappTheme.accent)
+                                        ProgressView().tint(JamboreeTheme.accent)
                                     } else {
                                         Text("$2.99")
-                                            .font(.system(size: 13)).foregroundStyle(UbappTheme.accent)
+                                            .font(.system(size: 13)).foregroundStyle(JamboreeTheme.accent)
                                     }
                                 }
                                 .padding(.vertical, 14).padding(.horizontal, 16)
@@ -74,12 +74,12 @@ struct SettingsView: View {
                             .buttonStyle(.plain)
                             .disabled(ads.isPurchasing)
                             Button("Restore Purchase") { ads.restorePurchases() }
-                                .font(.system(size: 13)).foregroundStyle(UbappTheme.muted)
+                                .font(.system(size: 13)).foregroundStyle(JamboreeTheme.muted)
                                 .disabled(ads.isPurchasing)
                         }
                         if let err = ads.purchaseError {
                             Text(err)
-                                .font(.system(size: 12)).foregroundStyle(UbappTheme.accent)
+                                .font(.system(size: 12)).foregroundStyle(JamboreeTheme.accent)
                         }
                     }
                 }

@@ -1,4 +1,4 @@
-package com.example.ubapp.ads
+package com.example.jamboree.ads
 
 import android.app.Activity
 import androidx.compose.foundation.background
@@ -12,8 +12,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ubapp.theme.Ub
-import com.example.ubapp.theme.UbPrimaryButton
+import com.example.jamboree.theme.Ub
+import com.example.jamboree.theme.UbPrimaryButton
 import com.google.android.gms.ads.AdError
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.FullScreenContentCallback

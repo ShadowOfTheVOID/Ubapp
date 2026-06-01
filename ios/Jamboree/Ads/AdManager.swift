@@ -4,8 +4,8 @@ import SwiftUI
 @MainActor
 final class AdManager: ObservableObject {
     static let shared = AdManager()
-    static let productId = "com.ubapp.adfree"
-    private static let adFreeKey = "ubapp.adFree"
+    static let productId = "com.jamboree.adfree"
+    private static let adFreeKey = "jamboree.adFree"
 
     @Published private(set) var isAdFree: Bool
     @Published private(set) var isPurchasing = false

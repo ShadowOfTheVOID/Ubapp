@@ -96,13 +96,13 @@ private struct AdFallbackOverlay: View {
             Color.black.opacity(0.88).ignoresSafeArea()
             VStack(spacing: 24) {
                 Spacer()
-                RoundedRectangle(cornerRadius: UbappRadius.card, style: .continuous)
-                    .fill(UbappTheme.surface)
+                RoundedRectangle(cornerRadius: JamboreeRadius.card, style: .continuous)
+                    .fill(JamboreeTheme.surface)
                     .frame(height: 240)
                     .overlay(
                         Text("Advertisement")
                             .font(.system(size: 15))
-                            .foregroundStyle(UbappTheme.faint)
+                            .foregroundStyle(JamboreeTheme.faint)
                     )
                     .padding(.horizontal, 20)
                 Spacer()
@@ -110,14 +110,14 @@ private struct AdFallbackOverlay: View {
                     HStack(spacing: 6) {
                         Text("Skip")
                         if remaining > 0 {
-                            Text("(\(remaining))").foregroundStyle(UbappTheme.muted)
+                            Text("(\(remaining))").foregroundStyle(JamboreeTheme.muted)
                         }
                     }
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(.white)
                     .padding(.vertical, 12)
                     .padding(.horizontal, 24)
-                    .background(UbappTheme.surface)
+                    .background(JamboreeTheme.surface)
                     .clipShape(Capsule())
                     .overlay(Capsule().stroke(Color.white.opacity(0.12), lineWidth: 1))
                 }

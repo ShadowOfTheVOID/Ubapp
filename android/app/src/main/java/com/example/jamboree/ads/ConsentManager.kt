@@ -1,4 +1,4 @@
-package com.example.ubapp.ads
+package com.example.jamboree.ads
 
 import android.app.Activity
 import com.google.android.gms.ads.MobileAds
