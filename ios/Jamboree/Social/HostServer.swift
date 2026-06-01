@@ -22,8 +22,18 @@ struct GuestId: Hashable {
 /// Game adapters consume [onMessage], [send] privately to one guest, or
 /// [broadcast] to all. The served HTML can be swapped via [html] before [start].
 final class HostServer {
+    /// Bonjour service type guests browse for to find hosts by name instead of
+    /// IP. Advertised automatically on `start()`; the guest side lives in
+    /// `BonjourBrowser`. Keep in sync with the Android `HostServer.SERVICE_TYPE`.
+    static let bonjourType = "_jamboree._tcp"
+
     let port: NWEndpoint.Port
     var html: String
+
+    /// Display name advertised over Bonjour. Defaults to the device's host
+    /// name so a guest sees "Tony's game" rather than an address. An empty
+    /// string lets the OS substitute the device name.
+    var serviceName: String = AppSettings.currentHostName
 
     private var listener: NWListener?
     /// Guarded by `connectionsLock`: read/written from the listener queue
@@ -102,6 +112,10 @@ final class HostServer {
         listener.newConnectionHandler = { [weak self] conn in
             self?.accept(conn)
         }
+        // Advertise over Bonjour so app guests can discover this host by name
+        // in the join flow without typing an IP or app code. Tied to the
+        // listener's lifecycle — cancelling the listener stops advertising.
+        listener.service = NWListener.Service(name: serviceName, type: Self.bonjourType)
         listener.start(queue: queue)
         self.listener = listener
         self.hostIp = LocalNetwork.localIPv4()

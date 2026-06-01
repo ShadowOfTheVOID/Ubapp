@@ -15,6 +15,7 @@ struct JoinFlowView: View {
     @State private var welcomedName: String?
     @State private var status: String = ""
     @State private var queuedMessages: [[String: Any]] = []
+    @StateObject private var discovery = BonjourBrowser()
 
     var body: some View {
         Group {
@@ -28,9 +29,10 @@ struct JoinFlowView: View {
             }
         }
         .navigationTitle("Join a game")
-        .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
+        .onAppear { UIApplication.shared.isIdleTimerDisabled = true; discovery.start() }
         .onDisappear {
             UIApplication.shared.isIdleTimerDisabled = false
+            discovery.stop()
             client?.close()
         }
     }
@@ -62,6 +64,8 @@ struct JoinFlowView: View {
                     .ubCard(radius: JamboreeRadius.button)
                     .padding(.bottom, 16)
 
+                nearbyHosts
+
                 MonoLabel("App code").padding(.bottom, 8)
                 TextField("", text: $rawCode,
                           prompt: Text("ABCD-EFG").foregroundColor(JamboreeTheme.faint))
@@ -88,6 +92,37 @@ struct JoinFlowView: View {
                     .padding(.top, 24)
             }
             .padding(20)
+        }
+    }
+
+    /// Bonjour-discovered hosts — tap one to join by name, no IP or code. Only
+    /// shown once at least one host is advertising on the network.
+    @ViewBuilder private var nearbyHosts: some View {
+        if !discovery.hosts.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                MonoLabel("Nearby hosts")
+                ForEach(discovery.hosts) { host in
+                    Button { tapDiscovered(host) } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "wifi")
+                                .font(.system(size: 13))
+                                .foregroundStyle(JamboreeTheme.accent)
+                            Text(host.name)
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(.white)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12))
+                                .foregroundStyle(JamboreeTheme.muted)
+                        }
+                        .padding(14)
+                        .frame(maxWidth: .infinity)
+                        .ubCard(radius: JamboreeRadius.button)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.bottom, 16)
         }
     }
 
@@ -134,8 +169,32 @@ struct JoinFlowView: View {
             status = "Couldn't read that — enter the 7-character code or the IP."
             return
         }
-        pendingHost = ip
-        let urlString = "wss://\(ip):\(JoinCode.defaultPort)/ws"
+        openConnection(host: ip, port: JoinCode.defaultPort)
+    }
+
+    /// Resolves a Bonjour-discovered host to an address and connects — the
+    /// no-IP path. The host name is shown to the user; the address is never
+    /// surfaced.
+    private func tapDiscovered(_ host: BonjourBrowser.Host) {
+        guard !name.trimmingCharacters(in: .whitespaces).isEmpty else {
+            status = "Enter your name first."; return
+        }
+        status = "Connecting to \(host.name)…"
+        pendingHost = host.name
+        discovery.resolve(host, completion: { addr, port in
+            openConnection(host: addr, port: port)
+        }, failure: {
+            status = "Couldn't reach \(host.name) — it may have stopped hosting."
+            pendingHost = nil
+        })
+    }
+
+    /// Shared connect path for both the typed code/IP and a discovered host.
+    /// IPv6 literals are bracketed so the `wss://` URL parses.
+    private func openConnection(host: String, port: UInt16) {
+        pendingHost = host
+        let authority = host.contains(":") ? "[\(host)]" : host
+        let urlString = "wss://\(authority):\(port)/ws"
         guard let url = URL(string: urlString) else {
             status = "Bad URL: \(urlString)"; return
         }

@@ -1,7 +1,10 @@
 package com.example.jamboree.join
 
 import android.app.Activity
+import android.os.Handler
+import android.os.Looper
 import android.view.WindowManager
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
@@ -58,14 +61,63 @@ fun JoinFlowScreen() {
     var status by remember { mutableStateOf("") }
     val queued = remember { mutableStateListOf<JSONObject>() }
 
+    val discovery = remember { BonjourBrowser(ctx) }
+    val mainHandler = remember { Handler(Looper.getMainLooper()) }
+
     DisposableEffect(Unit) {
         // Keep the screen awake while joined so the device's inactivity
         // timeout can't sleep the screen, drop the socket and kick us.
         (ctx as? Activity)?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        discovery.start()
         onDispose {
             (ctx as? Activity)?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            discovery.stop()
             client?.close()
         }
+    }
+
+    // Shared connect path for both the typed code/IP and a Bonjour-discovered
+    // host. IPv6 literals are bracketed so the wss:// URL parses.
+    fun connectTo(addr: String, port: Int) {
+        val authority = if (addr.contains(':')) "[$addr]" else addr
+        val url = "wss://$authority:$port/ws"
+        val gc = GuestClient(url, ctx)
+        fun failBack(message: String) {
+            if (client == null) return
+            val live = client
+            client = null
+            welcomedGame = null; yourId = null; yourName = null
+            queued.clear()
+            status = message
+            live?.close()
+        }
+        gc.onStateChange = { s ->
+            when (s.kind) {
+                GuestClient.StateKind.OPEN ->
+                    gc.send(JSONObject().put("type", "join").put("name", name.trim()))
+                GuestClient.StateKind.FAILED ->
+                    failBack("Connection failed: ${s.message ?: "unknown"}")
+                GuestClient.StateKind.CLOSED ->
+                    if (welcomedGame == null) failBack("Connection closed before joining.")
+                else -> Unit
+            }
+        }
+        gc.onMessage = { msg ->
+            val type = msg.optString("type")
+            if (type == "welcome" && msg.has("game")) {
+                welcomedGame = msg.optString("game")
+                yourId = msg.optString("yourId")
+                yourName = msg.optString("yourName")
+                gc.onMessage = null
+            } else if (welcomedGame == null && type == "error") {
+                failBack(msg.optString("message", "Host refused the connection."))
+            } else {
+                queued.add(msg)
+            }
+        }
+        gc.connect()
+        status = ""
+        client = gc
     }
 
     val game = welcomedGame; val yid = yourId; val yn = yourName; val c = client
@@ -121,6 +173,38 @@ fun JoinFlowScreen() {
             }
             Spacer(Modifier.height(16.dp))
 
+            // Bonjour-discovered hosts — tap one to join by name, no IP or
+            // code. Only shown once a host is advertising on the network.
+            if (discovery.hosts.isNotEmpty()) {
+                MonoLabel("Nearby hosts")
+                Spacer(Modifier.height(8.dp))
+                discovery.hosts.forEach { host ->
+                    Box(
+                        Modifier.fillMaxWidth().ubCard(radius = Ub.Radius.button)
+                            .clickable {
+                                if (name.isBlank()) {
+                                    status = "Enter your name first."
+                                    return@clickable
+                                }
+                                status = "Connecting to ${host.name}…"
+                                discovery.resolve(host, onResolved = { addr, port ->
+                                    mainHandler.post { connectTo(addr, port) }
+                                }, onFailure = {
+                                    mainHandler.post {
+                                        status = "Couldn't reach ${host.name} — it may have stopped hosting."
+                                    }
+                                })
+                            }
+                            .padding(14.dp),
+                    ) {
+                        Text(host.name, color = Ub.Foreground, fontSize = 15.sp,
+                             fontWeight = FontWeight.SemiBold)
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+
             MonoLabel("App code")
             Spacer(Modifier.height(8.dp))
             FieldCard {
@@ -155,57 +239,7 @@ fun JoinFlowScreen() {
                         status = "Couldn't read that — enter the 7-character code or the IP."
                         return@Button
                     }
-                    val url = "wss://$ip:${JoinCode.DEFAULT_PORT}/ws"
-                    val gc = GuestClient(url, ctx)
-                    // Drop the live client and fall back to the join form,
-                    // surfacing `message`. Guarded on `client` so the
-                    // re-entrant CLOSED that close() emits is a no-op instead
-                    // of recursing, and so a later CLOSED can't overwrite a
-                    // FAILED message with the generic one.
-                    fun failBack(message: String) {
-                        if (client == null) return
-                        val live = client
-                        client = null
-                        welcomedGame = null; yourId = null; yourName = null
-                        queued.clear()
-                        status = message
-                        live?.close()
-                    }
-                    gc.onStateChange = { s ->
-                        when (s.kind) {
-                            GuestClient.StateKind.OPEN ->
-                                gc.send(JSONObject().put("type", "join").put("name", name.trim()))
-                            GuestClient.StateKind.FAILED ->
-                                failBack("Connection failed: ${s.message ?: "unknown"}")
-                            GuestClient.StateKind.CLOSED ->
-                                if (welcomedGame == null) failBack("Connection closed before joining.")
-                            else -> Unit
-                        }
-                    }
-                    gc.onMessage = { msg ->
-                        val type = msg.optString("type")
-                        if (type == "welcome" && msg.has("game")) {
-                            welcomedGame = msg.optString("game")
-                            yourId = msg.optString("yourId")
-                            yourName = msg.optString("yourName")
-                            // Stop consuming here. Everything after `welcome`
-                            // now buffers inside the client until the
-                            // per-game screen attaches its handler — closing
-                            // the hand-off gap that dropped those frames.
-                            gc.onMessage = null
-                        } else if (welcomedGame == null && type == "error") {
-                            // A host that rejects this client before any
-                            // welcome (e.g. Tag, which speaks its own
-                            // proximity protocol) sends an `error`. Surface
-                            // it instead of hanging on the spinner.
-                            failBack(msg.optString("message", "Host refused the connection."))
-                        } else {
-                            queued.add(msg)
-                        }
-                    }
-                    gc.connect()
-                    status = ""
-                    client = gc
+                    connectTo(ip, JoinCode.DEFAULT_PORT)
                 },
             )
         } else {
