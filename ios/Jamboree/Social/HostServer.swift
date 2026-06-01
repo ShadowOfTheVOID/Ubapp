@@ -236,7 +236,7 @@ final class HostServer {
     private func serveHtml(_ conn: NWConnection) {
         // If the host owns the ad-free upgrade, suppress ads for the browser
         // guests this host serves by flagging the page before it loads.
-        let body = AdManager.shared.isAdFree
+        let body = AdManager.isAdFreePersisted
             ? html.replacingOccurrences(of: "</head>",
                                         with: "<script>window.UB_AD_FREE=true</script></head>")
             : html

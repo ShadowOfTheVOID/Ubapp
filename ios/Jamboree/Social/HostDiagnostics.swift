@@ -6,9 +6,11 @@ import SwiftUI
 /// on so the host phone can be screen-recorded while debugging join issues.
 @MainActor
 final class HostDiagnostics: ObservableObject {
-    static let shared = HostDiagnostics()
+    nonisolated static let shared = HostDiagnostics()
     @Published private(set) var lines: [String] = []
     private var start: Date?
+
+    nonisolated private init() {}
 
     func reset() { start = Date(); lines = [] }
 

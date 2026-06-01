@@ -139,9 +139,7 @@ final class PeerTagTransport: NSObject, TagTransport, URLSessionWebSocketDelegat
             completionHandler(.performDefaultHandling, nil); return
         }
         SecTrustSetAnchorCertificatesOnly(serverTrust, true)
-        var result: SecTrustResultType = .invalid
-        SecTrustEvaluate(serverTrust, &result)
-        if result == .unspecified || result == .proceed {
+        if SecTrustEvaluateWithError(serverTrust, nil) {
             completionHandler(.useCredential, URLCredential(trust: serverTrust))
         } else {
             completionHandler(.cancelAuthenticationChallenge, nil)

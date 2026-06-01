@@ -5,11 +5,15 @@ import SwiftUI
 final class AdManager: ObservableObject {
     static let shared = AdManager()
     static let productId = "com.jamboree.adfree"
-    private static let adFreeKey = "jamboree.adFree"
+    nonisolated private static let adFreeKey = "jamboree.adFree"
 
     @Published private(set) var isAdFree: Bool
     @Published private(set) var isPurchasing = false
     @Published var purchaseError: String?
+
+    nonisolated static var isAdFreePersisted: Bool {
+        UserDefaults.standard.bool(forKey: adFreeKey)
+    }
 
     private init() {
         isAdFree = UserDefaults.standard.bool(forKey: Self.adFreeKey)

@@ -41,7 +41,7 @@ private struct AdInterstitialModifier: ViewModifier {
 // MARK: - Ad loader
 
 @MainActor
-private final class InterstitialLoader: NSObject, ObservableObject, GADFullScreenContentDelegate {
+private final class InterstitialLoader: NSObject, ObservableObject, @preconcurrency GADFullScreenContentDelegate {
     private static let adUnitID = "ca-app-pub-8315138960777125/4386164266"
 
     private var ad: GADInterstitialAd?
@@ -51,10 +51,12 @@ private final class InterstitialLoader: NSObject, ObservableObject, GADFullScree
     func preload() {
         guard ad == nil else { return }
         GADInterstitialAd.load(withAdUnitID: Self.adUnitID, request: GADRequest()) { [weak self] ad, _ in
-            guard let self else { return }
-            self.ad = ad
-            self.ad?.fullScreenContentDelegate = self
-            self.isReady = ad != nil
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.ad = ad
+                self.ad?.fullScreenContentDelegate = self
+                self.isReady = ad != nil
+            }
         }
     }
 

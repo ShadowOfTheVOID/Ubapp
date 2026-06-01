@@ -30,8 +30,8 @@ struct StatsData: Codable {
 @MainActor
 final class StatsStore: ObservableObject {
     static let shared = StatsStore()
-    static let key = "jamboree.stats"
-    static let recentCap = 50
+    nonisolated static let key = "jamboree.stats"
+    nonisolated static let recentCap = 50
 
     @Published private(set) var data: StatsData
 
