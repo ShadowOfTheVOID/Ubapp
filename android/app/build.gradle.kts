@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.ubapp"
+    namespace = "com.example.jamboree"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.ubapp"
+        applicationId = "com.example.jamboree"
         minSdk = 26
         targetSdk = 35
         versionCode = 1

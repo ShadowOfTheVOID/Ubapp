@@ -1,0 +1,217 @@
+package com.example.jamboree.games.crazyeights
+
+import android.content.Context
+import com.example.jamboree.join.LoopbackGuest
+import com.example.jamboree.social.GuestId
+import com.example.jamboree.social.HostServer
+import com.example.jamboree.stats.SeriesScore
+import com.example.jamboree.stats.StatsStore
+import com.example.jamboree.tutorials.GameTutorials
+import org.json.JSONArray
+import org.json.JSONObject
+
+/** Wraps [HostServer] with Crazy Eights routing. */
+class CrazyEightsServer(context: Context, val hostName: String = "Host") {
+    val engine = CrazyEightsEngine()
+    private val server = HostServer(html = HostServer.htmlAsset(context, "crazy_eights_browser.html"), ctx = context)
+    private val appCtx = context.applicationContext
+    private val guestToPlayer = HashMap<GuestId, String>()
+    private val playerToGuest = HashMap<String, GuestId>()
+    var onStateChange: (() -> Unit)? = null
+    private var statRecorded = false
+    private val series = SeriesScore()
+
+    init { server.onMessage = ::onMessage; server.onLeave = ::onLeave }
+    companion object { const val HOST_ID = "host" }
+
+    fun start(): String? {
+        engine.addPlayer(HOST_ID, hostName, isHost = true)
+        val u = server.startServer()
+        val local = server.attachLocalGuest()
+        guestToPlayer[local] = HOST_ID
+        playerToGuest[HOST_ID] = local
+        emit()
+        return u
+    }
+
+    /** In-process pipe for the host's own player screen. */
+    fun makeLoopback(): LoopbackGuest = LoopbackGuest(server)
+
+    fun stop() = server.stopServer()
+    val guestCount: Int get() = server.guestCount
+
+    fun hostSetOptions(o: CrazyEightsOptions) {
+        engine.setOptions(o); broadcastOptions(); emit()
+    }
+    fun hostStart() { engine.start(); broadcastState(); sendHandsPrivately(); emit() }
+    fun hostPlay(card: Card, declaredSuit: Suit? = null): String? {
+        val err = engine.playCard(HOST_ID, card, declaredSuit)
+        if (err == null) {
+            broadcastState(); sendHandsPrivately()
+            if (engine.phase == CrazyEightsPhase.GAME_OVER) broadcastOver()
+            emit()
+        }
+        return err
+    }
+    fun hostDraw() { engine.drawOne(HOST_ID); broadcastState(); sendHandsPrivately(); emit() }
+    fun hostPass() { engine.passAfterDraw(HOST_ID); broadcastState(); emit() }
+    fun hostNewGame() {
+        engine.reset(); statRecorded = false
+        broadcast(JSONObject().put("type", "reset")); broadcastLobby()
+        if (!series.isEmpty) broadcastSeries()
+        emit()
+    }
+    fun hostCallTutorialVote() = openTutorialVote()
+    fun hostTutorialVote(yes: Boolean) = submitTutorialVote(HOST_ID, yes)
+    fun hostDismissTutorial() { engine.tutorialVote.markShown(); broadcastTutorialState(); emit() }
+
+    private fun onMessage(guest: GuestId, raw: String) {
+        val j = runCatching { JSONObject(raw) }.getOrNull() ?: return
+        val pid = guestToPlayer[guest]
+        when (j.optString("type")) {
+            "join" -> handleJoin(guest, j)
+            "play" -> pid?.let { applyPlay(it, j) }
+            "draw" -> pid?.let { engine.drawOne(it); broadcastState(); sendHandsPrivately(); emit() }
+            "pass" -> pid?.let { engine.passAfterDraw(it); broadcastState(); emit() }
+            // Only the host may mutate options.
+            "set_options" -> Unit
+            "call_tutorial_vote" -> openTutorialVote()
+            "tutorial_vote" -> pid?.let { submitTutorialVote(it, j.getBoolean("yes")) }
+        }
+    }
+
+    private fun onLeave(guest: GuestId) {
+        val pid = guestToPlayer.remove(guest) ?: return
+        playerToGuest.remove(pid)
+        if (engine.phase == CrazyEightsPhase.LOBBY) {
+            engine.removePlayer(pid); engine.tutorialVote.removeVoter(pid); broadcastLobby()
+            if (engine.tutorialVote.isOpen || engine.tutorialVote.hasResult) broadcastTutorialState()
+        }
+        emit()
+    }
+
+    private fun handleJoin(guest: GuestId, j: JSONObject) {
+        if (engine.phase != CrazyEightsPhase.LOBBY) {
+            send(guest, JSONObject().put("type", "error").put("message", "Game already in progress")); return
+        }
+        val name = j.optString("name").trim(); if (name.isEmpty()) return
+        val pid = "g${guestToPlayer.size + 1}"
+        engine.addPlayer(pid, name)
+        guestToPlayer[guest] = pid; playerToGuest[pid] = guest
+        send(guest, JSONObject().put("type", "welcome").put("yourId", pid).put("yourName", name).put("game", "crazy_eights"))
+        broadcastLobby(); broadcastOptions(); broadcastTutorialState()
+        if (!series.isEmpty) broadcastSeries()
+        emit()
+    }
+
+    private fun broadcastOptions() {
+        val o = engine.options
+        broadcast(JSONObject()
+            .put("type", "options")
+            .put("startingHandSize", o.startingHandSize ?: JSONObject.NULL)
+            .put("jackSkips", o.jackSkips)
+            .put("queenReverses", o.queenReverses)
+            .put("twosDrawTwo", o.twosDrawTwo))
+    }
+
+    private fun applyPlay(pid: String, j: JSONObject) {
+        val suit = Suit.entries.first { it.name.equals(j.getString("suit"), true) }
+        val rank = j.getInt("rank")
+        val declared: Suit? = if (j.isNull("declaredSuit")) null
+            else (j.opt("declaredSuit") as? String)?.let { name ->
+                Suit.entries.firstOrNull { it.name.equals(name, true) }
+            }
+        val err = engine.playCard(pid, Card(suit, rank), declared)
+        if (err == null) {
+            broadcastState(); sendHandsPrivately()
+            if (engine.phase == CrazyEightsPhase.GAME_OVER) broadcastOver()
+            emit()
+        } else {
+            playerToGuest[pid]?.let { send(it, JSONObject().put("type", "error").put("message", err)) }
+        }
+    }
+
+    private fun broadcastLobby() {
+        val arr = JSONArray()
+        for (p in engine.players.values) arr.put(JSONObject().put("id", p.id).put("name", p.name).put("isHost", p.isHost))
+        broadcast(JSONObject().put("type", "lobby").put("players", arr))
+    }
+    private fun broadcastState() {
+        val top = engine.topCard?.let { JSONObject().put("suit", it.suit.name.lowercase()).put("rank", it.rank) }
+        val playersArr = JSONArray()
+        for (p in engine.players.values)
+            playersArr.put(JSONObject().put("id", p.id).put("name", p.name).put("handCount", p.hand.size))
+        val phase = when (engine.phase) {
+            CrazyEightsPhase.LOBBY -> "lobby"
+            CrazyEightsPhase.PLAYING -> "playing"
+            CrazyEightsPhase.GAME_OVER -> "gameOver"
+        }
+        broadcast(JSONObject()
+            .put("type", "state")
+            .put("phase", phase)
+            .put("currentId", engine.current?.id ?: JSONObject.NULL)
+            .put("topCard", top ?: JSONObject.NULL)
+            .put("activeSuit", engine.activeSuit?.name?.lowercase() ?: JSONObject.NULL)
+            .put("drawCount", engine.drawPile.size)
+            .put("justDrew", engine.justDrew)
+            .put("lastEvent", engine.lastEvent ?: "")
+            .put("players", playersArr))
+    }
+    private fun sendHandsPrivately() {
+        // Includes the host: it plays through its own in-process loopback
+        // guest, so it must receive its private hand.
+        for (p in engine.players.values) {
+            val guest = playerToGuest[p.id] ?: continue
+            val cards = JSONArray()
+            for (c in p.hand) cards.put(JSONObject().put("suit", c.suit.name.lowercase()).put("rank", c.rank))
+            send(guest, JSONObject().put("type", "hand").put("cards", cards))
+        }
+    }
+    private fun broadcastOver() {
+        if (!statRecorded) {
+            statRecorded = true
+            val winnerName = engine.winnerId?.let { engine.players[it]?.name }
+            val names = ArrayList<String>()
+            winnerName?.let { names.add(it) }
+            for (p in engine.players.values) if (p.id != engine.winnerId) names.add(p.name)
+            StatsStore.record(appCtx, "crazy_eights", names, "win")
+            if (winnerName != null) { series.record(winnerName); broadcastSeries() }
+        }
+        val arr = JSONArray()
+        for (p in engine.players.values) arr.put(JSONObject().put("id", p.id).put("name", p.name).put("handCount", p.hand.size))
+        broadcast(JSONObject().put("type", "over").put("winnerId", engine.winnerId ?: JSONObject.NULL).put("players", arr))
+    }
+
+    private fun openTutorialVote() {
+        if (engine.phase != CrazyEightsPhase.LOBBY) return
+        if (engine.tutorialVote.isOpen || engine.tutorialVote.tutorialShown) return
+        engine.tutorialVote.open(engine.players.keys); broadcastTutorialState(); emit()
+    }
+    private fun submitTutorialVote(voterId: String, yes: Boolean) {
+        if (!engine.tutorialVote.isOpen) return
+        engine.tutorialVote.submit(voterId, yes); broadcastTutorialState(); emit()
+    }
+    private fun broadcastTutorialState() {
+        val v = engine.tutorialVote
+        val p = JSONObject().put("type", "tutorial_vote_state")
+            .put("isOpen", v.isOpen).put("yesCount", v.yesCount).put("noCount", v.noCount)
+            .put("eligibleCount", v.eligibleCount).put("result", v.result ?: JSONObject.NULL)
+            .put("tutorialShown", v.tutorialShown)
+        if (v.result == true && !v.tutorialShown) {
+            p.put("title", GameTutorials.crazyEights.title)
+            p.put("sections", JSONArray(GameTutorials.crazyEights.sectionsJson().map { JSONObject(it as Map<*, *>) }))
+            p.put("menuSections", JSONArray(GameTutorials.crazyEights.browserMenuSectionsJson().map { JSONObject(it as Map<*, *>) }))
+        }
+        broadcast(p)
+    }
+
+    private fun broadcastSeries() {
+        val scores = JSONObject()
+        for ((k, v) in series.scores) scores.put(k, v)
+        broadcast(JSONObject().put("type", "series_state").put("rounds", series.rounds).put("scores", scores))
+    }
+
+    private fun emit() { onStateChange?.invoke() }
+    private fun broadcast(o: JSONObject) = server.broadcast(o.toString())
+    private fun send(g: GuestId, o: JSONObject) = server.send(g, o.toString())
+}

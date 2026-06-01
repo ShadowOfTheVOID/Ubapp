@@ -1,4 +1,4 @@
-# Ubapp
+# Jamboree
 
 A collection of small offline party games for same-room play. **Native iOS
 (SwiftUI) and native Android (Kotlin/Compose)** — no shared runtime, no
@@ -18,9 +18,9 @@ Two guest tiers:
 
 ```
 ios/                                    # SwiftUI app (Xcode 16, no xcodegen)
-├── Ubapp.xcodeproj/project.pbxproj     # hand-written, uses filesystem-synchronized group
-└── Ubapp/
-    ├── App/                            # UbappApp.swift, Info.plist
+├── Jamboree.xcodeproj/project.pbxproj     # hand-written, uses filesystem-synchronized group
+└── Jamboree/
+    ├── App/                            # JamboreeApp.swift, Info.plist
     ├── Menu/                           # MainMenuView
     ├── Games/<Name>/                   # one folder per game
     ├── Social/                         # HostServer (Network.framework)
@@ -31,7 +31,7 @@ android/                                # Gradle/Kotlin DSL, Jetpack Compose
 └── app/
     └── src/main/
         ├── AndroidManifest.xml
-        ├── java/com/example/ubapp/
+        ├── java/com/example/jamboree/
         │   ├── MainActivity.kt
         │   ├── menu/                   # MainMenu
         │   ├── games/<name>/           # one package per game
@@ -44,11 +44,11 @@ android/                                # Gradle/Kotlin DSL, Jetpack Compose
 ### iOS
 
 Requires Xcode 16 (the project uses `PBXFileSystemSynchronizedRootGroup` so
-new Swift files under `ios/Ubapp/` are picked up automatically — no need to
+new Swift files under `ios/Jamboree/` are picked up automatically — no need to
 edit `project.pbxproj`).
 
 ```
-open ios/Ubapp.xcodeproj
+open ios/Jamboree.xcodeproj
 ```
 
 Build target: iOS 17+.
@@ -116,7 +116,7 @@ tutorial opt-in) helper so adding a new game is mostly engine + adapter.
   bundle / other peers).
 - **iOS uses a hand-written `project.pbxproj`** with a filesystem-synchronized
   root group (Xcode 16 feature). Adding new Swift files never requires
-  editing the project file — just drop them under `ios/Ubapp/`.
+  editing the project file — just drop them under `ios/Jamboree/`.
 
 ## Permissions
 
@@ -190,7 +190,7 @@ it uses RoBERTa byte-level BPE tokenisation and emits three logits in the order
    into **both** trees (they are intentionally *not* committed — an ~83 MB
    binary doesn't belong in git):
    - `android/app/src/main/assets/`
-   - `ios/Ubapp/Resources/`
+   - `ios/Jamboree/Resources/`
 3. Android already declares `com.microsoft.onnxruntime:onnxruntime-android`.
    For iOS, add the `onnxruntime-objc` package — the ONNX call sites in
    `OnnxContradictionDetector.swift` are gated behind

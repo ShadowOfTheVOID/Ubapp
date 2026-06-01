@@ -13,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Ubapp"
+rootProject.name = "Jamboree"
 include(":app")
