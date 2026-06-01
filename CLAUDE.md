@@ -120,6 +120,16 @@ socket to the host and speaks the **same JSON wire format as the browser
 bundle** behind the `GuestLink` interface, then renders the game's native
 `*GuestView`.
 
+**Discovery without an address (`BonjourBrowser`).** `HostServer` also
+advertises itself over Bonjour (`_jamboree._tcp`) on `start()` — iOS via
+`NWListener.service`, Android via `NsdManager.registerService` — using the
+device's host name. The join form lists these as "Nearby hosts"; tapping one
+resolves the service to a concrete `host:port` and connects, so an app guest
+never has to type an IP or code. The service name/type is shared in
+`HostServer.bonjourType` (iOS) / `HostServer.SERVICE_TYPE` (Android); iOS also
+needs `NSBonjourServices` + `NSLocalNetworkUsageDescription` in `Info.plist`
+(already present). Browser-only guests are unaffected — they still scan the QR.
+
 ## Transport & TLS
 
 `HostServer` binds default port **7654** on all IPv4 interfaces.

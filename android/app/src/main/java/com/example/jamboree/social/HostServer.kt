@@ -3,6 +3,8 @@ package com.example.jamboree.social
 import android.app.Activity
 import android.app.Application
 import android.content.Context
+import android.net.nsd.NsdManager
+import android.net.nsd.NsdServiceInfo
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -45,6 +47,14 @@ class HostServer(
     var onMessage: ((GuestId, String) -> Unit)? = null
 
     var hostIp: String? = null; private set
+
+    /** Display name advertised over Bonjour so app guests can discover this
+     *  host by name in the join flow without typing an IP or app code. Defaults
+     *  to the device's configured host name. */
+    var serviceName: String? = null
+
+    private val nsdManager = appCtx?.getSystemService(Context.NSD_SERVICE) as? NsdManager
+    private var nsdListener: NsdManager.RegistrationListener? = null
 
     /** Tears hosting down if the host app stays backgrounded this long, so
      *  socket guests don't sit in a dead game while the host is away. A
@@ -90,14 +100,47 @@ class HostServer(
         running = true
         observeAppLifecycle()
         hostIp = localIPv4()
+        registerNsd()
         val scheme = if (sslFactory != null) "https" else "http"
         dlog("startServer: tls=${sslFactory != null} ip=$hostIp")
         return hostIp?.let { "$scheme://$it:$port/" }
     }
 
+    /** Advertises this host over Bonjour (`_jamboree._tcp`). The NSD daemon
+     *  fills in the address; guests browse for it in [BonjourBrowser]. */
+    private fun registerNsd() {
+        val nsd = nsdManager ?: return
+        val name = serviceName
+            ?: appCtx?.let { com.example.jamboree.settings.AppSettings.hostName(it) }
+            ?: "Jamboree"
+        val info = NsdServiceInfo().apply {
+            serviceName = name
+            serviceType = SERVICE_TYPE
+            setPort(port)
+        }
+        val listener = object : NsdManager.RegistrationListener {
+            override fun onServiceRegistered(info: NsdServiceInfo) =
+                dlog("nsd registered as ${info.serviceName}")
+            override fun onRegistrationFailed(info: NsdServiceInfo, errorCode: Int) =
+                dlog("nsd registration failed: $errorCode")
+            override fun onServiceUnregistered(info: NsdServiceInfo) {}
+            override fun onUnregistrationFailed(info: NsdServiceInfo, errorCode: Int) {}
+        }
+        nsdListener = listener
+        runCatching { nsd.registerService(info, NsdManager.PROTOCOL_DNS_SD, listener) }
+            .onFailure { dlog("nsd registerService threw: $it") }
+    }
+
+    private fun unregisterNsd() {
+        val nsd = nsdManager ?: return
+        nsdListener?.let { runCatching { nsd.unregisterService(it) } }
+        nsdListener = null
+    }
+
     fun stopServer() {
         if (!running) return
         running = false
+        unregisterNsd()
         cancelBackgroundStop()
         removeLifecycleObserver()
         val kicked = synchronized(sockets) {
@@ -231,6 +274,10 @@ class HostServer(
     }
 
     companion object {
+        /** Bonjour service type guests browse for to find hosts by name
+         *  instead of IP. Keep in sync with the iOS `HostServer.bonjourType`. */
+        const val SERVICE_TYPE = "_jamboree._tcp."
+
         const val defaultHtml = """
         <!doctype html>
         <html lang="en">
