@@ -147,7 +147,7 @@
 <script>
 (() => {
   const root = document.getElementById('root');
-  const ws = new WebSocket(`wss://${location.host}/ws`);
+  const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
 
   // Keep the screen awake while connected so the device's inactivity
   // timeout can't sleep the screen, drop this socket and kick the player.

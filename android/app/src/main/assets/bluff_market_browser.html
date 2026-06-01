@@ -149,7 +149,7 @@
 <script>
 (() => {
   const root = document.getElementById('root');
-  const ws = new WebSocket(`wss://${location.host}/ws`);
+  const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
   let wakeLock = null;
   async function requestWakeLock() { try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {} }
   if ('wakeLock' in navigator) {
