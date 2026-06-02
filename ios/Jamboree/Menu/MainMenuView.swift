@@ -32,7 +32,7 @@ struct MainMenuView: View {
             .background(JamboreeTheme.canvas.ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)
             .tint(JamboreeTheme.accent)
-            .onAppear { ATTManager.requestIfNeeded() }
+            .onAppear { ConsentManager.gatherThenStartAds() }
         }
     }
 

@@ -10,10 +10,10 @@ import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import org.json.JSONObject
 import java.security.KeyStore
+import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
 import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
-import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509TrustManager
 
 /**
@@ -107,20 +107,35 @@ class GuestClient(private val url: String, ctx: Context? = null) : GuestLink {
             val base = OkHttpClient.Builder()
                 .pingInterval(20, TimeUnit.SECONDS)
                 .connectTimeout(10, TimeUnit.SECONDS)
-            val tm = ctx?.let { bundledTrustManager(it) } ?: return base.build()
+            val tm = ctx?.let { pinningTrustManager(it) } ?: return base.build()
             val ssl = SSLContext.getInstance("TLS").also { it.init(null, arrayOf(tm), null) }
             return base
                 .sslSocketFactory(ssl.socketFactory, tm)
-                .hostnameVerifier { _, _ -> true }  // IP-based LAN; no hostname to verify
+                .hostnameVerifier { _, _ -> true }  // IP-based LAN; identity is pinned below
                 .build()
         }
 
-        private fun bundledTrustManager(ctx: Context): X509TrustManager? = runCatching {
+        /** Trusts exactly the bundled self-signed leaf certificate, by comparing
+         *  the presented leaf's encoded bytes to the bundled cert's — matching
+         *  the iOS `GuestClient` byte-pin. Stronger than trusting anything that
+         *  chains to the bundled cert: since hostname verification is off for
+         *  the dynamic LAN IP, identity must be the trust anchor. */
+        private fun pinningTrustManager(ctx: Context): X509TrustManager? = runCatching {
             val ks = KeyStore.getInstance("PKCS12")
             ctx.assets.open("jamboree.p12").use { ks.load(it, "jamboree".toCharArray()) }
-            val tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
-            tmf.init(ks)
-            tmf.trustManagers.filterIsInstance<X509TrustManager>().firstOrNull()
+            val alias = ks.aliases().toList().firstOrNull { ks.getCertificate(it) != null }
+            val pinned = ks.getCertificate(alias) as? X509Certificate ?: return@runCatching null
+            val pinnedBytes = pinned.encoded
+            object : X509TrustManager {
+                override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
+                override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {
+                    val leaf = chain?.firstOrNull()
+                        ?: throw CertificateException("no server certificate presented")
+                    if (!leaf.encoded.contentEquals(pinnedBytes))
+                        throw CertificateException("server certificate is not the pinned Jamboree cert")
+                }
+                override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf(pinned)
+            }
         }.getOrNull()
     }
 }
