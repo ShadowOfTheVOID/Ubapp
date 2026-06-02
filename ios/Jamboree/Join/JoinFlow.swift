@@ -169,7 +169,7 @@ struct JoinFlowView: View {
             status = "Couldn't read that — enter the 7-character code or the IP."
             return
         }
-        openConnection(host: ip, port: JoinCode.defaultPort)
+        openConnection(host: ip, port: JoinCode.defaultPort, display: trimmed)
     }
 
     /// Resolves a Bonjour-discovered host to an address and connects — the
@@ -182,7 +182,7 @@ struct JoinFlowView: View {
         status = "Connecting to \(host.name)…"
         pendingHost = host.name
         discovery.resolve(host, completion: { addr, port in
-            openConnection(host: addr, port: port)
+            openConnection(host: addr, port: port, display: host.name)
         }, failure: {
             status = "Couldn't reach \(host.name) — it may have stopped hosting."
             pendingHost = nil
@@ -190,9 +190,11 @@ struct JoinFlowView: View {
     }
 
     /// Shared connect path for both the typed code/IP and a discovered host.
-    /// IPv6 literals are bracketed so the `wss://` URL parses.
-    private func openConnection(host: String, port: UInt16) {
-        pendingHost = host
+    /// `display` is what the user sees ("Connecting to …") — never the numeric
+    /// address, so the IP stays hidden. IPv6 literals are bracketed so the
+    /// `wss://` URL parses.
+    private func openConnection(host: String, port: UInt16, display: String) {
+        pendingHost = display
         let authority = host.contains(":") ? "[\(host)]" : host
         let urlString = "wss://\(authority):\(port)/ws"
         guard let url = URL(string: urlString) else {
