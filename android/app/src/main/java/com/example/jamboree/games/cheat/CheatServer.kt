@@ -12,7 +12,7 @@ import org.json.JSONObject
 
 /** Wraps [HostServer] with Cheat routing. */
 class CheatServer(context: Context, val hostName: String = "Host") {
-    val engine = CheatEngine()
+    var engine = CheatEngine(); private set
     private val server = HostServer(html = HostServer.htmlAsset(context, "cheat_browser.html"), ctx = context)
     private val appCtx = context.applicationContext
     private val guestToPlayer = HashMap<GuestId, String>()
@@ -35,7 +35,17 @@ class CheatServer(context: Context, val hostName: String = "Host") {
     }
 
     fun makeLoopback(): LoopbackGuest = LoopbackGuest(server)
-    fun stop() = server.stopServer()
+    fun stop() { server.stopServer(); resetState() }
+
+    /** Clear all per-session state so the next time the host starts
+     *  hosting they get a fresh screen — empty lobby, tutorial vote
+     *  available again. */
+    private fun resetState() {
+        engine = CheatEngine()
+        guestToPlayer.clear(); playerToGuest.clear()
+        statRecorded = false
+        emit()
+    }
     val guestCount: Int get() = server.guestCount
 
     fun hostSetOptions(o: CheatOptions) {

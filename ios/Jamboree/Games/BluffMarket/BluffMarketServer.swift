@@ -2,7 +2,7 @@ import Foundation
 
 /// Wraps [HostServer] with Bluff Market routing.
 final class BluffMarketServer {
-    let engine = BluffMarketEngine()
+    private(set) var engine = BluffMarketEngine()
     static let hostId = "host"
     let hostName: String
 
@@ -34,7 +34,17 @@ final class BluffMarketServer {
 
     @MainActor
     func makeLoopback() -> LoopbackGuest { LoopbackGuest(server: server) }
-    func stop() { server.stop() }
+    func stop() { server.stop(); resetState() }
+
+    /// Clear all per-session state so the next time the host starts
+    /// hosting they get a fresh screen — empty lobby, tutorial vote
+    /// available again.
+    private func resetState() {
+        engine = BluffMarketEngine()
+        guestToPlayer.removeAll(); playerToGuest.removeAll()
+        statRecorded = false
+        emit()
+    }
     var guestCount: Int { server.guestCount }
 
     func hostSetOptions(_ o: BluffMarketOptions) {

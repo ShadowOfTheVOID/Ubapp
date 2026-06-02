@@ -5,7 +5,7 @@ import Foundation
 /// hand, chancellor hand, peek result, investigation result), and converts
 /// guest commands into engine calls.
 final class SecretHitlerServer {
-    let engine = SecretHitlerEngine()
+    private(set) var engine = SecretHitlerEngine()
     static let hostId = "host"
     let hostName: String
 
@@ -38,7 +38,17 @@ final class SecretHitlerServer {
     @MainActor
     func makeLoopback() -> LoopbackGuest { LoopbackGuest(server: server) }
 
-    func stop() { server.stop() }
+    func stop() { server.stop(); resetState() }
+
+    /// Clear all per-session state so the next time the host starts
+    /// hosting they get a fresh screen — empty lobby, tutorial vote
+    /// available again.
+    private func resetState() {
+        engine = SecretHitlerEngine()
+        guestToPlayer.removeAll(); playerToGuest.removeAll()
+        statRecorded = false
+        emit()
+    }
     var guestCount: Int { server.guestCount }
 
     // MARK: Host actions

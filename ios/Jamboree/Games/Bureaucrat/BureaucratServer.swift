@@ -5,7 +5,7 @@ import Foundation
 /// touch), and the `ContradictionDetector` that judges rebuttals. Mirrors
 /// `BureaucratServer.kt` and the structure of `MafiaServer`.
 final class BureaucratServer {
-    let engine = BureaucratEngine()
+    private(set) var engine = BureaucratEngine()
     static let hostId = "host"
     let hostName: String
 
@@ -44,7 +44,18 @@ final class BureaucratServer {
     @MainActor
     func makeLoopback() -> LoopbackGuest { LoopbackGuest(server: server) }
 
-    func stop() { cancelTimer(); server.stop() }
+    func stop() { cancelTimer(); server.stop(); resetState() }
+
+    /// Clear all per-session state so the next time the host starts
+    /// hosting they get a fresh screen — empty lobby, tutorial vote
+    /// available again.
+    private func resetState() {
+        engine = BureaucratEngine()
+        guestToPlayer.removeAll(); playerToGuest.removeAll()
+        rebuttalDeadlineMs = 0
+        statRecorded = false
+        emit()
+    }
     var guestCount: Int { server.guestCount }
 
     // MARK: Host orchestration

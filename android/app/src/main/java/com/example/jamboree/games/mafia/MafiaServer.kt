@@ -15,7 +15,7 @@ import org.json.JSONObject
  * into engine calls. Mirrors lib/games/mafia/mafia_server.dart.
  */
 class MafiaServer(context: Context, val hostName: String = "Host") {
-    val engine = MafiaEngine()
+    var engine = MafiaEngine(); private set
     private val server = HostServer(html = HostServer.htmlAsset(context, "mafia_browser.html"), ctx = context)
     private val appCtx = context.applicationContext
     private val guestToPlayer = HashMap<GuestId, String>()
@@ -45,7 +45,17 @@ class MafiaServer(context: Context, val hostName: String = "Host") {
     /** In-process pipe for the host's own player screen. */
     fun makeLoopback(): LoopbackGuest = LoopbackGuest(server)
 
-    fun stop() = server.stopServer()
+    fun stop() { server.stopServer(); resetState() }
+
+    /** Clear all per-session state so the next time the host starts
+     *  hosting they get a fresh screen — empty lobby, tutorial vote
+     *  available again. */
+    private fun resetState() {
+        engine = MafiaEngine()
+        guestToPlayer.clear(); playerToGuest.clear()
+        statRecorded = false
+        emit()
+    }
     val guestCount: Int get() = server.guestCount
 
     // Host actions

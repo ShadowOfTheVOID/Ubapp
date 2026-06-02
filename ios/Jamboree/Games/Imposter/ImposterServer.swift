@@ -3,7 +3,7 @@ import Foundation
 /// Wraps [HostServer] with Imposter-specific routing. Mirrors
 /// lib/games/imposter/imposter_server.dart.
 final class ImposterServer {
-    let engine = ImposterEngine()
+    private(set) var engine = ImposterEngine()
     static let hostId = "host"
     let hostName: String
 
@@ -36,7 +36,17 @@ final class ImposterServer {
     /// In-process pipe for the host's own player view.
     @MainActor
     func makeLoopback() -> LoopbackGuest { LoopbackGuest(server: server) }
-    func stop() { server.stop() }
+    func stop() { server.stop(); resetState() }
+
+    /// Clear all per-session state so the next time the host starts
+    /// hosting they get a fresh screen — empty lobby, tutorial vote
+    /// available again.
+    private func resetState() {
+        engine = ImposterEngine()
+        guestToPlayer.removeAll(); playerToGuest.removeAll()
+        statRecorded = false
+        emit()
+    }
     var guestCount: Int { server.guestCount }
 
     // MARK: Host-side actions

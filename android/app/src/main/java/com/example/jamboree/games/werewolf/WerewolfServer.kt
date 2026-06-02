@@ -11,7 +11,7 @@ import org.json.JSONObject
 
 /** Wraps [HostServer] with Werewolf-specific routing. */
 class WerewolfServer(context: Context, val hostName: String = "Host") {
-    val engine = WerewolfEngine()
+    var engine = WerewolfEngine(); private set
     private val server = HostServer(html = HostServer.htmlAsset(context, "werewolf_browser.html"), ctx = context)
     private val appCtx = context.applicationContext
     private val guestToPlayer = HashMap<GuestId, String>()
@@ -35,7 +35,17 @@ class WerewolfServer(context: Context, val hostName: String = "Host") {
     /** In-process pipe for the host's own player screen. */
     fun makeLoopback(): LoopbackGuest = LoopbackGuest(server)
 
-    fun stop() = server.stopServer()
+    fun stop() { server.stopServer(); resetState() }
+
+    /** Clear all per-session state so the next time the host starts
+     *  hosting they get a fresh screen — empty lobby, tutorial vote
+     *  available again. */
+    private fun resetState() {
+        engine = WerewolfEngine()
+        guestToPlayer.clear(); playerToGuest.clear()
+        statRecorded = false
+        emit()
+    }
     val guestCount: Int get() = server.guestCount
 
     fun hostSetOptions(o: WerewolfOptions) {

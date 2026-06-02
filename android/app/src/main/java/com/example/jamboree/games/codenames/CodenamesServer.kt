@@ -12,7 +12,7 @@ import org.json.JSONObject
 
 /** Wraps [HostServer] with Codenames-specific routing. */
 class CodenamesServer(context: Context, val hostName: String = "Host") {
-    val engine = CodenamesEngine()
+    var engine = CodenamesEngine(); private set
     private val server = HostServer(html = HostServer.htmlAsset(context, "codenames_browser.html"), ctx = context)
     private val appCtx = context.applicationContext
     private val guestToPlayer = HashMap<GuestId, String>()
@@ -37,7 +37,17 @@ class CodenamesServer(context: Context, val hostName: String = "Host") {
     /** In-process pipe for the host's own player screen. */
     fun makeLoopback(): LoopbackGuest = LoopbackGuest(server)
 
-    fun stop() = server.stopServer()
+    fun stop() { server.stopServer(); resetState() }
+
+    /** Clear all per-session state so the next time the host starts
+     *  hosting they get a fresh screen — empty lobby, tutorial vote
+     *  available again. */
+    private fun resetState() {
+        engine = CodenamesEngine()
+        guestToPlayer.clear(); playerToGuest.clear()
+        statRecorded = false
+        emit()
+    }
     val guestCount: Int get() = server.guestCount
 
     fun hostJoinTeam(team: Team) { engine.setTeam(HOST_ID, team); broadcastLobby(); sendRolesToAll(); emit() }

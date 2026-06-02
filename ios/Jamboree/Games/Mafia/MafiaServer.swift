@@ -5,7 +5,7 @@ import Foundation
 /// into engine calls. Mirrors lib/games/mafia/mafia_server.dart, including
 /// the tutorial-vote handshake.
 final class MafiaServer {
-    let engine = MafiaEngine()
+    private(set) var engine = MafiaEngine()
     /// Flutter host plays as this player; not connected over WebSocket.
     static let hostId = "host"
     let hostName: String
@@ -42,7 +42,17 @@ final class MafiaServer {
     @MainActor
     func makeLoopback() -> LoopbackGuest { LoopbackGuest(server: server) }
 
-    func stop() { server.stop() }
+    func stop() { server.stop(); resetState() }
+
+    /// Clear all per-session state so the next time the host starts
+    /// hosting they get a fresh screen — empty lobby, tutorial vote
+    /// available again.
+    private func resetState() {
+        engine = MafiaEngine()
+        guestToPlayer.removeAll(); playerToGuest.removeAll()
+        statRecorded = false
+        emit()
+    }
     var guestCount: Int { server.guestCount }
 
     // MARK: Host-side actions
