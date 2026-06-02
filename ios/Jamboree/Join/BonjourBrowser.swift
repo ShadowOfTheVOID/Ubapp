@@ -6,17 +6,19 @@ import Network
 /// instead of typing an IP or app code. Pairs with the advertising side in
 /// `HostServer`, which sets `NWListener.service` on `start()`.
 ///
-/// `NWBrowser` only yields service *names*; the concrete `host:port` is learned
-/// lazily in `resolve(_:)` by briefly opening a connection and reading the
-/// established remote path — cheaper than holding a resolver open for every
-/// host in the list, and we only need the address once the user taps one.
+/// `NWBrowser` finds hosts; `resolve(_:)` turns the chosen one into its mDNS
+/// **hostname** (e.g. `Tonys-iPhone.local`) rather than a numeric IP, so the
+/// connection URL the guest dials never contains an address. The hostname
+/// still resolves to an IP inside the network stack, but no numeric address is
+/// ever produced, shown, or stored by the app.
 @MainActor
 final class BonjourBrowser: ObservableObject {
     struct Host: Identifiable, Equatable {
         /// Service instance name — stable within a single browse session.
         let id: String
         let name: String
-        let endpoint: NWEndpoint
+        let type: String
+        let domain: String
         static func == (a: Host, b: Host) -> Bool { a.id == b.id }
     }
 
@@ -24,6 +26,10 @@ final class BonjourBrowser: ObservableObject {
     @Published private(set) var browsing = false
 
     private var browser: NWBrowser?
+    /// Held for the duration of a resolve — `NetService` and its delegate must
+    /// outlive the async callback.
+    private var activeService: NetService?
+    private var activeResolver: Resolver?
 
     func start() {
         guard browser == nil else { return }
@@ -32,8 +38,8 @@ final class BonjourBrowser: ObservableObject {
         let browser = NWBrowser(for: .bonjour(type: HostServer.bonjourType, domain: nil), using: params)
         browser.browseResultsChangedHandler = { [weak self] results, _ in
             let mapped: [Host] = results.compactMap { result in
-                guard case let .service(name, _, _, _) = result.endpoint else { return nil }
-                return Host(id: name, name: name, endpoint: result.endpoint)
+                guard case let .service(name, type, domain, _) = result.endpoint else { return nil }
+                return Host(id: name, name: name, type: type, domain: domain)
             }
             Task { @MainActor in self?.hosts = mapped.sorted { $0.name < $1.name } }
         }
@@ -53,54 +59,55 @@ final class BonjourBrowser: ObservableObject {
     func stop() {
         browser?.cancel()
         browser = nil
+        activeService?.stop()
+        activeService = nil
+        activeResolver = nil
         hosts = []
         browsing = false
     }
 
-    /// Resolves a discovered service to a concrete `(host, port)`. Returns nil
-    /// on `completion` if the host vanished or the connection never readied
-    /// (guarded by a 5s timeout so the UI can't hang on a stale entry).
+    /// Resolves a discovered service to its mDNS `(hostname, port)` — e.g.
+    /// `("Tonys-iPhone.local", 7654)`. Calls `failure` if the host vanished or
+    /// the resolve times out (5s) so the UI can't hang on a stale entry.
     func resolve(_ host: Host,
                  completion: @MainActor @escaping (_ host: String, _ port: UInt16) -> Void,
                  failure: @MainActor @escaping () -> Void) {
-        let conn = NWConnection(to: host.endpoint, using: .tcp)
-        var finished = false
-        let done: (String?, UInt16?) -> Void = { resolvedHost, resolvedPort in
-            guard !finished else { return }
-            finished = true
-            conn.cancel()
-            Task { @MainActor in
-                if let resolvedHost, let resolvedPort { completion(resolvedHost, resolvedPort) }
-                else { failure() }
-            }
-        }
-        conn.stateUpdateHandler = { state in
-            switch state {
-            case .ready:
-                if let endpoint = conn.currentPath?.remoteEndpoint,
-                   case let .hostPort(h, p) = endpoint {
-                    done(Self.ipString(h), p.rawValue)
-                } else {
-                    done(nil, nil)
-                }
-            case .failed, .cancelled:
-                done(nil, nil)
-            default:
-                break
-            }
-        }
-        conn.start(queue: .main)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { done(nil, nil) }
+        let service = NetService(domain: host.domain, type: host.type, name: host.name)
+        let resolver = Resolver(
+            onResolved: { hostName, port in Task { @MainActor in completion(hostName, port) } },
+            onFailed: { Task { @MainActor in failure() } }
+        )
+        service.delegate = resolver
+        activeService = service
+        activeResolver = resolver
+        service.schedule(in: .main, forMode: .common)
+        service.resolve(withTimeout: 5)
     }
 
-    /// Renders an `NWEndpoint.Host` as a string usable in a URL. Strips the
-    /// IPv6 zone suffix (`%en0`) which a `wss://` URL can't carry.
-    nonisolated private static func ipString(_ host: NWEndpoint.Host) -> String {
-        switch host {
-        case .ipv4(let a): return a.debugDescription
-        case .ipv6(let a): return a.debugDescription.split(separator: "%").first.map(String.init) ?? a.debugDescription
-        case .name(let n, _): return n
-        @unknown default: return ""
+    /// `NetService` delegate bridge. Hands back the resolved hostname (trailing
+    /// dot stripped so it's URL-usable) and port, or signals failure once.
+    private final class Resolver: NSObject, NetServiceDelegate {
+        private let onResolved: (String, UInt16) -> Void
+        private let onFailed: () -> Void
+        private var done = false
+
+        init(onResolved: @escaping (String, UInt16) -> Void, onFailed: @escaping () -> Void) {
+            self.onResolved = onResolved
+            self.onFailed = onFailed
+        }
+
+        func netServiceDidResolveAddress(_ sender: NetService) {
+            guard !done else { return }
+            done = true
+            guard let host = sender.hostName, sender.port > 0 else { onFailed(); return }
+            let clean = host.hasSuffix(".") ? String(host.dropLast()) : host
+            onResolved(clean, UInt16(sender.port))
+        }
+
+        func netService(_ sender: NetService, didNotResolve errorDict: [String: NSNumber]) {
+            guard !done else { return }
+            done = true
+            onFailed()
         }
     }
 }
