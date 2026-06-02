@@ -53,7 +53,6 @@ fun HostingChrome(joinUrl: String?, onStart: () -> Unit, onStop: (() -> Unit)? =
     val uri = remember(joinUrl) { runCatching { java.net.URI(joinUrl) }.getOrNull() }
     val host = uri?.host
     val code = host?.let { JoinCode.encode(it) }
-    val ipLine = host?.let { "$it:${uri.port.takeIf { p -> p > 0 } ?: JoinCode.DEFAULT_PORT}" } ?: joinUrl
 
     Column(
         Modifier.fillMaxWidth(),
@@ -93,7 +92,6 @@ fun HostingChrome(joinUrl: String?, onStart: () -> Unit, onStop: (() -> Unit)? =
                     }
                 }
             }
-            Text(ipLine, fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = Ub.Faint)
             Text(
                 "Browser guests scan the QR. App guests open \"Join a game\" and tap this host under \"Nearby hosts\" — or type the code.",
                 fontSize = 12.sp, color = Ub.Muted, textAlign = TextAlign.Center,
