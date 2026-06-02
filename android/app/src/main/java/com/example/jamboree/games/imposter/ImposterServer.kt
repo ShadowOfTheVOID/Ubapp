@@ -12,7 +12,7 @@ import org.json.JSONObject
 
 /** Wraps [HostServer] with Imposter-specific routing. */
 class ImposterServer(context: Context, val hostName: String = "Host") {
-    val engine = ImposterEngine()
+    var engine = ImposterEngine(); private set
     private val server = HostServer(html = HostServer.htmlAsset(context, "imposter_browser.html"), ctx = context)
     private val appCtx = context.applicationContext
     private val guestToPlayer = HashMap<GuestId, String>()
@@ -41,7 +41,17 @@ class ImposterServer(context: Context, val hostName: String = "Host") {
     /** In-process pipe for the host's own player screen. */
     fun makeLoopback(): LoopbackGuest = LoopbackGuest(server)
 
-    fun stop() = server.stopServer()
+    fun stop() { server.stopServer(); resetState() }
+
+    /** Clear all per-session state so the next time the host starts
+     *  hosting they get a fresh screen — empty lobby, tutorial vote
+     *  available again. */
+    private fun resetState() {
+        engine = ImposterEngine()
+        guestToPlayer.clear(); playerToGuest.clear()
+        statRecorded = false
+        emit()
+    }
     val guestCount: Int get() = server.guestCount
 
     fun hostSetOptions(o: ImposterOptions) {

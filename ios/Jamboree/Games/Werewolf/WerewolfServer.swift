@@ -3,7 +3,7 @@ import Foundation
 /// Wraps [HostServer] with Werewolf-specific routing. Mirrors
 /// lib/games/werewolf/werewolf_server.dart.
 final class WerewolfServer {
-    let engine = WerewolfEngine()
+    private(set) var engine = WerewolfEngine()
     static let hostId = "host"
     let hostName: String
 
@@ -35,7 +35,17 @@ final class WerewolfServer {
     /// In-process pipe for the host's own player view.
     @MainActor
     func makeLoopback() -> LoopbackGuest { LoopbackGuest(server: server) }
-    func stop() { server.stop() }
+    func stop() { server.stop(); resetState() }
+
+    /// Clear all per-session state so the next time the host starts
+    /// hosting they get a fresh screen — empty lobby, tutorial vote
+    /// available again.
+    private func resetState() {
+        engine = WerewolfEngine()
+        guestToPlayer.removeAll(); playerToGuest.removeAll()
+        statRecorded = false
+        emit()
+    }
     var guestCount: Int { server.guestCount }
 
     // MARK: Host-side actions

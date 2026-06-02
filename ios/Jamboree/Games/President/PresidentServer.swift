@@ -2,7 +2,7 @@ import Foundation
 
 /// Wraps [HostServer] with President (Scum/Asshole) routing.
 final class PresidentServer {
-    let engine = PresidentEngine()
+    private(set) var engine = PresidentEngine()
     static let hostId = "host"
     let hostName: String
 
@@ -38,7 +38,18 @@ final class PresidentServer {
 
     @MainActor
     func makeLoopback() -> LoopbackGuest { LoopbackGuest(server: server) }
-    func stop() { server.stop() }
+    func stop() { server.stop(); resetState() }
+
+    /// Clear all per-session state so the next time the host starts
+    /// hosting they get a fresh screen — empty lobby, tutorial vote
+    /// available again.
+    private func resetState() {
+        engine = PresidentEngine()
+        guestToPlayer.removeAll(); playerToGuest.removeAll()
+        series.reset(); seriesRecorded = false
+        statRecorded = false
+        emit()
+    }
     var guestCount: Int { server.guestCount }
 
     func hostSetOptions(_ o: PresOptions) {

@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit
  * the structure of [com.example.jamboree.games.mafia.MafiaServer].
  */
 class BureaucratServer(context: Context, val hostName: String = "Host") {
-    val engine = BureaucratEngine()
+    var engine = BureaucratEngine(); private set
     private val server = HostServer(html = HostServer.htmlAsset(context, "bureaucrat_browser.html"), ctx = context)
     private val appCtx = context.applicationContext
     private val guestToPlayer = HashMap<GuestId, String>()
@@ -61,6 +61,18 @@ class BureaucratServer(context: Context, val hostName: String = "Host") {
         scheduler.shutdownNow()
         (detector as? OnnxContradictionDetector)?.close()
         server.stopServer()
+        resetState()
+    }
+
+    /** Clear all per-session state so the next time the host starts
+     *  hosting they get a fresh screen — empty lobby, tutorial vote
+     *  available again. */
+    private fun resetState() {
+        engine = BureaucratEngine()
+        guestToPlayer.clear(); playerToGuest.clear()
+        rebuttalDeadline = 0
+        statRecorded = false
+        emit()
     }
 
     val guestCount: Int get() = server.guestCount

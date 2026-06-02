@@ -4,7 +4,7 @@ import Foundation
 /// adapter — host is player id `host`, driven through an in-process
 /// loopback so it plays on the same `CheatGuestView` every guest sees.
 final class CheatServer {
-    let engine = CheatEngine()
+    private(set) var engine = CheatEngine()
     static let hostId = "host"
     let hostName: String
 
@@ -36,7 +36,17 @@ final class CheatServer {
 
     @MainActor
     func makeLoopback() -> LoopbackGuest { LoopbackGuest(server: server) }
-    func stop() { server.stop() }
+    func stop() { server.stop(); resetState() }
+
+    /// Clear all per-session state so the next time the host starts
+    /// hosting they get a fresh screen — empty lobby, tutorial vote
+    /// available again.
+    private func resetState() {
+        engine = CheatEngine()
+        guestToPlayer.removeAll(); playerToGuest.removeAll()
+        statRecorded = false
+        emit()
+    }
     var guestCount: Int { server.guestCount }
 
     // MARK: Host actions
