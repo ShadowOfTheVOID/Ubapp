@@ -76,7 +76,7 @@ struct JoinFlowView: View {
                     .padding(16)
                     .ubCard(radius: JamboreeRadius.button)
 
-                Text("Or paste the IP shown under the host's QR.")
+                Text("Pick the host above, or type the code from its screen.")
                     .font(.system(size: 12)).foregroundStyle(JamboreeTheme.muted)
                     .padding(.top, 8)
 
@@ -166,7 +166,7 @@ struct JoinFlowView: View {
     private func tryConnect() {
         let trimmed = rawCode.trimmingCharacters(in: .whitespaces)
         guard let ip = JoinCode.decode(trimmed) else {
-            status = "Couldn't read that — enter the 7-character code or the IP."
+            status = "Couldn't read that — check the 7-character code."
             return
         }
         openConnection(host: ip, port: JoinCode.defaultPort, display: trimmed)
