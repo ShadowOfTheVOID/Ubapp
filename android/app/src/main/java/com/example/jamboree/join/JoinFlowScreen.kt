@@ -224,7 +224,7 @@ fun JoinFlowScreen() {
                 )
             }
             Spacer(Modifier.height(8.dp))
-            Text("Or paste the IP shown under the host's QR.", fontSize = 12.sp, color = Ub.Muted)
+            Text("Pick the host above, or type the code from its screen.", fontSize = 12.sp, color = Ub.Muted)
             if (status.isNotEmpty()) {
                 Spacer(Modifier.height(12.dp))
                 Text(status, color = Ub.Accent, fontSize = 13.sp)
@@ -236,7 +236,7 @@ fun JoinFlowScreen() {
                 onClick = {
                     val ip = JoinCode.decode(rawCode.trim())
                     if (ip == null) {
-                        status = "Couldn't read that — enter the 7-character code or the IP."
+                        status = "Couldn't read that — check the 7-character code."
                         return@Button
                     }
                     connectTo(ip, JoinCode.DEFAULT_PORT)
