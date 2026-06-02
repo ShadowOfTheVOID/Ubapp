@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Legacy Auto Backup rules for Android 11 and below (fullBackupContent).
+     Backup is disabled via android:allowBackup="false"; this excludes the
+     app's private stores as defense in depth in case backup is ever
+     re-enabled. -->
+<full-backup-content>
+    <exclude domain="sharedpref" />
+    <exclude domain="file" />
+    <exclude domain="database" />
+    <exclude domain="external" />
+</full-backup-content>
