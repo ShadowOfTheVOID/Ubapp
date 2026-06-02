@@ -35,9 +35,19 @@ struct HostingChrome: View {
     }
 
     private func qrCard(url: URL) -> some View {
+        // App code stays derived from the IP (the reliable fallback path), but
+        // the QR encodes the host's .local name so a browser guest's address
+        // bar shows a name instead of a numeric IP. Falls back to the IP URL if
+        // no hostname is available or the host isn't a numeric IP.
         let code = url.host.flatMap { JoinCode.encode(ip: $0) }
+        let qrString: String = {
+            guard let name = HostServer.localHostName, url.host != nil else { return url.absoluteString }
+            let scheme = url.scheme ?? "https"
+            let port = url.port ?? Int(JoinCode.defaultPort)
+            return "\(scheme)://\(name):\(port)/"
+        }()
         return VStack(spacing: 14) {
-            QRCodeView(string: url.absoluteString, size: 210)
+            QRCodeView(string: qrString, size: 210)
 
             if let code {
                 HStack(spacing: 10) {
