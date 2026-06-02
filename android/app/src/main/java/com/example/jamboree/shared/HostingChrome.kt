@@ -95,7 +95,7 @@ fun HostingChrome(joinUrl: String?, onStart: () -> Unit, onStop: (() -> Unit)? =
             }
             Text(ipLine, fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = Ub.Faint)
             Text(
-                "Browser guests scan the QR. App guests open \"Join a game\" and type the code.",
+                "Browser guests scan the QR. App guests open \"Join a game\" and tap this host under \"Nearby hosts\" — or type the code.",
                 fontSize = 12.sp, color = Ub.Muted, textAlign = TextAlign.Center,
             )
         }

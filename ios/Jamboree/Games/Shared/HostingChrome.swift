@@ -62,7 +62,7 @@ struct HostingChrome: View {
             MonoValue(text: url.host.map { "\($0):\(url.port ?? Int(JoinCode.defaultPort))" } ?? url.absoluteString,
                       size: 11, weight: .regular, color: JamboreeTheme.faint)
 
-            Text("Browser guests scan the QR. App guests open “Join a game” and type the code.")
+            Text("Browser guests scan the QR. App guests open “Join a game” and tap this host under “Nearby hosts” — or type the code.")
                 .font(.system(size: 12))
                 .foregroundStyle(JamboreeTheme.muted)
                 .multilineTextAlignment(.center)
