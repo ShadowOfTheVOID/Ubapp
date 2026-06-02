@@ -27,6 +27,18 @@ final class HostServer {
     /// `BonjourBrowser`. Keep in sync with the Android `HostServer.SERVICE_TYPE`.
     static let bonjourType = "_jamboree._tcp"
 
+    /// The device's mDNS hostname (e.g. "Tonys-iPhone.local"), resolvable by
+    /// browsers on the same LAN. Used to build a QR URL that shows a name
+    /// rather than a numeric IP in a browser guest's address bar. nil when the
+    /// OS reports nothing usable (e.g. "localhost"), in which case callers fall
+    /// back to the numeric IP.
+    static var localHostName: String? {
+        let raw = ProcessInfo.processInfo.hostName
+        guard !raw.isEmpty, raw.lowercased() != "localhost" else { return nil }
+        let trimmed = raw.hasSuffix(".") ? String(raw.dropLast()) : raw
+        return trimmed.contains(".") ? trimmed : trimmed + ".local"
+    }
+
     let port: NWEndpoint.Port
     var html: String
 
