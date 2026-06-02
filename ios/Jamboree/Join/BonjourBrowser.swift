@@ -95,7 +95,7 @@ final class BonjourBrowser: ObservableObject {
 
     /// Renders an `NWEndpoint.Host` as a string usable in a URL. Strips the
     /// IPv6 zone suffix (`%en0`) which a `wss://` URL can't carry.
-    private static func ipString(_ host: NWEndpoint.Host) -> String {
+    nonisolated private static func ipString(_ host: NWEndpoint.Host) -> String {
         switch host {
         case .ipv4(let a): return a.debugDescription
         case .ipv6(let a): return a.debugDescription.split(separator: "%").first.map(String.init) ?? a.debugDescription
