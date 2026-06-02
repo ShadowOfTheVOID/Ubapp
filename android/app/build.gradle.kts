@@ -19,7 +19,12 @@ android {
         versionName = "1.0"
     }
 
-    buildFeatures { compose = true }
+    // buildConfig exposes BuildConfig.DEBUG so ad units can switch to Google's
+    // test units in debug builds.
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -29,7 +34,16 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // Shrink, obfuscate, and strip unused resources for the Play
+            // release. Keep rules for the reflective/JNI libraries live in
+            // proguard-rules.pro. Most AndroidX/GMS/OkHttp libs ship their own
+            // consumer rules, so this is mostly additive.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }

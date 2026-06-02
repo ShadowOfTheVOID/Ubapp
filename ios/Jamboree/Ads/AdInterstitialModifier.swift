@@ -42,7 +42,12 @@ private struct AdInterstitialModifier: ViewModifier {
 
 @MainActor
 private final class InterstitialLoader: NSObject, ObservableObject, @preconcurrency GADFullScreenContentDelegate {
+    #if DEBUG
+    // Google's sample interstitial unit — debug/QA must never load live ads.
+    private static let adUnitID = "ca-app-pub-3940256099942544/4411468910"
+    #else
     private static let adUnitID = "ca-app-pub-8315138960777125/4386164266"
+    #endif
 
     private var ad: GADInterstitialAd?
     private var onDismiss: (() -> Void)?

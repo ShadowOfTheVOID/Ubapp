@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.jamboree.theme.Ub
 import com.example.jamboree.theme.UbPrimaryButton
+import com.example.jamboree.BuildConfig
 import com.google.android.gms.ads.AdError
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.FullScreenContentCallback
@@ -22,7 +23,11 @@ import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 import kotlinx.coroutines.delay
 
-private const val INTERSTITIAL_UNIT_ID = "ca-app-pub-8315138960777125/7174463769"
+// Debug builds use Google's sample interstitial unit so development/QA never
+// request live ads (an AdMob policy violation). Release uses the real unit.
+private val INTERSTITIAL_UNIT_ID =
+    if (BuildConfig.DEBUG) "ca-app-pub-3940256099942544/1033173712"
+    else "ca-app-pub-8315138960777125/7174463769"
 
 /**
  * Preloads and presents a real AdMob interstitial when [show] goes true.
