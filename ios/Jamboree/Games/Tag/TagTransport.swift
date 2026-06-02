@@ -41,11 +41,24 @@ final class HostTagTransport: TagTransport {
                 if case let .hello(peerId, displayName) = msg {
                     self.guestToPeer[g] = peerId
                     self.peerDisplayNames[peerId] = displayName
+                    self.onInbound?(msg)
+                    return  // hello is not relayed to other peers
+                }
+                // The host is the authoritative relay. A connected peer may
+                // only report actions it performs itself, and may not forge
+                // round-control messages (start/end) or host-authoritative
+                // state. Reject anything else here so a spoofed event is
+                // neither applied on the host nor echoed to other peers —
+                // otherwise any peer could tag/unfreeze on behalf of another
+                // player or end the round with an arbitrary winner.
+                guard Self.isAuthentic(msg, from: self.guestToPeer[g]) else {
+                    HostDiagnostics.shared.log("tag: dropped unauthenticated message from \(g.value)")
+                    return
                 }
                 self.onInbound?(msg)
-                // Echo non-hello traffic back so other peers see it. Host's
-                // own TagSession already applied any state change locally.
-                if case .hello = msg { /* don't echo hello */ } else { self.server.broadcast(raw) }
+                // Echo to other peers. Host's own TagSession already applied
+                // any state change locally.
+                self.server.broadcast(raw)
                 return
             }
             // Not a TagMessage — the browser-tier "Join a game" handshake.
@@ -69,6 +82,21 @@ final class HostTagTransport: TagTransport {
                let s = String(data: d, encoding: .utf8) {
                 self.server.send(to: g, s)
             }
+        }
+    }
+
+    /// Whether a peer-originated message is allowed from `sender` (the peerId
+    /// bound to that connection at `hello`/join). `tag`/`unfreeze`/
+    /// `tutorial_vote` are only honored when the actor id matches the sender;
+    /// `start`/`end`/`tutorial_state` are host-authoritative and never
+    /// accepted from a peer. `hello` is handled before this check.
+    static func isAuthentic(_ msg: TagMessage, from sender: String?) -> Bool {
+        switch msg {
+        case let .tag(taggerId, _, _):        return sender != nil && taggerId == sender
+        case let .unfreeze(unfreezerId, _, _): return sender != nil && unfreezerId == sender
+        case let .tutorialVote(voterId, _):   return sender != nil && voterId == sender
+        case .tutorialCall:                    return true
+        case .start, .end, .tutorialState, .hello: return false
         }
     }
 

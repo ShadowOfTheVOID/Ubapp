@@ -24,6 +24,18 @@
 	<string>1</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<!-- Social games connect to a host phone on the local network at a
+		     dynamic LAN IP, over WSS with a bundled self-signed cert (pinned in
+		     GuestClient) plus a plaintext WS/HTTP fallback. Local networking is
+		     exempt from ATS; no arbitrary-loads exception for the public
+		     internet is granted. -->
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-8315138960777125~1550601994</string>
 	<key>NSUserTrackingUsageDescription</key>

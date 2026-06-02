@@ -34,6 +34,20 @@ class HostTagTransport(private val server: HostServer) : TagTransport {
 
     fun displayName(peerId: String): String = peerDisplayNames[peerId] ?: peerId
 
+    /** Whether a peer-originated message is allowed from [sender] (the peerId
+     *  bound to that connection at `hello`/join). `Tag`/`Unfreeze`/
+     *  `TutorialVote` are only honored when the actor id matches the sender;
+     *  `Start`/`End`/`TutorialState` are host-authoritative and never accepted
+     *  from a peer. `Hello` is handled before this check. */
+    private fun isAuthentic(msg: TagMessage, sender: String?): Boolean = when (msg) {
+        is TagMessage.Tag -> sender != null && msg.taggerId == sender
+        is TagMessage.Unfreeze -> sender != null && msg.unfreezerId == sender
+        is TagMessage.TutorialVote -> sender != null && msg.voterId == sender
+        is TagMessage.TutorialCall -> true
+        is TagMessage.Start, is TagMessage.End,
+        is TagMessage.TutorialState, is TagMessage.Hello -> false
+    }
+
     init {
         server.onJoin = { g -> onPeerConnected?.invoke(g.value) }
         server.onLeave = { g ->
@@ -48,10 +62,18 @@ class HostTagTransport(private val server: HostServer) : TagTransport {
                 if (msg is TagMessage.Hello) {
                     guestToPeer[g] = msg.peerId
                     peerDisplayNames[msg.peerId] = msg.displayName
+                    onInbound?.invoke(msg)  // hello is not relayed to other peers
+                } else if (isAuthentic(msg, guestToPeer[g])) {
+                    onInbound?.invoke(msg)
+                    // Echo to other peers. The host's own TagSession already
+                    // applied any state change locally.
+                    server.broadcast(raw)
                 }
-                onInbound?.invoke(msg)
-                // Echo non-hello traffic back so other peers see it.
-                if (msg !is TagMessage.Hello) server.broadcast(raw)
+                // Else: a spoofed actor or a peer-forged round-control/state
+                // message. The host is the authoritative relay, so drop it
+                // here — it is neither applied on the host nor echoed, so no
+                // peer can tag/unfreeze on behalf of another player or end the
+                // round with an arbitrary winner.
             } else {
                 // Not a TagMessage — the browser-tier "Join a game"
                 // handshake. App peers join Tag by code: complete the

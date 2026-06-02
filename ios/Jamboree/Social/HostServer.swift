@@ -314,6 +314,17 @@ final class HostServer {
             if let data { buf.append(data) }
             self.dlog("readFrames \(id.value): rx \(data?.count ?? 0)B (buf \(buf.count)B) isComplete=\(isComplete)")
 
+            // Cap the reassembly buffer so a client that streams a frame
+            // declaring (or implying) a huge length can't grow this
+            // unboundedly. A single complete frame's header + payload fits
+            // well within this; anything larger is malformed/hostile.
+            if buf.count > Self.maxFramePayload + 16 {
+                self.dlog("readFrames \(id.value): buffer over cap (\(buf.count)B) → drop")
+                if self.withConnections({ $0.removeValue(forKey: id) }) != nil { self.onLeave?(id) }
+                conn.cancel()
+                return
+            }
+
             while buf.count >= 2 {
                 guard let (text, consumed) = self.parseFrame(buf) else {
                     self.dlog("readFrames \(id.value): partial/short frame, wait for more")
@@ -339,6 +350,11 @@ final class HostServer {
     /// Parses one WebSocket frame from the start of `data` (which must begin at index 0).
     /// Returns `(text?, bytesConsumed)`: text is nil for non-text frames (still consumed).
     /// Returns nil if the frame is incomplete.
+    /// Largest WebSocket payload the host will accept in one frame. Game
+    /// traffic is small JSON; anything larger is malformed or hostile and is
+    /// dropped (the connection is then torn down by `readFrames`).
+    static let maxFramePayload = 1 << 20  // 1 MiB
+
     private func parseFrame(_ data: Data) -> (String?, Int)? {
         guard data.count >= 2 else { return nil }
         let b0 = data[0], b1 = data[1]
@@ -356,6 +372,15 @@ final class HostServer {
             payloadLen = (0..<8).reduce(0) { $0 << 8 | Int(data[2 + $1]) }
             headerLen  = 10
         }
+
+        // A 64-bit length with the high bit set decodes to a negative Int
+        // (which would pass the `data.count >= totalLen` check below and then
+        // trap on the `payloadStart ..< totalLen` slice), and a large positive
+        // one would overflow the `totalLen` addition. Both are malformed
+        // frames from a hostile client; reject anything past a sane per-frame
+        // cap so a single crafted frame can't crash the host. Game frames are
+        // small JSON well under this bound.
+        guard payloadLen >= 0, payloadLen <= Self.maxFramePayload else { return nil }
 
         let maskLen  = masked ? 4 : 0
         let totalLen = headerLen + maskLen + payloadLen

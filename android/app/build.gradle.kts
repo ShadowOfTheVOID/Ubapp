@@ -9,7 +9,10 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.jamboree"
+        // Play Store rejects the reserved com.example.* prefix. Matches the
+        // iOS bundle id (org.diydesk.jamboree). The Kotlin/namespace package
+        // above is internal only and need not match the published id.
+        applicationId = "org.diydesk.jamboree"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
