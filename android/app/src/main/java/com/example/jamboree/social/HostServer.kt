@@ -251,7 +251,18 @@ class HostServer(
 
     private inner class GuestSocket(val id: GuestId, handshake: IHTTPSession) : WebSocket(handshake) {
         override fun onOpen() {
-            synchronized(sockets) { sockets[id] = this }
+            // Cap concurrent connections so a single client can't open an
+            // unbounded number of sockets (each of which would add a lobby
+            // player and trigger an O(N²) roster fan-out).
+            val full = synchronized(sockets) {
+                if (sockets.size >= MAX_CONNECTIONS) true
+                else { sockets[id] = this; false }
+            }
+            if (full) {
+                dlog("${id.value} rejected — connection cap ($MAX_CONNECTIONS) reached")
+                runCatching { close(WebSocketFrame.CloseCode.PolicyViolation, "server full", false) }
+                return
+            }
             dlog("${id.value} onOpen → joined")
             onJoin?.invoke(id)
         }
@@ -263,7 +274,13 @@ class HostServer(
         override fun onMessage(message: WebSocketFrame) {
             val text = message.textPayload
             dlog("${id.value} rx ${text.length}B → ${text.take(80)}")
-            onMessage?.invoke(id, text)
+            // Guard the game handler: a malformed/incomplete frame can make a
+            // server's JSON field getter (getString/getBoolean/getInt/…) throw
+            // on this NanoWSD worker thread. Swallow it so one bad frame can't
+            // tear down the socket or crash the thread — the iOS servers
+            // already ignore such frames via optional casts.
+            runCatching { onMessage?.invoke(id, text) }
+                .onFailure { dlog("${id.value} onMessage handler threw: $it — frame dropped") }
         }
         override fun onPong(pong: WebSocketFrame?) {}
         override fun onException(exception: java.io.IOException?) {
@@ -277,6 +294,10 @@ class HostServer(
         /** Bonjour service type guests browse for to find hosts by name
          *  instead of IP. Keep in sync with the iOS `HostServer.bonjourType`. */
         const val SERVICE_TYPE = "_jamboree._tcp."
+
+        /** Max concurrent guest connections. Same-room games are small; this
+         *  is a generous ceiling that caps connection-flood amplification. */
+        const val MAX_CONNECTIONS = 32
 
         const val defaultHtml = """
         <!doctype html>

@@ -96,7 +96,7 @@ class SecretHitlerServer(context: Context, val hostName: String = "Host") {
             "ack_investigation" -> guestToPlayer[guest]?.let { applyAcknowledgeInvestigation(it) }
             "special_election" -> guestToPlayer[guest]?.let { applySpecialElection(it, j.getString("targetId")) }
             "execute" -> guestToPlayer[guest]?.let { applyExecute(it, j.getString("targetId")) }
-            "call_tutorial_vote" -> openTutorialVote()
+            "call_tutorial_vote" -> guestToPlayer[guest]?.let { openTutorialVote() }
             "tutorial_vote" -> guestToPlayer[guest]?.let { submitTutorialVote(it, j.getBoolean("yes")) }
         }
     }
@@ -116,7 +116,7 @@ class SecretHitlerServer(context: Context, val hostName: String = "Host") {
             send(guest, JSONObject().put("type", "error").put("message", "Game already started"))
             return
         }
-        val name = j.optString("name").trim()
+        val name = j.optString("name").trim().take(24)
         if (name.isEmpty()) return
         val pid = "g${guestToPlayer.size + 1}"
         engine.addPlayer(pid, name)

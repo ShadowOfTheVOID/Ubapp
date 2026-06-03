@@ -111,7 +111,7 @@ final class CodenamesServer {
             }
         case "clue":
             if let pid, let c = j["clue"] as? String, let n = j["number"] as? Int {
-                engine.submitClue(spymasterId: pid, clue: c, number: n)
+                engine.submitClue(spymasterId: pid, clue: String(c.prefix(24)), number: n)
                 broadcastState(); emit()
             }
         case "guess":
@@ -124,7 +124,7 @@ final class CodenamesServer {
         case "set_options":
             // Only the host may mutate options.
             break
-        case "call_tutorial_vote": openTutorialVote()
+        case "call_tutorial_vote": if pid != nil { openTutorialVote() }
         case "tutorial_vote":
             if let pid, let yes = j["yes"] as? Bool { submitTutorialVote(voterId: pid, yes: yes) }
         default: break
@@ -150,7 +150,7 @@ final class CodenamesServer {
             send(guest, ["type": "error", "message": "Game already in progress"])
             return
         }
-        let name = (json["name"] as? String)?.trimmingCharacters(in: .whitespaces) ?? ""
+        let name = String(((json["name"] as? String) ?? "").trimmingCharacters(in: .whitespaces).prefix(24))
         guard !name.isEmpty else { return }
         let pid = "g\(guestToPlayer.count + 1)"
         engine.addPlayer(id: pid, name: name)

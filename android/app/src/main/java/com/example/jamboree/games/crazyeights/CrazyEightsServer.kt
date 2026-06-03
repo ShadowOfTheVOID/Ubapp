@@ -85,7 +85,7 @@ class CrazyEightsServer(context: Context, val hostName: String = "Host") {
             "pass" -> pid?.let { engine.passAfterDraw(it); broadcastState(); emit() }
             // Only the host may mutate options.
             "set_options" -> Unit
-            "call_tutorial_vote" -> openTutorialVote()
+            "call_tutorial_vote" -> guestToPlayer[guest]?.let { openTutorialVote() }
             "tutorial_vote" -> pid?.let { submitTutorialVote(it, j.getBoolean("yes")) }
         }
     }
@@ -104,7 +104,7 @@ class CrazyEightsServer(context: Context, val hostName: String = "Host") {
         if (engine.phase != CrazyEightsPhase.LOBBY) {
             send(guest, JSONObject().put("type", "error").put("message", "Game already in progress")); return
         }
-        val name = j.optString("name").trim(); if (name.isEmpty()) return
+        val name = j.optString("name").trim().take(24); if (name.isEmpty()) return
         val pid = "g${guestToPlayer.size + 1}"
         engine.addPlayer(pid, name)
         guestToPlayer[guest] = pid; playerToGuest[pid] = guest

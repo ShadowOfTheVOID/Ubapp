@@ -86,12 +86,12 @@ final class BureaucratServer {
         switch type {
         case "join": handleJoin(guest, json: j)
         case "denial":
-            if let pid, let t = j["text"] as? String { applyDenial(playerId: pid, text: t) }
+            if let pid, let t = j["text"] as? String { applyDenial(playerId: pid, text: String(t.prefix(280))) }
         case "call_loophole":
             if let pid { applyLoophole(citizenId: pid) }
         case "rebuttal":
-            if let pid, let t = j["text"] as? String { applyRebuttal(playerId: pid, text: t) }
-        case "call_tutorial_vote": openTutorialVote()
+            if let pid, let t = j["text"] as? String { applyRebuttal(playerId: pid, text: String(t.prefix(280))) }
+        case "call_tutorial_vote": if pid != nil { openTutorialVote() }
         case "tutorial_vote":
             if let pid, let yes = j["yes"] as? Bool { submitTutorialVote(voterId: pid, yes: yes) }
         default: break
@@ -112,7 +112,7 @@ final class BureaucratServer {
         if engine.phase != .lobby {
             send(guest, ["type": "error", "message": "Game already started"]); return
         }
-        let name = (json["name"] as? String)?.trimmingCharacters(in: .whitespaces) ?? ""
+        let name = String(((json["name"] as? String) ?? "").trimmingCharacters(in: .whitespaces).prefix(24))
         guard !name.isEmpty else { return }
         let pid = "g\(guestToPlayer.count + 1)"
         engine.addPlayer(id: pid, name: name)

@@ -287,6 +287,13 @@ final class HostServer {
             dlog("upgrade: missing/invalid Sec-WebSocket-Key → cancel")
             conn.cancel(); return
         }
+        // Cap concurrent connections so a single client can't open an
+        // unbounded number of sockets (each adds a lobby player and triggers
+        // an O(N²) roster fan-out).
+        if withConnections({ $0.count }) >= Self.maxConnections {
+            dlog("upgrade: connection cap (\(Self.maxConnections)) reached → reject")
+            conn.cancel(); return
+        }
         let response = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: \(accept)\r\n\r\n"
         conn.send(content: response.data(using: .utf8), completion: .contentProcessed { [weak self] error in
             guard let self else { return }
@@ -354,6 +361,11 @@ final class HostServer {
     /// traffic is small JSON; anything larger is malformed or hostile and is
     /// dropped (the connection is then torn down by `readFrames`).
     static let maxFramePayload = 1 << 20  // 1 MiB
+
+    /// Max concurrent guest connections. Same-room games are small; this is a
+    /// generous ceiling that caps connection-flood amplification. Keep in sync
+    /// with the Android `HostServer.MAX_CONNECTIONS`.
+    static let maxConnections = 32
 
     private func parseFrame(_ data: Data) -> (String?, Int)? {
         guard data.count >= 2 else { return nil }

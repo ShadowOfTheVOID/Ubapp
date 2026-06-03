@@ -14,13 +14,19 @@ final class TagPlayerView {
 final class TagState {
     let variant: TagVariant
     var players: [String: TagPlayerView]
+    /// Player ids in their original `start` order. A Swift `Dictionary` is
+    /// unordered, so any winner/"first survivor" selection must go through
+    /// this list — otherwise iOS (hash order) and Android (insertion order)
+    /// would pick different ids for the same event.
+    let order: [String]
     let startedAtMs: Int64
     let deadlineMs: Int64
     var endReason: String?
     var winnerId: String?
 
-    init(variant: TagVariant, players: [String: TagPlayerView], startedAtMs: Int64, deadlineMs: Int64) {
-        self.variant = variant; self.players = players
+    init(variant: TagVariant, players: [String: TagPlayerView], order: [String],
+         startedAtMs: Int64, deadlineMs: Int64) {
+        self.variant = variant; self.players = players; self.order = order
         self.startedAtMs = startedAtMs; self.deadlineMs = deadlineMs
     }
 
@@ -29,6 +35,8 @@ final class TagState {
     var runners: [TagPlayerView] { players.values.filter { $0.status == .runner } }
     var frozen: [TagPlayerView] { players.values.filter { $0.status == .frozen } }
     var alive: [TagPlayerView] { players.values.filter { $0.status != .eliminated } }
+    /// Survivors in deterministic `start` order — use this for winner picks.
+    var aliveInOrder: [TagPlayerView] { order.compactMap { players[$0] }.filter { $0.status != .eliminated } }
 }
 
 /// Deterministic state machine — given the same `start` + ordered events,
@@ -53,7 +61,7 @@ final class TagEngine {
         let baseSec: TimeInterval = variant == .hotPotato ? 10 * 60 : variant.duration
         let secs = TimeInterval(durationOverrideSec ?? Int(baseSec))
         let durationMs = Int64(secs * 1000)
-        let s = TagState(variant: variant, players: players,
+        let s = TagState(variant: variant, players: players, order: peerIds,
                          startedAtMs: startTimeMs, deadlineMs: startTimeMs + durationMs)
         state = s
         return s
@@ -98,6 +106,6 @@ final class TagEngine {
         guard let s = state, !s.isOver, s.variant == .hotPotato,
               let me = s.players[selfId], me.status == .it else { return nil }
         me.status = .eliminated
-        return ("hot_potato_timeout", s.alive.first?.id)
+        return ("hot_potato_timeout", s.aliveInOrder.first?.id)
     }
 }

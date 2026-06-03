@@ -7,6 +7,10 @@ class TagPlayerView(val id: String, val displayName: String, var status: PlayerS
 class TagState(
     val variant: TagVariant,
     val players: MutableMap<String, TagPlayerView>,
+    /** Player ids in their original `start` order. Winner/"first survivor"
+     *  picks must go through this list so they match iOS, where the backing
+     *  map is unordered. */
+    val order: List<String>,
     val startedAtMs: Long,
     val deadlineMs: Long,
 ) {
@@ -17,6 +21,8 @@ class TagState(
     val runners get() = players.values.filter { it.status == PlayerStatus.RUNNER }
     val frozen get() = players.values.filter { it.status == PlayerStatus.FROZEN }
     val alive get() = players.values.filter { it.status != PlayerStatus.ELIMINATED }
+    /** Survivors in deterministic `start` order — use this for winner picks. */
+    val aliveInOrder get() = order.mapNotNull { players[it] }.filter { it.status != PlayerStatus.ELIMINATED }
 }
 
 /**
@@ -41,7 +47,7 @@ class TagEngine(val selfId: String) {
         }
         val baseMs = if (variant == TagVariant.HOT_POTATO) 10 * 60_000L else variant.durationMs
         val duration = durationOverrideSec?.let { it * 1000L } ?: baseMs
-        val s = TagState(variant, players, startTimeMs, startTimeMs + duration)
+        val s = TagState(variant, players, peerIds, startTimeMs, startTimeMs + duration)
         state = s
         return s
     }
@@ -90,6 +96,6 @@ class TagEngine(val selfId: String) {
         val me = s.players[selfId] ?: return null
         if (me.status != PlayerStatus.IT) return null
         me.status = PlayerStatus.ELIMINATED
-        return "hot_potato_timeout" to s.alive.firstOrNull()?.id
+        return "hot_potato_timeout" to s.aliveInOrder.firstOrNull()?.id
     }
 }
