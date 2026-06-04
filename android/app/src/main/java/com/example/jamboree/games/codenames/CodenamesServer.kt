@@ -82,14 +82,14 @@ class CodenamesServer(context: Context, val hostName: String = "Host") {
                 engine.setSpymaster(it, j.getBoolean("on")); broadcastLobby(); sendRolesToAll(); emit()
             }
             "clue" -> pid?.let {
-                engine.submitClue(it, j.getString("clue"), j.getInt("number"))
+                engine.submitClue(it, j.optString("clue").take(24), j.optInt("number"))
                 broadcastState(); emit()
             }
             "guess" -> pid?.let { engine.guess(it, j.getInt("index")); broadcastState(); emit() }
             "end_turn" -> pid?.let { engine.endTurn(it); broadcastState(); emit() }
             // Only the host may mutate options.
             "set_options" -> Unit
-            "call_tutorial_vote" -> openTutorialVote()
+            "call_tutorial_vote" -> guestToPlayer[guest]?.let { openTutorialVote() }
             "tutorial_vote" -> pid?.let { submitTutorialVote(it, j.getBoolean("yes")) }
         }
     }
@@ -108,8 +108,8 @@ class CodenamesServer(context: Context, val hostName: String = "Host") {
         if (engine.phase != CodenamesPhase.LOBBY) {
             send(guest, JSONObject().put("type", "error").put("message", "Game already in progress")); return
         }
-        val name = j.optString("name").trim(); if (name.isEmpty()) return
-        val pid = "g${guestToPlayer.size + 1}"
+        val name = j.optString("name").trim().take(24); if (name.isEmpty()) return
+        val pid = "p${guest.value}"
         engine.addPlayer(pid, name)
         guestToPlayer[guest] = pid; playerToGuest[pid] = guest
         send(guest, JSONObject().put("type", "welcome").put("yourId", pid).put("yourName", name).put("game", "codenames"))

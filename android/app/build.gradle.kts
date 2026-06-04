@@ -9,14 +9,22 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.jamboree"
+        // Play Store rejects the reserved com.example.* prefix. Matches the
+        // iOS bundle id (org.diydesk.jamboree). The Kotlin/namespace package
+        // above is internal only and need not match the published id.
+        applicationId = "org.diydesk.jamboree"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
     }
 
-    buildFeatures { compose = true }
+    // buildConfig exposes BuildConfig.DEBUG so ad units can switch to Google's
+    // test units in debug builds.
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -26,7 +34,16 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // Shrink, obfuscate, and strip unused resources for the Play
+            // release. Keep rules for the reflective/JNI libraries live in
+            // proguard-rules.pro. Most AndroidX/GMS/OkHttp libs ship their own
+            // consumer rules, so this is mostly additive.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }

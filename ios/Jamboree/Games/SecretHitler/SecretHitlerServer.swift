@@ -123,7 +123,7 @@ final class SecretHitlerServer {
             if let pid = guestToPlayer[guest], let t = j["targetId"] as? String {
                 applyExecute(playerId: pid, targetId: t)
             }
-        case "call_tutorial_vote": openTutorialVote()
+        case "call_tutorial_vote": if guestToPlayer[guest] != nil { openTutorialVote() }
         case "tutorial_vote":
             if let pid = guestToPlayer[guest], let yes = j["yes"] as? Bool {
                 submitTutorialVote(voterId: pid, yes: yes)
@@ -137,6 +137,19 @@ final class SecretHitlerServer {
         playerToGuest[pid] = nil
         engine.removePlayer(pid)
         engine.tutorialVote.removeVoter(pid)
+        // A mid-election disconnect would otherwise hang the vote forever:
+        // removePlayer is a no-op mid-game, so the departed player still counts
+        // toward the alive quorum but can never cast a ballot. Submit a default
+        // "no" for any alive player who is no longer connected and hasn't voted
+        // so the election can resolve. applyVote resolves + broadcasts once the
+        // quorum is met.
+        if engine.phase == .election {
+            for p in engine.alive where p.id != Self.hostId
+                && playerToGuest[p.id] == nil
+                && engine.electionVotes[p.id] == nil {
+                applyVote(voterId: p.id, ja: false)
+            }
+        }
         broadcastState()
         if engine.tutorialVote.isOpen || engine.tutorialVote.hasResult {
             broadcastTutorialState()
@@ -149,9 +162,9 @@ final class SecretHitlerServer {
             send(guest, ["type": "error", "message": "Game already started"])
             return
         }
-        let name = (json["name"] as? String)?.trimmingCharacters(in: .whitespaces) ?? ""
+        let name = String(((json["name"] as? String) ?? "").trimmingCharacters(in: .whitespaces).prefix(24))
         guard !name.isEmpty else { return }
-        let pid = "g\(guestToPlayer.count + 1)"
+        let pid = "p\(guest.value)"
         engine.addPlayer(id: pid, name: name)
         guestToPlayer[guest] = pid
         playerToGuest[pid] = guest

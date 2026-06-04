@@ -45,6 +45,9 @@ class HostServer(
     var onJoin: ((GuestId) -> Unit)? = null
     var onLeave: ((GuestId) -> Unit)? = null
     var onMessage: ((GuestId, String) -> Unit)? = null
+    /** Fired (on the main thread) when the server stops itself — e.g. the
+     *  background-grace teardown — so the owning screen can reset its UI. */
+    var onStopped: (() -> Unit)? = null
 
     var hostIp: String? = null; private set
 
@@ -94,6 +97,10 @@ class HostServer(
     /** Returns the URL guests should open. null if no usable IPv4 (Wi-Fi,
      *  tethered hotspot, USB tether, or cellular) is available. */
     fun startServer(): String? {
+        // Idempotent: a second start while already running would re-register
+        // the NSD service (leaking the previous registration) and the
+        // lifecycle callback, and re-bind the port. Return the existing URL.
+        if (running) return startedUrl
         appCtx?.let { com.example.jamboree.settings.AppSettings.diagnosticsEnabled(it) }
         if (sslFactory != null) makeSecure(sslFactory, null)
         start(SOCKET_READ_TIMEOUT, false)
@@ -103,8 +110,13 @@ class HostServer(
         registerNsd()
         val scheme = if (sslFactory != null) "https" else "http"
         dlog("startServer: tls=${sslFactory != null} ip=$hostIp")
-        return hostIp?.let { "$scheme://$it:$port/" }
+        startedUrl = hostIp?.let { "$scheme://$it:$port/" }
+        return startedUrl
     }
+
+    /** URL returned by the active [startServer], so a repeat call is a no-op
+     *  returning the same address. Cleared on [stopServer]. */
+    private var startedUrl: String? = null
 
     /** Advertises this host over Bonjour (`_jamboree._tcp`). The NSD daemon
      *  fills in the address; guests browse for it in [BonjourBrowser]. */
@@ -157,6 +169,11 @@ class HostServer(
         // idempotent, so a late onClose is a harmless no-op.
         kicked.forEach { onLeave?.invoke(it) }
         stop()
+        startedUrl = null
+        // Notify the owner (screen) so a self-initiated stop — e.g. the
+        // background-grace teardown — resets its hosting UI instead of leaving
+        // a live-looking lobby bound to nothing.
+        mainHandler.post { onStopped?.invoke() }
     }
 
     private fun observeAppLifecycle() {
@@ -251,25 +268,48 @@ class HostServer(
 
     private inner class GuestSocket(val id: GuestId, handshake: IHTTPSession) : WebSocket(handshake) {
         override fun onOpen() {
-            synchronized(sockets) { sockets[id] = this }
+            // Cap concurrent connections so a single client can't open an
+            // unbounded number of sockets (each of which would add a lobby
+            // player and trigger an O(N²) roster fan-out).
+            val full = synchronized(sockets) {
+                if (sockets.size >= MAX_CONNECTIONS) true
+                else { sockets[id] = this; false }
+            }
+            if (full) {
+                dlog("${id.value} rejected — connection cap ($MAX_CONNECTIONS) reached")
+                runCatching { close(WebSocketFrame.CloseCode.PolicyViolation, "server full", false) }
+                return
+            }
             dlog("${id.value} onOpen → joined")
-            onJoin?.invoke(id)
+            // Hop adapter callbacks to the main thread: NanoWSD drives these on
+            // per-connection worker threads, but the game adapters mutate their
+            // engine + maps (and Compose reads them) on the main thread. Running
+            // the handler on main serializes it with the host-action path and
+            // avoids a data race / off-main Compose state writes.
+            mainHandler.post { onJoin?.invoke(id) }
         }
         override fun onClose(code: WebSocketFrame.CloseCode?, reason: String?, initiatedByRemote: Boolean) {
             synchronized(sockets) { sockets.remove(id) }
             dlog("${id.value} onClose code=$code remote=$initiatedByRemote → leave")
-            onLeave?.invoke(id)
+            mainHandler.post { onLeave?.invoke(id) }
         }
         override fun onMessage(message: WebSocketFrame) {
             val text = message.textPayload
             dlog("${id.value} rx ${text.length}B → ${text.take(80)}")
-            onMessage?.invoke(id, text)
+            // Run the game handler on the main thread (see onOpen). The
+            // runCatching also guards against a malformed/incomplete frame whose
+            // JSON field getter throws, so one bad frame can't crash — matching
+            // the iOS servers' optional-cast behavior.
+            mainHandler.post {
+                runCatching { onMessage?.invoke(id, text) }
+                    .onFailure { dlog("${id.value} onMessage handler threw: $it — frame dropped") }
+            }
         }
         override fun onPong(pong: WebSocketFrame?) {}
         override fun onException(exception: java.io.IOException?) {
             synchronized(sockets) { sockets.remove(id) }
             dlog("${id.value} onException $exception → leave")
-            onLeave?.invoke(id)
+            mainHandler.post { onLeave?.invoke(id) }
         }
     }
 
@@ -277,6 +317,10 @@ class HostServer(
         /** Bonjour service type guests browse for to find hosts by name
          *  instead of IP. Keep in sync with the iOS `HostServer.bonjourType`. */
         const val SERVICE_TYPE = "_jamboree._tcp."
+
+        /** Max concurrent guest connections. Same-room games are small; this
+         *  is a generous ceiling that caps connection-flood amplification. */
+        const val MAX_CONNECTIONS = 32
 
         const val defaultHtml = """
         <!doctype html>

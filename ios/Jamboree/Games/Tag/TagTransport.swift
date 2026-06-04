@@ -41,11 +41,24 @@ final class HostTagTransport: TagTransport {
                 if case let .hello(peerId, displayName) = msg {
                     self.guestToPeer[g] = peerId
                     self.peerDisplayNames[peerId] = displayName
+                    self.onInbound?(msg)
+                    return  // hello is not relayed to other peers
+                }
+                // The host is the authoritative relay. A connected peer may
+                // only report actions it performs itself, and may not forge
+                // round-control messages (start/end) or host-authoritative
+                // state. Reject anything else here so a spoofed event is
+                // neither applied on the host nor echoed to other peers —
+                // otherwise any peer could tag/unfreeze on behalf of another
+                // player or end the round with an arbitrary winner.
+                guard Self.isAuthentic(msg, from: self.guestToPeer[g]) else {
+                    HostDiagnostics.shared.log("tag: dropped unauthenticated message from \(g.value)")
+                    return
                 }
                 self.onInbound?(msg)
-                // Echo non-hello traffic back so other peers see it. Host's
-                // own TagSession already applied any state change locally.
-                if case .hello = msg { /* don't echo hello */ } else { self.server.broadcast(raw) }
+                // Echo to other peers. Host's own TagSession already applied
+                // any state change locally.
+                self.server.broadcast(raw)
                 return
             }
             // Not a TagMessage — the browser-tier "Join a game" handshake.
@@ -72,79 +85,25 @@ final class HostTagTransport: TagTransport {
         }
     }
 
+    /// Whether a peer-originated message is allowed from `sender` (the peerId
+    /// bound to that connection at `hello`/join). `tag`/`unfreeze`/
+    /// `tutorial_vote` are only honored when the actor id matches the sender;
+    /// `start`/`end`/`tutorial_state` are host-authoritative and never
+    /// accepted from a peer. `hello` is handled before this check.
+    static func isAuthentic(_ msg: TagMessage, from sender: String?) -> Bool {
+        switch msg {
+        case let .tag(taggerId, _, _):        return sender != nil && taggerId == sender
+        case let .unfreeze(unfreezerId, _, _): return sender != nil && unfreezerId == sender
+        case let .tutorialVote(voterId, _):   return sender != nil && voterId == sender
+        case .tutorialCall:                    return true
+        case .start, .end, .tutorialState, .hello: return false
+        }
+    }
+
     func displayName(for peerId: String) -> String { peerDisplayNames[peerId] ?? peerId }
 
     func send(_ msg: TagMessage) { server.broadcast(msg.encode()) }
     func dispose() { server.stop() }
-}
-
-/// Peer-side: connects one WebSocket to the host. Outbound goes to the host,
-/// which fans out to all peers (including us).
-final class PeerTagTransport: NSObject, TagTransport, URLSessionWebSocketDelegate, URLSessionDelegate {
-    var onInbound: ((TagMessage) -> Void)?
-    var onPeerConnected: ((String) -> Void)?
-    var onPeerDisconnected: ((String) -> Void)?
-
-    private var task: URLSessionWebSocketTask?
-    private var session: URLSession?
-
-    /// Connects to wss://<host>:<port>/ws derived from the host URL.
-    init(serverUrl: URL) {
-        super.init()
-        var comps = URLComponents(url: serverUrl, resolvingAgainstBaseURL: false)!
-        comps.scheme = (comps.scheme == "https") ? "wss" : "ws"
-        comps.path = "/ws"
-        let session = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
-        self.session = session
-        let task = session.webSocketTask(with: comps.url!)
-        self.task = task
-        task.resume()
-        receive()
-    }
-
-    private func receive() {
-        task?.receive { [weak self] result in
-            guard let self else { return }
-            switch result {
-            case .success(.string(let s)):
-                if let m = try? TagMessage.decode(s) { self.onInbound?(m) }
-                self.receive()
-            case .success(.data(let d)):
-                if let s = String(data: d, encoding: .utf8),
-                   let m = try? TagMessage.decode(s) { self.onInbound?(m) }
-                self.receive()
-            case .success:
-                self.receive()
-            case .failure: break
-            }
-        }
-    }
-
-    func send(_ msg: TagMessage) {
-        task?.send(.string(msg.encode())) { _ in }
-    }
-
-    func dispose() {
-        task?.cancel(with: .goingAway, reason: nil)
-        task = nil
-        session?.invalidateAndCancel()
-    }
-
-    func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge,
-                    completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
-        guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
-              let serverTrust = challenge.protectionSpace.serverTrust,
-              let cert = HostServer.bundledCert,
-              SecTrustSetAnchorCertificates(serverTrust, [cert] as CFArray) == errSecSuccess else {
-            completionHandler(.performDefaultHandling, nil); return
-        }
-        SecTrustSetAnchorCertificatesOnly(serverTrust, true)
-        if SecTrustEvaluateWithError(serverTrust, nil) {
-            completionHandler(.useCredential, URLCredential(trust: serverTrust))
-        } else {
-            completionHandler(.cancelAuthenticationChallenge, nil)
-        }
-    }
 }
 
 /// App-peer transport that rides the browser-tier `GuestLink` socket the

@@ -75,7 +75,14 @@ final class TagSession {
                      durationOverrideSec: durationOverrideSec)
         let det = ProximityDetector { [weak self] peer in self?.onProximityTouch(peer) }
         self.detector = det
-        proximity.onEvent = { [weak self] e in self?.detector?.ingest(e) }
+        proximity.onEvent = { [weak self] e in
+            guard let self else { return }
+            // Only track peers that are actually in this round. Without this,
+            // a hostile BLE advertiser rotating peer ids under our service
+            // UUID could grow the detector's per-peer maps unboundedly.
+            guard self.engine.state?.players[e.peerId] != nil else { return }
+            self.detector?.ingest(e)
+        }
         proximity.start()
         emit()
         if variant == .hotPotato {

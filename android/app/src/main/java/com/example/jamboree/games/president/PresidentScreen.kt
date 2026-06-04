@@ -37,6 +37,7 @@ fun PresidentScreen() {
     var tick by remember { mutableIntStateOf(0) }
     DisposableEffect(Unit) {
         server.onStateChange = { tick++ }
+        server.onStopped = { joinUrl = null }
         onDispose { server.stop() }
     }
     val e = server.engine

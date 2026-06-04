@@ -82,7 +82,7 @@ class BluffMarketServer(context: Context, val hostName: String = "Host") {
             }
             "finalize" -> if (engine.phase == BluffMarketPhase.SCORING) hostFinalize()
             "set_options" -> Unit
-            "call_tutorial_vote" -> openTutorialVote()
+            "call_tutorial_vote" -> guestToPlayer[guest]?.let { openTutorialVote() }
             "tutorial_vote" -> pid?.let { submitTutorialVote(it, j.getBoolean("yes")) }
         }
     }
@@ -110,8 +110,8 @@ class BluffMarketServer(context: Context, val hostName: String = "Host") {
         if (engine.phase != BluffMarketPhase.LOBBY) {
             send(guest, JSONObject().put("type", "error").put("message", "Game already in progress")); return
         }
-        val name = j.optString("name").trim(); if (name.isEmpty()) return
-        val pid = "g${guestToPlayer.size + 1}"
+        val name = j.optString("name").trim().take(24); if (name.isEmpty()) return
+        val pid = "p${guest.value}"
         engine.addPlayer(pid, name)
         guestToPlayer[guest] = pid; playerToGuest[pid] = guest
         send(guest, JSONObject().put("type", "welcome").put("yourId", pid).put("yourName", name).put("game", "bluff_market"))

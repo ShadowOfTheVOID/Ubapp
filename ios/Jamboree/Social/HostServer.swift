@@ -62,9 +62,21 @@ final class HostServer {
         return body(&connections)
     }
 
+    /// Delivers an adapter callback on the main thread. The listener queue
+    /// drives inbound frames, but the game adapters mutate their engine + maps
+    /// (and the view models read them) on the main thread, so callbacks fired
+    /// from the network must hop to main to avoid a data race. Calls already on
+    /// main run synchronously, preserving the loopback/host ordering.
+    private func onMain(_ block: @escaping () -> Void) {
+        if Thread.isMainThread { block() } else { DispatchQueue.main.async(execute: block) }
+    }
+
     var onJoin: ((GuestId) -> Void)?
     var onLeave: ((GuestId) -> Void)?
     var onMessage: ((GuestId, String) -> Void)?
+    /// Fired when the server stops itself (background-grace teardown), so the
+    /// owning view model can reset its hosting UI. Invoked on the main thread.
+    var onStopped: (() -> Void)?
 
     private(set) var hostIp: String?
     private(set) var boundPort: UInt16?
@@ -119,6 +131,10 @@ final class HostServer {
     /// Returns the URL guests should open. nil if no usable IPv4 (Wi-Fi,
     /// Personal Hotspot bridge, or cellular) is available.
     func start() throws -> URL? {
+        // Idempotent: a second start() while already bound would leak the
+        // previous NWListener and double-register lifecycle observers. Return
+        // the URL from the existing listener instead of re-binding port 7654.
+        if listener != nil { return startedURL }
         let tls = Self.tlsParameters()
         let listener = try NWListener(using: tls ?? NWParameters.tcp, on: port)
         listener.newConnectionHandler = { [weak self] conn in
@@ -136,8 +152,14 @@ final class HostServer {
 
         guard let ip = hostIp else { return nil }
         let scheme = tls != nil ? "https" : "http"
-        return URL(string: "\(scheme)://\(ip):\(port.rawValue)/")
+        let url = URL(string: "\(scheme)://\(ip):\(port.rawValue)/")
+        startedURL = url
+        return url
     }
+
+    /// URL returned by the active `start()`, so a repeat call is a no-op that
+    /// returns the same address. Cleared on `stop()`.
+    private var startedURL: URL?
 
     // MARK: - TLS
 
@@ -287,6 +309,13 @@ final class HostServer {
             dlog("upgrade: missing/invalid Sec-WebSocket-Key → cancel")
             conn.cancel(); return
         }
+        // Cap concurrent connections so a single client can't open an
+        // unbounded number of sockets (each adds a lobby player and triggers
+        // an O(N²) roster fan-out).
+        if withConnections({ $0.count }) >= Self.maxConnections {
+            dlog("upgrade: connection cap (\(Self.maxConnections)) reached → reject")
+            conn.cancel(); return
+        }
         let response = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: \(accept)\r\n\r\n"
         conn.send(content: response.data(using: .utf8), completion: .contentProcessed { [weak self] error in
             guard let self else { return }
@@ -295,7 +324,7 @@ final class HostServer {
             self.nextId += 1
             self.withConnections { $0[id] = conn }
             self.dlog("upgrade: 101 sent, \(id.value) joined")
-            self.onJoin?(id)
+            self.onMain { self.onJoin?(id) }
             self.readFrames(id: id, conn: conn, pending: Data())
         })
     }
@@ -307,12 +336,23 @@ final class HostServer {
             guard let self else { return }
             if let error {
                 self.dlog("readFrames \(id.value): rx error \(error) → leave")
-                if self.withConnections({ $0.removeValue(forKey: id) }) != nil { self.onLeave?(id) }
+                if self.withConnections({ $0.removeValue(forKey: id) }) != nil { self.onMain { self.onLeave?(id) } }
                 return
             }
             var buf = pending
             if let data { buf.append(data) }
             self.dlog("readFrames \(id.value): rx \(data?.count ?? 0)B (buf \(buf.count)B) isComplete=\(isComplete)")
+
+            // Cap the reassembly buffer so a client that streams a frame
+            // declaring (or implying) a huge length can't grow this
+            // unboundedly. A single complete frame's header + payload fits
+            // well within this; anything larger is malformed/hostile.
+            if buf.count > Self.maxFramePayload + 16 {
+                self.dlog("readFrames \(id.value): buffer over cap (\(buf.count)B) → drop")
+                if self.withConnections({ $0.removeValue(forKey: id) }) != nil { self.onMain { self.onLeave?(id) } }
+                conn.cancel()
+                return
+            }
 
             while buf.count >= 2 {
                 guard let (text, consumed) = self.parseFrame(buf) else {
@@ -322,14 +362,14 @@ final class HostServer {
                 buf = Data(buf.dropFirst(consumed))
                 if let text {
                     self.dlog("readFrames \(id.value): text \(text.count)B → \(text.prefix(80))")
-                    self.onMessage?(id, text)
+                    self.onMain { self.onMessage?(id, text) }
                 } else {
                     self.dlog("readFrames \(id.value): non-text frame consumed \(consumed)B")
                 }
             }
 
             if isComplete {
-                if self.withConnections({ $0.removeValue(forKey: id) }) != nil { self.onLeave?(id) }
+                if self.withConnections({ $0.removeValue(forKey: id) }) != nil { self.onMain { self.onLeave?(id) } }
             } else if self.withConnections({ $0[id] != nil }) {
                 self.readFrames(id: id, conn: conn, pending: buf)
             }
@@ -339,6 +379,16 @@ final class HostServer {
     /// Parses one WebSocket frame from the start of `data` (which must begin at index 0).
     /// Returns `(text?, bytesConsumed)`: text is nil for non-text frames (still consumed).
     /// Returns nil if the frame is incomplete.
+    /// Largest WebSocket payload the host will accept in one frame. Game
+    /// traffic is small JSON; anything larger is malformed or hostile and is
+    /// dropped (the connection is then torn down by `readFrames`).
+    static let maxFramePayload = 1 << 20  // 1 MiB
+
+    /// Max concurrent guest connections. Same-room games are small; this is a
+    /// generous ceiling that caps connection-flood amplification. Keep in sync
+    /// with the Android `HostServer.MAX_CONNECTIONS`.
+    static let maxConnections = 32
+
     private func parseFrame(_ data: Data) -> (String?, Int)? {
         guard data.count >= 2 else { return nil }
         let b0 = data[0], b1 = data[1]
@@ -356,6 +406,15 @@ final class HostServer {
             payloadLen = (0..<8).reduce(0) { $0 << 8 | Int(data[2 + $1]) }
             headerLen  = 10
         }
+
+        // A 64-bit length with the high bit set decodes to a negative Int
+        // (which would pass the `data.count >= totalLen` check below and then
+        // trap on the `payloadStart ..< totalLen` slice), and a large positive
+        // one would overflow the `totalLen` addition. Both are malformed
+        // frames from a hostile client; reject anything past a sane per-frame
+        // cap so a single crafted frame can't crash the host. Game frames are
+        // small JSON well under this bound.
+        guard payloadLen >= 0, payloadLen <= Self.maxFramePayload else { return nil }
 
         let maskLen  = masked ? 4 : 0
         let totalLen = headerLen + maskLen + payloadLen
@@ -471,6 +530,11 @@ final class HostServer {
         }
         listener?.cancel()
         listener = nil
+        startedURL = nil
+        // Notify the owner (view model) so a self-initiated stop — e.g. the
+        // background-grace teardown — resets its hosting UI instead of showing
+        // a live-looking lobby bound to nothing.
+        onStopped?()
     }
 
     static let defaultHtml = """

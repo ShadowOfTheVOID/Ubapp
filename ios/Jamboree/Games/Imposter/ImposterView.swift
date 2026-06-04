@@ -139,6 +139,7 @@ final class ImposterViewModel: ObservableObject {
 
     init() {
         server.onStateChange = { [weak self] in self?.refresh() }
+        server.onStopped = { [weak self] in self?.joinUrl = nil }
         availableCategories = server.engine.availableCategories.sorted()
     }
 

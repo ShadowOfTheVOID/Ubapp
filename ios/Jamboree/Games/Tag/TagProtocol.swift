@@ -86,40 +86,68 @@ enum TagMessage {
         return try decode(j)
     }
 
+    /// Thrown when a decoded field is missing or the wrong type. Kept as a
+    /// thrown error (never a force-unwrap) so a malformed frame from a peer is
+    /// caught by the `try?` at every call site instead of trapping and
+    /// crashing the host/peer — a malformed-input frame must not be a remote DoS.
+    private struct DecodeError: Error {}
+
     static func decode(_ j: [String: Any]) throws -> TagMessage {
-        guard let type = j["type"] as? String
-        else { throw NSError(domain: "TagMessage", code: 0) }
+        // Typed field accessors that throw (rather than force-unwrap) on a
+        // missing field or type mismatch. JSON numbers arrive as NSNumber.
+        func str(_ k: String) throws -> String {
+            guard let v = j[k] as? String else { throw DecodeError() }
+            return v
+        }
+        func bool(_ k: String) throws -> Bool {
+            guard let v = j[k] as? Bool else { throw DecodeError() }
+            return v
+        }
+        func int(_ k: String) throws -> Int {
+            guard let v = j[k] as? NSNumber else { throw DecodeError() }
+            return v.intValue
+        }
+        func int64(_ k: String) throws -> Int64 {
+            guard let v = j[k] as? NSNumber else { throw DecodeError() }
+            return v.int64Value
+        }
+        func strArray(_ k: String) throws -> [String] {
+            guard let v = j[k] as? [String] else { throw DecodeError() }
+            return v
+        }
+
+        guard let type = j["type"] as? String else { throw DecodeError() }
         switch type {
         case "hello":
-            return .hello(peerId: j["peerId"] as! String, displayName: j["displayName"] as! String)
+            return .hello(peerId: try str("peerId"), displayName: try str("displayName"))
         case "start":
             return .start(
-                variant: TagVariant(rawValue: j["variant"] as! String) ?? .classic,
-                startingItId: j["startingItId"] as! String,
-                startTimeMs: (j["startTimeMs"] as! NSNumber).int64Value,
-                peerIds: j["peerIds"] as! [String],
+                variant: TagVariant(rawValue: try str("variant")) ?? .classic,
+                startingItId: try str("startingItId"),
+                startTimeMs: try int64("startTimeMs"),
+                peerIds: try strArray("peerIds"),
                 peerNames: (j["peerNames"] as? [String: String]) ?? [:],
                 durationOverrideSec: (j["durationOverrideSec"] as? NSNumber)?.intValue)
         case "tag":
-            return .tag(taggerId: j["taggerId"] as! String, victimId: j["victimId"] as! String,
-                        timeMs: (j["timeMs"] as! NSNumber).int64Value)
+            return .tag(taggerId: try str("taggerId"), victimId: try str("victimId"),
+                        timeMs: try int64("timeMs"))
         case "unfreeze":
-            return .unfreeze(unfreezerId: j["unfreezerId"] as! String, victimId: j["victimId"] as! String,
-                             timeMs: (j["timeMs"] as! NSNumber).int64Value)
+            return .unfreeze(unfreezerId: try str("unfreezerId"), victimId: try str("victimId"),
+                             timeMs: try int64("timeMs"))
         case "end":
-            return .end(reason: j["reason"] as! String, winnerId: j["winnerId"] as? String)
+            return .end(reason: try str("reason"), winnerId: j["winnerId"] as? String)
         case "tutorial_call":
             return .tutorialCall
         case "tutorial_vote":
-            return .tutorialVote(voterId: j["voterId"] as! String, yes: j["yes"] as! Bool)
+            return .tutorialVote(voterId: try str("voterId"), yes: try bool("yes"))
         case "tutorial_state":
             return .tutorialState(
-                isOpen: j["isOpen"] as! Bool,
-                yesCount: j["yesCount"] as! Int, noCount: j["noCount"] as! Int,
-                eligibleCount: j["eligibleCount"] as! Int,
+                isOpen: try bool("isOpen"),
+                yesCount: try int("yesCount"), noCount: try int("noCount"),
+                eligibleCount: try int("eligibleCount"),
                 result: j["result"] as? Bool,
-                tutorialShown: j["tutorialShown"] as! Bool)
-        default: throw NSError(domain: "TagMessage", code: 1)
+                tutorialShown: try bool("tutorialShown"))
+        default: throw DecodeError()
         }
     }
 }

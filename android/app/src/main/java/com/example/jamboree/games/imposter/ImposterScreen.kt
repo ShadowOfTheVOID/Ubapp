@@ -45,6 +45,7 @@ fun ImposterScreen() {
     var selectedCategory by remember { mutableStateOf<String?>(null) }
     DisposableEffect(Unit) {
         server.onStateChange = { tick++ }
+        server.onStopped = { joinUrl = null }
         onDispose { server.stop() }
     }
     val e = server.engine

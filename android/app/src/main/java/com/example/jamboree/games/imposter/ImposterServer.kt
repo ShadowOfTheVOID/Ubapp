@@ -86,7 +86,7 @@ class ImposterServer(context: Context, val hostName: String = "Host") {
             // Only the host (which never connects over WebSocket) can mutate
             // options — ignore inbound `set_options` from guests.
             "set_options" -> Unit
-            "call_tutorial_vote" -> openTutorialVote()
+            "call_tutorial_vote" -> guestToPlayer[guest]?.let { openTutorialVote() }
             "tutorial_vote" -> guestToPlayer[guest]?.let { submitTutorialVote(it, j.getBoolean("yes")) }
         }
     }
@@ -106,9 +106,9 @@ class ImposterServer(context: Context, val hostName: String = "Host") {
             send(guest, JSONObject().put("type", "error").put("message", "Game already in progress"))
             return
         }
-        val name = j.optString("name").trim()
+        val name = j.optString("name").trim().take(24)
         if (name.isEmpty()) return
-        val pid = "g${guestToPlayer.size + 1}"
+        val pid = "p${guest.value}"
         engine.addPlayer(pid, name)
         guestToPlayer[guest] = pid; playerToGuest[pid] = guest
         send(guest, JSONObject().put("type", "welcome").put("yourId", pid).put("yourName", name).put("game", "imposter"))

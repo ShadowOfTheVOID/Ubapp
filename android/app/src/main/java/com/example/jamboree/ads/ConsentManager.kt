@@ -5,6 +5,7 @@ import com.google.android.gms.ads.MobileAds
 import com.google.android.ump.ConsentInformation
 import com.google.android.ump.ConsentRequestParameters
 import com.google.android.ump.UserMessagingPlatform
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Handles GDPR / CCPA consent via Google's User Messaging Platform.
@@ -20,6 +21,14 @@ import com.google.android.ump.UserMessagingPlatform
  */
 object ConsentManager {
 
+    /** Guards against starting the Ads SDK more than once — the fast-path and
+     *  the async callbacks below can each reach the init point. */
+    private val adsStarted = AtomicBoolean(false)
+
+    private fun startAdsOnce(activity: Activity) {
+        if (adsStarted.compareAndSet(false, true)) MobileAds.initialize(activity)
+    }
+
     fun initialize(activity: Activity) {
         val consentInfo = UserMessagingPlatform.getConsentInformation(activity)
         val params = ConsentRequestParameters.Builder()
@@ -28,7 +37,7 @@ object ConsentManager {
 
         // Fast-path: consent already on file from a previous session.
         if (consentInfo.canRequestAds()) {
-            MobileAds.initialize(activity)
+            startAdsOnce(activity)
         }
 
         consentInfo.requestConsentInfoUpdate(activity, params,
@@ -38,14 +47,14 @@ object ConsentManager {
                     // Form dismissed (with or without an error).
                     // Initialize ads now if we can — covers the first-launch path.
                     if (consentInfo.canRequestAds()) {
-                        MobileAds.initialize(activity)
+                        startAdsOnce(activity)
                     }
                 }
             },
             {
                 // Failed to fetch consent status (offline, etc.).
                 // Initialize anyway — safe outside GDPR/CCPA zones.
-                MobileAds.initialize(activity)
+                startAdsOnce(activity)
             }
         )
     }

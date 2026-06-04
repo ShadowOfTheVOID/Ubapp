@@ -543,4 +543,19 @@ class TagEngineTest {
         assertNotNull(e.state!!.endReason)
         assertEquals("it", e.state!!.winnerId)
     }
+
+    // With 4+ survivors the winner must be the first player in the
+    // deterministic start order, not a hash-order-dependent pick — otherwise
+    // iOS (unordered Dictionary) and Android would disagree on the winner.
+    @Test fun `hot potato timeout names first survivor in start order`() {
+        val e = TagEngine("a")
+        e.start(TagVariant.HOT_POTATO, "a", 0L,
+                listOf("a", "b", "c", "d"),
+                mapOf("a" to "A", "b" to "B", "c" to "C", "d" to "D"))
+        val end = e.hotPotatoTimeout()
+        assertNotNull(end)
+        assertEquals("hot_potato_timeout", end!!.first)
+        assertEquals("b", end.second)
+        assertEquals(PlayerStatus.ELIMINATED, e.state!!.players["a"]!!.status)
+    }
 }

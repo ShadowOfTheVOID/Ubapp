@@ -102,10 +102,10 @@ class BureaucratServer(context: Context, val hostName: String = "Host") {
         val pid = guestToPlayer[guest]
         when (j.optString("type")) {
             "join" -> handleJoin(guest, j)
-            "denial" -> pid?.let { applyDenial(it, j.optString("text")) }
+            "denial" -> pid?.let { applyDenial(it, j.optString("text").take(280)) }
             "call_loophole" -> pid?.let { applyLoophole(it) }
-            "rebuttal" -> pid?.let { applyRebuttal(it, j.optString("text")) }
-            "call_tutorial_vote" -> openTutorialVote()
+            "rebuttal" -> pid?.let { applyRebuttal(it, j.optString("text").take(280)) }
+            "call_tutorial_vote" -> guestToPlayer[guest]?.let { openTutorialVote() }
             "tutorial_vote" -> pid?.let { submitTutorialVote(it, j.getBoolean("yes")) }
         }
     }
@@ -125,9 +125,9 @@ class BureaucratServer(context: Context, val hostName: String = "Host") {
             send(guest, JSONObject().put("type", "error").put("message", "Game already started"))
             return
         }
-        val name = j.optString("name").trim()
+        val name = j.optString("name").trim().take(24)
         if (name.isEmpty()) return
-        val pid = "g${guestToPlayer.size + 1}"
+        val pid = "p${guest.value}"
         engine.addPlayer(pid, name)
         guestToPlayer[guest] = pid
         playerToGuest[pid] = guest

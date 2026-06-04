@@ -67,7 +67,12 @@ class TagSession(
         engine.start(variant, startingItId, startTimeMs, peerIds, peerNames, durationOverrideSec)
         val det = ProximityDetector(onTouch = ::onProximityTouch)
         detector = det
-        proximity.onEvent = { e -> detector?.ingest(e) }
+        proximity.onEvent = { e ->
+            // Only track peers that are actually in this round. Without this, a
+            // hostile BLE advertiser rotating peer ids under our service UUID
+            // could grow the detector's per-peer maps unboundedly.
+            if (engine.state?.players?.containsKey(e.peerId) == true) detector?.ingest(e)
+        }
         proximity.start()
         emit()
         // Hot Potato uses the per-tag countdown — keep the variant default

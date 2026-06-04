@@ -107,7 +107,7 @@ final class CrazyEightsServer {
         case "set_options":
             // Only the host may mutate options.
             break
-        case "call_tutorial_vote": openTutorialVote()
+        case "call_tutorial_vote": if guestToPlayer[guest] != nil { openTutorialVote() }
         case "tutorial_vote":
             if let pid = guestToPlayer[guest], let yes = j["yes"] as? Bool {
                 submitTutorialVote(voterId: pid, yes: yes)
@@ -135,9 +135,9 @@ final class CrazyEightsServer {
             send(guest, ["type": "error", "message": "Game already in progress"])
             return
         }
-        let name = (json["name"] as? String)?.trimmingCharacters(in: .whitespaces) ?? ""
+        let name = String(((json["name"] as? String) ?? "").trimmingCharacters(in: .whitespaces).prefix(24))
         guard !name.isEmpty else { return }
-        let pid = "g\(guestToPlayer.count + 1)"
+        let pid = "p\(guest.value)"
         engine.addPlayer(id: pid, name: name)
         guestToPlayer[guest] = pid
         playerToGuest[pid] = guest

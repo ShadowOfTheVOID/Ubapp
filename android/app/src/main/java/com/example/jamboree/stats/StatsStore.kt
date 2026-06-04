@@ -35,11 +35,19 @@ object StatsStore {
     private fun prefs(ctx: Context) =
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
+    private val writeLock = Any()
+
     fun record(ctx: Context, gameId: String, players: List<String>, outcome: String) {
-        val updated = applyRecord(
-            snapshot(ctx), gameId, players, outcome, System.currentTimeMillis(),
-        )
-        prefs(ctx).edit().putString(KEY, encode(updated).toString()).apply()
+        // Serialize the read-modify-write: record() can be called from socket
+        // threads, and two games finishing near-simultaneously would otherwise
+        // both read the same baseline and the second write would clobber the
+        // first, losing an increment.
+        synchronized(writeLock) {
+            val updated = applyRecord(
+                snapshot(ctx), gameId, players, outcome, System.currentTimeMillis(),
+            )
+            prefs(ctx).edit().putString(KEY, encode(updated).toString()).apply()
+        }
     }
 
     fun recordCountOnly(ctx: Context, gameId: String, players: List<String>) =

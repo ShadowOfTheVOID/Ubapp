@@ -96,7 +96,7 @@ class SecretHitlerServer(context: Context, val hostName: String = "Host") {
             "ack_investigation" -> guestToPlayer[guest]?.let { applyAcknowledgeInvestigation(it) }
             "special_election" -> guestToPlayer[guest]?.let { applySpecialElection(it, j.getString("targetId")) }
             "execute" -> guestToPlayer[guest]?.let { applyExecute(it, j.getString("targetId")) }
-            "call_tutorial_vote" -> openTutorialVote()
+            "call_tutorial_vote" -> guestToPlayer[guest]?.let { openTutorialVote() }
             "tutorial_vote" -> guestToPlayer[guest]?.let { submitTutorialVote(it, j.getBoolean("yes")) }
         }
     }
@@ -106,6 +106,20 @@ class SecretHitlerServer(context: Context, val hostName: String = "Host") {
         playerToGuest.remove(pid)
         engine.removePlayer(pid)
         engine.tutorialVote.removeVoter(pid)
+        // A mid-election disconnect would otherwise hang the vote forever:
+        // removePlayer is a no-op mid-game, so the departed player still counts
+        // toward the alive quorum but can never cast a ballot. Submit a default
+        // "no" for any alive player who is no longer connected and hasn't voted
+        // so the election can resolve. applyVote resolves + broadcasts once the
+        // quorum is met.
+        if (engine.phase == SecretHitlerPhase.ELECTION) {
+            for (p in engine.alive.toList()) {
+                if (p.id != HOST_ID && !playerToGuest.containsKey(p.id) &&
+                    !engine.electionVotes.containsKey(p.id)) {
+                    applyVote(p.id, false)
+                }
+            }
+        }
         broadcastState()
         if (engine.tutorialVote.isOpen || engine.tutorialVote.hasResult) broadcastTutorialState()
         emit()
@@ -116,9 +130,9 @@ class SecretHitlerServer(context: Context, val hostName: String = "Host") {
             send(guest, JSONObject().put("type", "error").put("message", "Game already started"))
             return
         }
-        val name = j.optString("name").trim()
+        val name = j.optString("name").trim().take(24)
         if (name.isEmpty()) return
-        val pid = "g${guestToPlayer.size + 1}"
+        val pid = "p${guest.value}"
         engine.addPlayer(pid, name)
         guestToPlayer[guest] = pid
         playerToGuest[pid] = guest

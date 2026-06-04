@@ -75,7 +75,7 @@ class WerewolfServer(context: Context, val hostName: String = "Host") {
             "hunter_shot" -> guestToPlayer[guest]?.let { applyHunterShot(it, j.getString("targetId")) }
             // Only the host (not over WebSocket) may mutate options.
             "set_options" -> Unit
-            "call_tutorial_vote" -> openTutorialVote()
+            "call_tutorial_vote" -> guestToPlayer[guest]?.let { openTutorialVote() }
             "tutorial_vote" -> guestToPlayer[guest]?.let { submitTutorialVote(it, j.getBoolean("yes")) }
         }
     }
@@ -93,8 +93,8 @@ class WerewolfServer(context: Context, val hostName: String = "Host") {
         if (engine.phase != WerewolfPhase.LOBBY) {
             send(guest, JSONObject().put("type", "error").put("message", "Game already started")); return
         }
-        val name = j.optString("name").trim(); if (name.isEmpty()) return
-        val pid = "g${guestToPlayer.size + 1}"
+        val name = j.optString("name").trim().take(24); if (name.isEmpty()) return
+        val pid = "p${guest.value}"
         engine.addPlayer(pid, name)
         guestToPlayer[guest] = pid; playerToGuest[pid] = guest
         send(guest, JSONObject().put("type", "welcome").put("yourId", pid).put("yourName", name).put("game", "werewolf"))

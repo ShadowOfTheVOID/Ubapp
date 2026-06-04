@@ -103,7 +103,7 @@ final class MafiaServer {
             // Only the host (which doesn't connect over WebSocket) may
             // mutate options. Ignore inbound from guests.
             break
-        case "call_tutorial_vote": openTutorialVote()
+        case "call_tutorial_vote": if guestToPlayer[guest] != nil { openTutorialVote() }
         case "tutorial_vote":
             if let pid = guestToPlayer[guest], let yes = j["yes"] as? Bool {
                 submitTutorialVote(voterId: pid, yes: yes)
@@ -129,9 +129,9 @@ final class MafiaServer {
             send(guest, ["type": "error", "message": "Game already started"])
             return
         }
-        let name = (json["name"] as? String)?.trimmingCharacters(in: .whitespaces) ?? ""
+        let name = String(((json["name"] as? String) ?? "").trimmingCharacters(in: .whitespaces).prefix(24))
         guard !name.isEmpty else { return }
-        let pid = "g\(guestToPlayer.count + 1)"
+        let pid = "p\(guest.value)"
         engine.addPlayer(id: pid, name: name)
         guestToPlayer[guest] = pid
         playerToGuest[pid] = guest
