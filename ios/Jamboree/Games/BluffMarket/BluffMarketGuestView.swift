@@ -189,7 +189,11 @@ struct BluffMarketGuestView: View {
         let targetName = model.players.first { $0.id == t.targetId }?.name ?? "?"
         VStack(spacing: 12) {
             MonoLabel("Trade · \(proposerName) ↔ \(targetName)", color: JamboreeTheme.accent)
-            if t.revealed {
+            if !imParty {
+                // Trades are private: onlookers see who's trading, never the cards.
+                Text("\(proposerName) and \(targetName) are trading privately…")
+                    .font(.system(size: 12)).foregroundStyle(JamboreeTheme.muted)
+            } else if t.revealed {
                 HStack(spacing: 16) {
                     VStack(spacing: 4) {
                         MonoLabel(proposerName, size: 9)

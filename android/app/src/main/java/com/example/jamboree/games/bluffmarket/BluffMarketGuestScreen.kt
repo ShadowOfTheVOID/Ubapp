@@ -213,7 +213,11 @@ private fun TradeCard(
            verticalArrangement = Arrangement.spacedBy(10.dp),
            horizontalAlignment = Alignment.CenterHorizontally) {
         MonoLabel("Trade · $proposerName ↔ $targetName", color = Ub.Accent)
-        if (t.revealed) {
+        if (!imParty) {
+            // Trades are private: onlookers see who's trading, never the cards.
+            Text("$proposerName and $targetName are trading privately…",
+                 fontSize = 12.sp, color = Ub.Muted)
+        } else if (t.revealed) {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {

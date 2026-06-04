@@ -180,7 +180,9 @@ class BluffMarketEngine(private val rng: Random = Random.Default) {
         if (playerId != t.targetId && playerId != t.proposerId) return "not your trade"
         val name = players[playerId]?.name ?: "?"
         activeTrade = null
-        players[t.proposerId]?.let { finishTurn(it) }
+        // Cancelling a trade does NOT end the proposer's turn — they must
+        // still buy, sell, or complete a trade, so a trade can't be used to
+        // skip a turn.
         lastEvent = "$name cancelled the trade"
         return null
     }
@@ -211,6 +213,7 @@ class BluffMarketEngine(private val rng: Random = Random.Default) {
         val agreed = (t.proposerAccept == true && t.targetAccept == true) || forced
         val proposer = players[t.proposerId]!!
         val target = players[t.targetId]!!
+        var completed = false
         if (agreed) {
             val pcid = t.proposerCardId
             val tcid = t.targetCardId
@@ -222,12 +225,16 @@ class BluffMarketEngine(private val rng: Random = Random.Default) {
                 proposer.hand.add(tCard)
                 target.hand.add(pCard)
                 lastEvent = "${proposer.name} ⇆ ${target.name} — trade completed"
+                completed = true
             }
-        } else {
+        }
+        if (!completed) {
             lastEvent = "${proposer.name} ⇆ ${target.name} — trade cancelled"
         }
         activeTrade = null
-        finishTurn(proposer)
+        // Only a completed swap consumes the proposer's turn; a rejected
+        // trade leaves it their turn so trading can't be used to skip.
+        if (completed) finishTurn(proposer)
     }
 
     private fun finishTurn(p: BluffPlayer) {

@@ -149,32 +149,40 @@ class BluffMarketServer(context: Context, val hostName: String = "Host") {
             BluffMarketPhase.SCORING -> "scoring"
             BluffMarketPhase.GAME_OVER -> "gameOver"
         }
-        val payload = JSONObject()
-            .put("type", "state")
-            .put("phase", phase)
-            .put("currentId", engine.current?.id ?: JSONObject.NULL)
-            .put("marketSize", engine.market.size)
-            .put("lastEvent", engine.lastEvent ?: "")
-            .put("players", playersArr)
-            .put("turnsPerPlayer", engine.options.turnsPerPlayer)
-        engine.activeTrade?.let { t ->
-            val tjson = JSONObject()
-                .put("proposerId", t.proposerId)
-                .put("targetId", t.targetId)
-                .put("proposerCommitted", t.proposerCardId != null)
-                .put("targetCommitted", t.targetCardId != null)
-                .put("revealed", t.revealed)
-                .put("proposerGuarantee", t.proposerGuarantee)
-                .put("targetGuarantee", t.targetGuarantee)
-            t.proposerAccept?.let { tjson.put("proposerAccept", it) }
-            t.targetAccept?.let { tjson.put("targetAccept", it) }
-            if (t.revealed) {
-                t.proposerCardId?.let { engine.cardCatalog[it]?.let { c -> tjson.put("proposerCard", cardJson(c)) } }
-                t.targetCardId?.let { engine.cardCatalog[it]?.let { c -> tjson.put("targetCard", cardJson(c)) } }
+        // Trade card contents are private to the two participants — everyone
+        // else only learns that a trade is happening and who's in it. So the
+        // state is sent per-guest rather than broadcast verbatim.
+        for ((guest, pid) in guestToPlayer) {
+            val payload = JSONObject()
+                .put("type", "state")
+                .put("phase", phase)
+                .put("currentId", engine.current?.id ?: JSONObject.NULL)
+                .put("marketSize", engine.market.size)
+                .put("lastEvent", engine.lastEvent ?: "")
+                .put("players", playersArr)
+                .put("turnsPerPlayer", engine.options.turnsPerPlayer)
+            engine.activeTrade?.let { t ->
+                val tjson = JSONObject()
+                    .put("proposerId", t.proposerId)
+                    .put("targetId", t.targetId)
+                    .put("proposerCommitted", t.proposerCardId != null)
+                    .put("targetCommitted", t.targetCardId != null)
+                    .put("revealed", t.revealed)
+                    .put("proposerGuarantee", t.proposerGuarantee)
+                    .put("targetGuarantee", t.targetGuarantee)
+                val isParty = pid == t.proposerId || pid == t.targetId
+                if (isParty) {
+                    t.proposerAccept?.let { tjson.put("proposerAccept", it) }
+                    t.targetAccept?.let { tjson.put("targetAccept", it) }
+                    if (t.revealed) {
+                        t.proposerCardId?.let { engine.cardCatalog[it]?.let { c -> tjson.put("proposerCard", cardJson(c)) } }
+                        t.targetCardId?.let { engine.cardCatalog[it]?.let { c -> tjson.put("targetCard", cardJson(c)) } }
+                    }
+                }
+                payload.put("trade", tjson)
             }
-            payload.put("trade", tjson)
+            send(guest, payload)
         }
-        broadcast(payload)
     }
 
     private fun cardJson(c: BluffCard): JSONObject {

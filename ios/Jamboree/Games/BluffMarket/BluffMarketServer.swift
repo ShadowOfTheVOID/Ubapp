@@ -180,7 +180,7 @@ final class BluffMarketServer {
         case .scoring: phase = "scoring"
         case .gameOver: phase = "gameOver"
         }
-        var payload: [String: Any] = [
+        let basePayload: [String: Any] = [
             "type": "state",
             "phase": phase,
             "currentId": engine.current?.id as Any,
@@ -193,28 +193,36 @@ final class BluffMarketServer {
             },
             "turnsPerPlayer": engine.options.turnsPerPlayer,
         ]
-        if let t = engine.activeTrade {
-            // Public: who's in the trade and (only once both committed) the cards.
-            var tradeJson: [String: Any] = [
-                "proposerId": t.proposerId,
-                "targetId": t.targetId,
-                "proposerCommitted": t.proposerCardId != nil,
-                "targetCommitted": t.targetCardId != nil,
-                "revealed": t.revealed,
-                "proposerGuarantee": t.proposerGuarantee,
-                "targetGuarantee": t.targetGuarantee,
-            ]
-            if t.proposerAccept != nil { tradeJson["proposerAccept"] = t.proposerAccept! }
-            if t.targetAccept != nil { tradeJson["targetAccept"] = t.targetAccept! }
-            if t.revealed,
-               let pcid = t.proposerCardId, let pc = engine.cardCatalog[pcid],
-               let tcid = t.targetCardId, let tc = engine.cardCatalog[tcid] {
-                tradeJson["proposerCard"] = cardJson(pc)
-                tradeJson["targetCard"] = cardJson(tc)
+        // Trade card contents are private to the two participants — everyone
+        // else only learns that a trade is happening and who's in it. So the
+        // state is sent per-guest rather than broadcast verbatim.
+        for (guest, pid) in guestToPlayer {
+            var payload = basePayload
+            if let t = engine.activeTrade {
+                var tradeJson: [String: Any] = [
+                    "proposerId": t.proposerId,
+                    "targetId": t.targetId,
+                    "proposerCommitted": t.proposerCardId != nil,
+                    "targetCommitted": t.targetCardId != nil,
+                    "revealed": t.revealed,
+                    "proposerGuarantee": t.proposerGuarantee,
+                    "targetGuarantee": t.targetGuarantee,
+                ]
+                let isParty = pid == t.proposerId || pid == t.targetId
+                if isParty {
+                    if t.proposerAccept != nil { tradeJson["proposerAccept"] = t.proposerAccept! }
+                    if t.targetAccept != nil { tradeJson["targetAccept"] = t.targetAccept! }
+                    if t.revealed,
+                       let pcid = t.proposerCardId, let pc = engine.cardCatalog[pcid],
+                       let tcid = t.targetCardId, let tc = engine.cardCatalog[tcid] {
+                        tradeJson["proposerCard"] = cardJson(pc)
+                        tradeJson["targetCard"] = cardJson(tc)
+                    }
+                }
+                payload["trade"] = tradeJson
             }
-            payload["trade"] = tradeJson
+            send(guest, payload)
         }
-        broadcast(payload)
     }
 
     private func cardJson(_ c: BluffCard) -> [String: Any] {

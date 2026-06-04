@@ -35,6 +35,7 @@ import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -507,6 +508,60 @@ class BluffMarketEngineTest {
         assertNull(e.activeTrade)
         assertTrue(b.hand.any { it.id == aCardId })
         assertTrue(a.guaranteeUsed)
+    }
+
+    @Test fun `cancelling a proposed trade does not skip the proposer's turn`() {
+        val e = engine(7, n = 4)
+        e.start()
+        val a = e.current!!
+        val bId = e.seatingSnapshot.first { it != a.id }
+        e.proposeTrade(a.id, bId, a.hand.first().id)
+        assertNull(e.declineTrade(a.id))   // proposer instantly cancels
+        assertNull(e.activeTrade)
+        // Still the proposer's turn — no skip.
+        assertEquals(a.id, e.current!!.id)
+        assertEquals(0, a.turnsTaken)
+    }
+
+    @Test fun `target declining does not consume the proposer's turn`() {
+        val e = engine(7, n = 4)
+        e.start()
+        val a = e.current!!
+        val bId = e.seatingSnapshot.first { it != a.id }
+        e.proposeTrade(a.id, bId, a.hand.first().id)
+        assertNull(e.declineTrade(bId))    // target declines
+        assertEquals(a.id, e.current!!.id)
+        assertEquals(0, a.turnsTaken)
+    }
+
+    @Test fun `rejected trade after reveal does not advance the turn`() {
+        val e = engine(7, n = 4)
+        e.start()
+        val a = e.current!!
+        val bId = e.seatingSnapshot.first { it != a.id }
+        val b = e.players[bId]!!
+        e.proposeTrade(a.id, bId, a.hand.first().id)
+        e.counterTrade(bId, b.hand.first().id)
+        e.respondTrade(a.id, true)
+        e.respondTrade(bId, false)         // b rejects — no swap
+        assertNull(e.activeTrade)
+        // Still the proposer's turn; nothing skipped.
+        assertEquals(a.id, e.current!!.id)
+        assertEquals(0, a.turnsTaken)
+    }
+
+    @Test fun `completed trade still advances the proposer's turn`() {
+        val e = engine(7, n = 4)
+        e.start()
+        val a = e.current!!
+        val bId = e.seatingSnapshot.first { it != a.id }
+        val b = e.players[bId]!!
+        e.proposeTrade(a.id, bId, a.hand.first().id)
+        e.counterTrade(bId, b.hand.first().id)
+        e.respondTrade(a.id, true)
+        e.respondTrade(bId, true)          // both accept — swap completes
+        assertEquals(1, a.turnsTaken)
+        assertNotEquals(a.id, e.current!!.id)
     }
 
     @Test fun `Bomb subtracts 25 from holder's total`() {
