@@ -186,6 +186,24 @@
   .tutorial-card p{ color:var(--muted); }
   .tutorial-card .menu-label{ color:var(--accent); }
   .tutorial-card .wait{ color:var(--faint); }
+  /* ===== private team chat ===== */
+  .chat-panel{ background:var(--accent-soft); border:1px solid var(--accent-line);
+    border-radius:16px; padding:16px; margin-bottom:12px; text-align:left; }
+  .chat-title{ font-family:var(--mono); font-size:11px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--accent); margin:0 0 6px; }
+  .chat-sub{ color:var(--muted); font-size:12px; margin:0 0 10px; }
+  .chat-log{ display:flex; flex-direction:column; gap:6px; max-height:240px;
+    overflow-y:auto; margin-bottom:10px; }
+  .chat-msg{ max-width:80%; padding:8px 12px; border-radius:12px; font-size:14px;
+    line-height:1.35; overflow-wrap:anywhere; }
+  .chat-msg.them{ align-self:flex-start; background:var(--surface-hi); color:#fff; }
+  .chat-msg.me{ align-self:flex-end; background:var(--accent); color:var(--accent-ink); }
+  .chat-name{ font-family:var(--mono); font-size:9px; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--faint); margin:0 0 2px; }
+  .chat-empty{ color:var(--muted); font-size:13px; }
+  .chat-input-row{ display:flex; gap:8px; }
+  .chat-input-row input{ flex:1; }
+  .chat-input-row button{ width:auto; padding:12px 18px; }
 </style>
 </head>
 <body>
@@ -214,6 +232,9 @@
     me: null,                 // {id, name}
     role: null,               // 'werewolf' | 'seer' | 'hunter' | 'villager'
     wolfIds: [],
+    chat: [],                 // [{fromId, fromName, text}] private pack chat
+    chatDraft: '',
+    chatFocused: false,
     phase: 'lobby',
     day: 0,
     alive: [],
@@ -269,6 +290,9 @@
       case 'role':
         state.role = m.role;
         state.wolfIds = m.wolfIds || [];
+        break;
+      case 'chat':
+        if (m.text) state.chat.push({ fromId: m.fromId, fromName: m.fromName, text: m.text });
         break;
       case 'phase':
         const phaseChanged = state.phase !== m.phase || state.day !== m.day;
@@ -684,6 +708,59 @@
     `;
   }
 
+  function chatVisible() {
+    return state.role === 'werewolf' && (state.wolfIds || []).length > 1 &&
+      ['night', 'dayVote', 'dayReveal'].includes(state.phase);
+  }
+
+  function viewChat() {
+    if (!chatVisible()) return '';
+    const me = me_();
+    const alive = !!(me && me.alive);
+    const sub = alive ? 'Private — only your fellow wolves can read this.'
+                      : "You're out — chat is read-only.";
+    const log = (state.chat || []).length
+      ? state.chat.map(c => {
+          const mine = state.me && c.fromId === state.me.id;
+          const name = mine ? '' : `<div class="chat-name">${escapeHtml(c.fromName)}</div>`;
+          return `<div class="chat-msg ${mine ? 'me' : 'them'}">${name}${escapeHtml(c.text)}</div>`;
+        }).join('')
+      : `<div class="chat-empty">No messages yet — say something to your team.</div>`;
+    return `
+      <div class="chat-panel">
+        <div class="chat-title">Pack chat</div>
+        <p class="chat-sub">${sub}</p>
+        <div class="chat-log" id="chat-log">${log}</div>
+        <div class="chat-input-row">
+          <input id="chat-input" type="text" placeholder="Message your team" maxlength="240" ${alive ? '' : 'disabled'}>
+          <button id="chat-send" ${alive ? '' : 'disabled'}>Send</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function bindChat() {
+    const input = document.getElementById('chat-input');
+    const btn = document.getElementById('chat-send');
+    if (!input || !btn) return;
+    input.value = state.chatDraft || '';
+    input.addEventListener('input', () => { state.chatDraft = input.value; });
+    input.addEventListener('focus', () => { state.chatFocused = true; });
+    input.addEventListener('blur', () => { state.chatFocused = false; });
+    const submit = () => {
+      const t = input.value.trim();
+      if (!t) return;
+      send({ type: 'chat', text: t.slice(0, 240) });
+      state.chatDraft = '';
+      input.value = '';
+    };
+    btn.addEventListener('click', submit);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
+    const log = document.getElementById('chat-log');
+    if (log) log.scrollTop = log.scrollHeight;
+    if (state.chatFocused) { input.focus(); const v = input.value; input.value = ''; input.value = v; }
+  }
+
   function viewPlayers() {
     return `
       <h2>Alive (${state.alive.length})</h2>
@@ -720,12 +797,12 @@
     } else if (state.phase === 'gameOver') {
       body += viewGameOver();
     } else if (state.phase === 'night') {
-      body += viewNight() + viewPlayers();
+      body += viewNight() + viewChat() + viewPlayers();
     } else if (state.phase === 'dayVote') {
-      body += viewDayVote() + viewLastDay() + viewPlayers();
+      body += viewDayVote() + viewLastDay() + viewChat() + viewPlayers();
     } else if (state.phase === 'dayReveal') {
       body += `<div class="phase-banner phase-day_reveal">Day ${state.day}</div>`;
-      body += viewLastNight() + viewSeerHistory() + viewPlayers();
+      body += viewLastNight() + viewSeerHistory() + viewChat() + viewPlayers();
     } else if (state.phase === 'hunterShot') {
       body += viewHunterShot() + viewPlayers();
     } else {
@@ -743,6 +820,7 @@
     if (state.phase === 'hunterShot') {
       bindHunterShot();
     }
+    bindChat();
   }
 
   // --- helpers ---

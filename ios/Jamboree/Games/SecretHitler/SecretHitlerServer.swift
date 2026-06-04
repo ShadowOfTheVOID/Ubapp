@@ -123,6 +123,10 @@ final class SecretHitlerServer {
             if let pid = guestToPlayer[guest], let t = j["targetId"] as? String {
                 applyExecute(playerId: pid, targetId: t)
             }
+        case "chat":
+            if let pid = guestToPlayer[guest], let text = j["text"] as? String {
+                relayChat(from: pid, text: text)
+            }
         case "call_tutorial_vote": if guestToPlayer[guest] != nil { openTutorialVote() }
         case "tutorial_vote":
             if let pid = guestToPlayer[guest], let yes = j["yes"] as? Bool {
@@ -386,6 +390,23 @@ final class SecretHitlerServer {
                 "allies": allies,
             ]
             if let g = playerToGuest[p.id] { send(g, payload) }
+        }
+    }
+
+    /// Relay a private message inside the fascist cabal. Membership is whoever
+    /// has known allies — fascists always know each other and Hitler; Hitler is
+    /// only included in 5–6 player games (where Hitler knows the fascists), so
+    /// the 7+ "Hitler is in the dark" rule is preserved automatically.
+    private func relayChat(from playerId: String, text: String) {
+        guard let sender = engine.players[playerId], sender.alive,
+              !engine.knownAllies(for: playerId).isEmpty else { return }
+        let trimmed = String(text.trimmingCharacters(in: .whitespacesAndNewlines).prefix(240))
+        guard !trimmed.isEmpty else { return }
+        let payload: [String: Any] = [
+            "type": "chat", "fromId": sender.id, "fromName": sender.name, "text": trimmed,
+        ]
+        for p in engine.players.values where !engine.knownAllies(for: p.id).isEmpty {
+            if let guest = playerToGuest[p.id] { send(guest, payload) }
         }
     }
 

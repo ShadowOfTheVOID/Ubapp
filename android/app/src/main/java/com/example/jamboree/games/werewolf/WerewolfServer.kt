@@ -73,6 +73,7 @@ class WerewolfServer(context: Context, val hostName: String = "Host") {
                 applyDayVote(it, if (j.isNull("targetId")) null else j.getString("targetId"))
             }
             "hunter_shot" -> guestToPlayer[guest]?.let { applyHunterShot(it, j.getString("targetId")) }
+            "chat" -> guestToPlayer[guest]?.let { relayChat(it, j.optString("text")) }
             // Only the host (not over WebSocket) may mutate options.
             "set_options" -> Unit
             "call_tutorial_vote" -> guestToPlayer[guest]?.let { openTutorialVote() }
@@ -161,6 +162,20 @@ class WerewolfServer(context: Context, val hostName: String = "Host") {
             playerToGuest[p.id]?.let { send(it, payload) }
         }
     }
+    /** Relay a private message inside the werewolf pack. Only a living wolf
+     *  may speak; every wolf receives it so the pack can agree on a victim. */
+    private fun relayChat(playerId: String, text: String) {
+        val sender = engine.players[playerId] ?: return
+        if (sender.role != WerewolfRole.WEREWOLF || !sender.alive) return
+        val trimmed = text.trim().take(240)
+        if (trimmed.isEmpty()) return
+        val payload = JSONObject().put("type", "chat").put("fromId", sender.id)
+            .put("fromName", sender.name).put("text", trimmed)
+        for (p in engine.players.values) if (p.role == WerewolfRole.WEREWOLF) {
+            playerToGuest[p.id]?.let { send(it, payload) }
+        }
+    }
+
     private fun sendSeerResultPrivately() {
         val r = engine.lastSeerResult ?: return
         val guest = playerToGuest[r.seerId] ?: return

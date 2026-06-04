@@ -22,6 +22,7 @@ struct MafiaGuestView: View {
                     case "gameOver":  gameOver
                     default:          waiting
                     }
+                    chatSection
                     playersSection
                 }
                 .frame(maxWidth: 520, alignment: .leading)
@@ -241,6 +242,24 @@ struct MafiaGuestView: View {
         }
     }
 
+    private var showChat: Bool {
+        model.role == "mafia" && model.mafiaIds.count > 1 &&
+            (model.phase == "night" || model.phase == "dayReveal" || model.phase == "dayVote")
+    }
+
+    @ViewBuilder private var chatSection: some View {
+        if showChat {
+            TeamChatView(
+                title: "Mafia chat",
+                subtitle: iAmAlive ? "Private — only your fellow mafia can read this."
+                                   : "You're out — chat is read-only.",
+                messages: model.chat,
+                myId: ctx.yourId,
+                enabled: iAmAlive,
+                onSend: { text in model.send(["type": "chat", "text": text]) })
+        }
+    }
+
     @ViewBuilder private var playersSection: some View {
         if model.phase != "lobby" && (model.alive.count + model.dead.count) > 0 {
             VStack(alignment: .leading, spacing: 8) {
@@ -354,6 +373,7 @@ final class MafiaGuestModel: ObservableObject {
     @Published var day: Int = 0
     @Published var role: String?
     @Published var mafiaIds: [String] = []
+    @Published var chat: [TeamChatMessage] = []
     @Published var lastNightKilled: String?
     @Published var lastNightSaved: String?
     @Published var nightResolved: Bool = false
@@ -389,6 +409,13 @@ final class MafiaGuestModel: ObservableObject {
         case "role":
             role = m["role"] as? String
             mafiaIds = m["mafiaIds"] as? [String] ?? []
+        case "chat":
+            let text = m["text"] as? String ?? ""
+            if !text.isEmpty {
+                chat.append(TeamChatMessage(id: UUID().uuidString,
+                    fromId: m["fromId"] as? String ?? "",
+                    fromName: m["fromName"] as? String ?? "", text: text))
+            }
         case "phase":
             let prev = phase
             phase = m["phase"] as? String ?? phase

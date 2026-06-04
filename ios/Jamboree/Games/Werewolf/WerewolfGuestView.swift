@@ -35,6 +35,7 @@ struct WerewolfGuestView: View {
                     default:           infoBanner("Waiting…")
                     }
                     seerFindings
+                    chatSection
                     playersSection
                 }
                 .frame(maxWidth: 520, alignment: .leading)
@@ -267,6 +268,24 @@ struct WerewolfGuestView: View {
         }
     }
 
+    private var showChat: Bool {
+        model.role == "werewolf" && model.wolfIds.count > 1 &&
+            (model.phase == "night" || model.phase == "dayReveal" || model.phase == "dayVote")
+    }
+
+    @ViewBuilder private var chatSection: some View {
+        if showChat {
+            TeamChatView(
+                title: "Pack chat",
+                subtitle: iAmAlive ? "Private — only your fellow wolves can read this."
+                                   : "You're out — chat is read-only.",
+                messages: model.chat,
+                myId: ctx.yourId,
+                enabled: iAmAlive,
+                onSend: { text in model.send(["type": "chat", "text": text]) })
+        }
+    }
+
     @ViewBuilder private var playersSection: some View {
         if model.phase != "lobby" && (model.alive.count + model.dead.count) > 0 {
             VStack(alignment: .leading, spacing: 8) {
@@ -376,6 +395,7 @@ final class WerewolfGuestModel: ObservableObject {
     @Published var day: Int = 0
     @Published var role: String?
     @Published var wolfIds: [String] = []
+    @Published var chat: [TeamChatMessage] = []
     @Published var lastNightKilled: String?
     @Published var nightResolved = false
     @Published var seerHistory: [SeerEntry] = []
@@ -411,6 +431,13 @@ final class WerewolfGuestModel: ObservableObject {
         case "role":
             role = m["role"] as? String
             wolfIds = m["wolfIds"] as? [String] ?? []
+        case "chat":
+            let text = m["text"] as? String ?? ""
+            if !text.isEmpty {
+                chat.append(TeamChatMessage(id: UUID().uuidString,
+                    fromId: m["fromId"] as? String ?? "",
+                    fromName: m["fromName"] as? String ?? "", text: text))
+            }
         case "phase":
             let prev = phase
             phase = m["phase"] as? String ?? phase

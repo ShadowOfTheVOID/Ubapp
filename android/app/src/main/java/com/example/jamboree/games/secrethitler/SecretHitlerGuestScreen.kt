@@ -32,6 +32,8 @@ import com.example.jamboree.join.GuestContext
 import com.example.jamboree.join.GuestTutorialContent
 import com.example.jamboree.join.GuestTutorialState
 import com.example.jamboree.join.TutorialGuestCard
+import com.example.jamboree.shared.TeamChat
+import com.example.jamboree.shared.TeamChatMessage
 import org.json.JSONObject
 
 @Composable
@@ -129,6 +131,18 @@ fun SecretHitlerGuestScreen(ctx: GuestContext) {
                     SlatePerson(s.playerName(s.chancellorId ?: s.chancellorNomineeId), "Chancellor")
                 }
                 PhaseSection(s, ctx)
+                if (s.role != null && s.allies.isNotEmpty()) {
+                    val alive = s.players.firstOrNull { it.id == ctx.yourId }?.alive == true
+                    TeamChat(
+                        title = "Fascist chat",
+                        subtitle = if (alive) "Private — only fascists you know can read this."
+                                   else "You're out — chat is read-only.",
+                        messages = s.chat,
+                        myId = ctx.yourId,
+                        enabled = alive,
+                        onSend = { text -> ctx.client.send(JSONObject().put("type", "chat").put("text", text)) },
+                    )
+                }
             }
         }
     }
@@ -448,6 +462,7 @@ class SecretHitlerGuestState {
     var investigatedIds by mutableStateOf<List<String>>(emptyList())
     var role by mutableStateOf<String?>(null)
     var allies by mutableStateOf<List<Ally>>(emptyList())
+    var chat by mutableStateOf<List<TeamChatMessage>>(emptyList())
     var presidentialHand by mutableStateOf<List<String>?>(null)
     var chancellorHand by mutableStateOf<List<String>?>(null)
     var peekedPolicies by mutableStateOf<List<String>?>(null)
@@ -471,6 +486,12 @@ class SecretHitlerGuestState {
                     val o = a.getJSONObject(it)
                     Ally(o.optString("id"), o.optString("name"), o.optString("role"))
                 }
+            }
+            "chat" -> {
+                val text = m.optString("text")
+                if (text.isNotEmpty()) chat = chat + TeamChatMessage(
+                    java.util.UUID.randomUUID().toString(),
+                    m.optString("fromId"), m.optString("fromName"), text)
             }
             "state" -> {
                 val prev = phase
