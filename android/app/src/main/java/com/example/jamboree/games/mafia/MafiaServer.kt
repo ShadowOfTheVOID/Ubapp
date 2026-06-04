@@ -88,6 +88,7 @@ class MafiaServer(context: Context, val hostName: String = "Host") {
             "vote" -> guestToPlayer[guest]?.let {
                 applyDayVote(it, if (j.isNull("targetId")) null else j.getString("targetId"))
             }
+            "chat" -> guestToPlayer[guest]?.let { relayChat(it, j.optString("text")) }
             // Only the host (not connected over WebSocket) may mutate options.
             "set_options" -> Unit
             "call_tutorial_vote" -> guestToPlayer[guest]?.let { openTutorialVote() }
@@ -149,6 +150,20 @@ class MafiaServer(context: Context, val hostName: String = "Host") {
             broadcastDayResult()
             if (engine.phase == MafiaPhase.GAME_OVER) broadcastGameOver() else broadcastPhase()
             emit()
+        }
+    }
+
+    /** Relay a private message between mafia team-mates. Only a living mafia
+     *  player may speak; every mafia (the whole "must agree" cabal) receives it. */
+    private fun relayChat(playerId: String, text: String) {
+        val sender = engine.players[playerId] ?: return
+        if (sender.role != MafiaRole.MAFIA || !sender.alive) return
+        val trimmed = text.trim().take(240)
+        if (trimmed.isEmpty()) return
+        val payload = JSONObject().put("type", "chat").put("fromId", sender.id)
+            .put("fromName", sender.name).put("text", trimmed)
+        for (p in engine.players.values) if (p.role == MafiaRole.MAFIA) {
+            playerToGuest[p.id]?.let { send(it, payload) }
         }
     }
 

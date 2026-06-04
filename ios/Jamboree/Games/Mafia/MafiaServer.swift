@@ -99,6 +99,10 @@ final class MafiaServer {
             if let pid = guestToPlayer[guest] {
                 applyDayVote(playerId: pid, targetId: j["targetId"] as? String)
             }
+        case "chat":
+            if let pid = guestToPlayer[guest], let text = j["text"] as? String {
+                relayChat(from: pid, text: text)
+            }
         case "set_options":
             // Only the host (which doesn't connect over WebSocket) may
             // mutate options. Ignore inbound from guests.
@@ -198,6 +202,20 @@ final class MafiaServer {
             broadcastDayResult()
             if engine.phase == .gameOver { broadcastGameOver() } else { broadcastPhase() }
             emit()
+        }
+    }
+
+    /// Relay a private message between mafia team-mates. Only a living mafia
+    /// player may speak; every mafia (the whole "must agree" cabal) receives it.
+    private func relayChat(from playerId: String, text: String) {
+        guard let sender = engine.players[playerId], sender.role == .mafia, sender.alive else { return }
+        let trimmed = String(text.trimmingCharacters(in: .whitespacesAndNewlines).prefix(240))
+        guard !trimmed.isEmpty else { return }
+        let payload: [String: Any] = [
+            "type": "chat", "fromId": sender.id, "fromName": sender.name, "text": trimmed,
+        ]
+        for p in engine.players.values where p.role == .mafia {
+            if let guest = playerToGuest[p.id] { send(guest, payload) }
         }
     }
 

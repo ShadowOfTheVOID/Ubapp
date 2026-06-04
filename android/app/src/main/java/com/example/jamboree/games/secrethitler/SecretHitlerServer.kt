@@ -96,6 +96,7 @@ class SecretHitlerServer(context: Context, val hostName: String = "Host") {
             "ack_investigation" -> guestToPlayer[guest]?.let { applyAcknowledgeInvestigation(it) }
             "special_election" -> guestToPlayer[guest]?.let { applySpecialElection(it, j.getString("targetId")) }
             "execute" -> guestToPlayer[guest]?.let { applyExecute(it, j.getString("targetId")) }
+            "chat" -> guestToPlayer[guest]?.let { relayChat(it, j.optString("text")) }
             "call_tutorial_vote" -> guestToPlayer[guest]?.let { openTutorialVote() }
             "tutorial_vote" -> guestToPlayer[guest]?.let { submitTutorialVote(it, j.getBoolean("yes")) }
         }
@@ -347,6 +348,22 @@ class SecretHitlerServer(context: Context, val hostName: String = "Host") {
                 .put("type", "role")
                 .put("role", role.wire)
                 .put("allies", allies)
+            playerToGuest[p.id]?.let { send(it, payload) }
+        }
+    }
+
+    /** Relay a private message inside the fascist cabal. Membership is whoever
+     *  has known allies — fascists always know each other and Hitler; Hitler is
+     *  only included in 5–6 player games (where Hitler knows the fascists), so
+     *  the 7+ "Hitler is in the dark" rule is preserved automatically. */
+    private fun relayChat(playerId: String, text: String) {
+        val sender = engine.players[playerId] ?: return
+        if (!sender.alive || engine.knownAllies(playerId).isEmpty()) return
+        val trimmed = text.trim().take(240)
+        if (trimmed.isEmpty()) return
+        val payload = JSONObject().put("type", "chat").put("fromId", sender.id)
+            .put("fromName", sender.name).put("text", trimmed)
+        for (p in engine.players.values) if (engine.knownAllies(p.id).isNotEmpty()) {
             playerToGuest[p.id]?.let { send(it, payload) }
         }
     }

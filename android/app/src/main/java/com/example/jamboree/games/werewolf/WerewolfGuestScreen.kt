@@ -30,6 +30,8 @@ import com.example.jamboree.join.GuestContext
 import com.example.jamboree.join.GuestTutorialContent
 import com.example.jamboree.join.GuestTutorialState
 import com.example.jamboree.join.TutorialGuestCard
+import com.example.jamboree.shared.TeamChat
+import com.example.jamboree.shared.TeamChatMessage
 import org.json.JSONObject
 
 @Composable
@@ -153,6 +155,18 @@ fun WerewolfGuestScreen(ctx: GuestContext) {
                     }
                 }
             }
+        }
+        if (s.role == "werewolf" && s.wolfIds.size > 1 &&
+            (s.phase == "night" || s.phase == "dayReveal" || s.phase == "dayVote")) {
+            TeamChat(
+                title = "Pack chat",
+                subtitle = if (iAmAlive) "Private — only your fellow wolves can read this."
+                           else "You're out — chat is read-only.",
+                messages = s.chat,
+                myId = ctx.yourId,
+                enabled = iAmAlive,
+                onSend = { text -> ctx.client.send(JSONObject().put("type", "chat").put("text", text)) },
+            )
         }
         if (s.phase != "lobby" && (s.alive.size + s.dead.size) > 0) {
             MonoLabel("Players · ${s.alive.size} alive")
@@ -351,6 +365,7 @@ class WerewolfGuestState {
     var day by mutableIntStateOf(0)
     var role by mutableStateOf<String?>(null)
     var wolfIds by mutableStateOf<List<String>>(emptyList())
+    var chat by mutableStateOf<List<TeamChatMessage>>(emptyList())
     var lastNightKilled by mutableStateOf<String?>(null)
     var nightResolved by mutableStateOf(false)
     var seerHistory by mutableStateOf<List<Seer>>(emptyList())
@@ -380,6 +395,12 @@ class WerewolfGuestState {
                 role = m.optString("role")
                 val a = m.optJSONArray("wolfIds")
                 wolfIds = if (a == null) emptyList() else (0 until a.length()).map { a.getString(it) }
+            }
+            "chat" -> {
+                val text = m.optString("text")
+                if (text.isNotEmpty()) chat = chat + TeamChatMessage(
+                    java.util.UUID.randomUUID().toString(),
+                    m.optString("fromId"), m.optString("fromName"), text)
             }
             "phase" -> {
                 val prev = phase

@@ -20,6 +20,7 @@ struct SecretHitlerGuestView: View {
                         tracks
                         government
                         phaseSection
+                        chatSection
                     }
                 }
                 .frame(maxWidth: 520, alignment: .leading)
@@ -324,6 +325,21 @@ struct SecretHitlerGuestView: View {
         }
     }
 
+    @ViewBuilder private var chatSection: some View {
+        if model.role != nil && !model.allies.isEmpty &&
+            model.phase != "lobby" && model.phase != "gameOver" {
+            let alive = model.players.first { $0.id == ctx.yourId }?.alive ?? true
+            TeamChatView(
+                title: "Fascist chat",
+                subtitle: alive ? "Private — only fascists you know can read this."
+                                : "You're out — chat is read-only.",
+                messages: model.chat,
+                myId: ctx.yourId,
+                enabled: alive,
+                onSend: { text in model.send(["type": "chat", "text": text]) })
+        }
+    }
+
     @ViewBuilder private var gameOver: some View {
         let liberalWin = model.winner == "liberal"
         let color = liberalWin ? SH.liberal : SH.fascist
@@ -468,6 +484,7 @@ final class SecretHitlerGuestModel: ObservableObject {
     @Published var investigatedIds: [String] = []
     @Published var role: String?
     @Published var allies: [Ally] = []
+    @Published var chat: [TeamChatMessage] = []
     @Published var presidentialHand: [String]?
     @Published var chancellorHand: [String]?
     @Published var peekedPolicies: [String]?
@@ -504,6 +521,13 @@ final class SecretHitlerGuestModel: ObservableObject {
                 Ally(id: $0["id"] as? String ?? "",
                      name: $0["name"] as? String ?? "",
                      role: $0["role"] as? String ?? "")
+            }
+        case "chat":
+            let text = m["text"] as? String ?? ""
+            if !text.isEmpty {
+                chat.append(TeamChatMessage(id: UUID().uuidString,
+                    fromId: m["fromId"] as? String ?? "",
+                    fromName: m["fromName"] as? String ?? "", text: text))
             }
         case "state":
             let prev = phase

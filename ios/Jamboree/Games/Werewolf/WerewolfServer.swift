@@ -95,6 +95,10 @@ final class WerewolfServer {
             if let pid = guestToPlayer[guest], let t = j["targetId"] as? String {
                 applyHunterShot(playerId: pid, targetId: t)
             }
+        case "chat":
+            if let pid = guestToPlayer[guest], let text = j["text"] as? String {
+                relayChat(from: pid, text: text)
+            }
         case "set_options":
             // Only the host (not over WebSocket) may mutate options.
             break
@@ -230,6 +234,20 @@ final class WerewolfServer {
         for p in engine.players.values {
             var payload: [String: Any] = ["type": "role", "role": p.role!.rawValue]
             if p.role == .werewolf { payload["wolfIds"] = wolfIds }
+            if let guest = playerToGuest[p.id] { send(guest, payload) }
+        }
+    }
+
+    /// Relay a private message inside the werewolf pack. Only a living wolf
+    /// may speak; every wolf receives it so the pack can agree on a victim.
+    private func relayChat(from playerId: String, text: String) {
+        guard let sender = engine.players[playerId], sender.role == .werewolf, sender.alive else { return }
+        let trimmed = String(text.trimmingCharacters(in: .whitespacesAndNewlines).prefix(240))
+        guard !trimmed.isEmpty else { return }
+        let payload: [String: Any] = [
+            "type": "chat", "fromId": sender.id, "fromName": sender.name, "text": trimmed,
+        ]
+        for p in engine.players.values where p.role == .werewolf {
             if let guest = playerToGuest[p.id] { send(guest, payload) }
         }
     }
