@@ -250,7 +250,7 @@ struct BluffMarketGuestView: View {
                     Text("\(proposerName) committed. Waiting for \(targetName) to counter…")
                         .font(.system(size: 12)).foregroundStyle(JamboreeTheme.muted)
                     if imProposer {
-                        Button("Cancel & skip turn") { model.send(["type": "decline_trade"]) }
+                        Button("Cancel proposal") { model.send(["type": "decline_trade"]) }
                             .buttonStyle(UbSecondaryButtonStyle())
                     }
                 }

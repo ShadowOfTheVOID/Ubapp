@@ -375,7 +375,7 @@
         body += `<div class="row"><button id="counter" ${state.selectedId?'':'disabled'}>Commit selected</button><button id="decline" class="danger">Decline</button></div>`;
       } else if (imProposer) {
         body += `<p>You committed. Waiting for ${esc(nameOf(t.targetId))} to counter…</p>`;
-        body += `<button id="decline" class="danger">Cancel &amp; skip turn</button>`;
+        body += `<button id="decline" class="danger">Cancel proposal</button>`;
       }
     }
     const guarLine = (t.proposerGuarantee || t.targetGuarantee)

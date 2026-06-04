@@ -237,10 +237,9 @@ final class BluffMarketEngine {
         guard playerId == t.targetId || playerId == t.proposerId else { return "not your trade" }
         let name = players[playerId]?.name ?? "?"
         activeTrade = nil
-        // Trade cancelled but the turn still ends for the proposer.
-        if let proposer = players[t.proposerId] {
-            finishTurn(proposer)
-        }
+        // Cancelling a trade does NOT end the proposer's turn — they must
+        // still buy, sell, or complete a trade, so a trade can't be used to
+        // skip a turn.
         lastEvent = "\(name) cancelled the trade"
         return nil
     }
@@ -278,6 +277,7 @@ final class BluffMarketEngine {
         let agreed = (t.proposerAccept == true && t.targetAccept == true) || forced
         let proposer = players[t.proposerId]!
         let target = players[t.targetId]!
+        var completed = false
         if agreed, let pcid = t.proposerCardId, let tcid = t.targetCardId,
            let pIdx = proposer.hand.firstIndex(where: { $0.id == pcid }),
            let tIdx = target.hand.firstIndex(where: { $0.id == tcid }) {
@@ -290,11 +290,15 @@ final class BluffMarketEngine {
             proposer.hand.append(tCard)
             target.hand.append(pCard)
             lastEvent = "\(proposer.name) ⇆ \(target.name) — trade completed"
-        } else {
-            lastEvent = "\(players[t.proposerId]!.name) ⇆ \(players[t.targetId]!.name) — trade cancelled"
+            completed = true
+        }
+        if !completed {
+            lastEvent = "\(proposer.name) ⇆ \(target.name) — trade cancelled"
         }
         activeTrade = nil
-        finishTurn(proposer)
+        // Only a completed swap consumes the proposer's turn; a rejected
+        // trade leaves it their turn so trading can't be used to skip.
+        if completed { finishTurn(proposer) }
     }
 
     private func finishTurn(_ p: BluffPlayer) {

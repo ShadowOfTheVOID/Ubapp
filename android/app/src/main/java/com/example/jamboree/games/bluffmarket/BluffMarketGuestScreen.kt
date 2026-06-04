@@ -280,7 +280,7 @@ private fun TradeCard(
                 Text("$proposerName committed. Waiting for $targetName to counter…",
                      fontSize = 12.sp, color = Ub.Muted)
                 if (imProposer) {
-                    UbSecondaryButton("Cancel & skip turn",
+                    UbSecondaryButton("Cancel proposal",
                         onClick = { ctx.client.send(JSONObject().put("type", "decline_trade")) })
                 }
             }
