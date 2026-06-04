@@ -109,8 +109,12 @@ class CodenamesEngine(private val rng: Random = Random.Default) {
         if (currentClue != null) return false
         val trimmed = clue.trim()
         if (trimmed.isEmpty()) return false
-        currentClue = trimmed; currentNumber = number; guessesLeftThisTurn = number + 1
-        lastEvent = "${p.name} (${currentTeam.name2}) clue: \"$trimmed\" $number"
+        // Clamp the guest-supplied number: a huge value removes the guess cap
+        // (cheat) and a negative one freezes the turn (DoS). A clue can never
+        // exceed the cards on the board.
+        val n = number.coerceIn(0, board.size)
+        currentClue = trimmed; currentNumber = n; guessesLeftThisTurn = n + 1
+        lastEvent = "${p.name} (${currentTeam.name2}) clue: \"$trimmed\" $n"
         return true
     }
 

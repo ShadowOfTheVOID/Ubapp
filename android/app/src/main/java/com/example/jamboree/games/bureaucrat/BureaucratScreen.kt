@@ -43,6 +43,7 @@ fun BureaucratScreen() {
     var tick by remember { mutableIntStateOf(0) }
     DisposableEffect(Unit) {
         server.onStateChange = { tick++ }
+        server.onStopped = { joinUrl = null }
         onDispose { server.stop() }
     }
     val engine = server.engine

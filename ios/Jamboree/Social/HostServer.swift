@@ -65,6 +65,9 @@ final class HostServer {
     var onJoin: ((GuestId) -> Void)?
     var onLeave: ((GuestId) -> Void)?
     var onMessage: ((GuestId, String) -> Void)?
+    /// Fired when the server stops itself (background-grace teardown), so the
+    /// owning view model can reset its hosting UI. Invoked on the main thread.
+    var onStopped: (() -> Void)?
 
     private(set) var hostIp: String?
     private(set) var boundPort: UInt16?
@@ -119,6 +122,10 @@ final class HostServer {
     /// Returns the URL guests should open. nil if no usable IPv4 (Wi-Fi,
     /// Personal Hotspot bridge, or cellular) is available.
     func start() throws -> URL? {
+        // Idempotent: a second start() while already bound would leak the
+        // previous NWListener and double-register lifecycle observers. Return
+        // the URL from the existing listener instead of re-binding port 7654.
+        if listener != nil { return startedURL }
         let tls = Self.tlsParameters()
         let listener = try NWListener(using: tls ?? NWParameters.tcp, on: port)
         listener.newConnectionHandler = { [weak self] conn in
@@ -136,8 +143,14 @@ final class HostServer {
 
         guard let ip = hostIp else { return nil }
         let scheme = tls != nil ? "https" : "http"
-        return URL(string: "\(scheme)://\(ip):\(port.rawValue)/")
+        let url = URL(string: "\(scheme)://\(ip):\(port.rawValue)/")
+        startedURL = url
+        return url
     }
+
+    /// URL returned by the active `start()`, so a repeat call is a no-op that
+    /// returns the same address. Cleared on `stop()`.
+    private var startedURL: URL?
 
     // MARK: - TLS
 
@@ -508,6 +521,11 @@ final class HostServer {
         }
         listener?.cancel()
         listener = nil
+        startedURL = nil
+        // Notify the owner (view model) so a self-initiated stop — e.g. the
+        // background-grace teardown — resets its hosting UI instead of showing
+        // a live-looking lobby bound to nothing.
+        onStopped?()
     }
 
     static let defaultHtml = """

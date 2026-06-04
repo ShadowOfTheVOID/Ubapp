@@ -91,7 +91,7 @@ class CheatServer(context: Context, val hostName: String = "Host") {
             send(guest, JSONObject().put("type", "error").put("message", "Game already in progress")); return
         }
         val name = j.optString("name").trim().take(24); if (name.isEmpty()) return
-        val pid = "g${guestToPlayer.size + 1}"
+        val pid = "p${guest.value}"
         engine.addPlayer(pid, name)
         guestToPlayer[guest] = pid; playerToGuest[pid] = guest
         send(guest, JSONObject().put("type", "welcome").put("yourId", pid).put("yourName", name).put("game", "cheat"))

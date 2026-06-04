@@ -126,7 +126,7 @@ final class PresidentServer {
         }
         let name = String(((json["name"] as? String) ?? "").trimmingCharacters(in: .whitespaces).prefix(24))
         guard !name.isEmpty else { return }
-        let pid = "g\(guestToPlayer.count + 1)"
+        let pid = "p\(guest.value)"
         engine.addPlayer(id: pid, name: name)
         guestToPlayer[guest] = pid
         playerToGuest[pid] = guest

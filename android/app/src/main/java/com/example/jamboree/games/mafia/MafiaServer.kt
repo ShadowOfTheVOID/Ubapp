@@ -112,7 +112,7 @@ class MafiaServer(context: Context, val hostName: String = "Host") {
         }
         val name = j.optString("name").trim().take(24)
         if (name.isEmpty()) return
-        val pid = "g${guestToPlayer.size + 1}"
+        val pid = "p${guest.value}"
         engine.addPlayer(pid, name)
         guestToPlayer[guest] = pid
         playerToGuest[pid] = guest

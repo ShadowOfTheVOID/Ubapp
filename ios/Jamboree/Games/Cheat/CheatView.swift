@@ -119,7 +119,10 @@ final class CheatViewModel: ObservableObject {
         isOpen: false, yesCount: 0, noCount: 0, eligibleCount: 0,
         result: nil, tutorialShown: false)
 
-    init() { server.onStateChange = { [weak self] in self?.refresh() } }
+    init() {
+        server.onStateChange = { [weak self] in self?.refresh() }
+        server.onStopped = { [weak self] in self?.joinUrl = nil }
+    }
 
     func startHosting() {
         do {

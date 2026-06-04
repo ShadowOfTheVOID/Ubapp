@@ -45,6 +45,9 @@ class HostServer(
     var onJoin: ((GuestId) -> Unit)? = null
     var onLeave: ((GuestId) -> Unit)? = null
     var onMessage: ((GuestId, String) -> Unit)? = null
+    /** Fired (on the main thread) when the server stops itself — e.g. the
+     *  background-grace teardown — so the owning screen can reset its UI. */
+    var onStopped: (() -> Unit)? = null
 
     var hostIp: String? = null; private set
 
@@ -94,6 +97,10 @@ class HostServer(
     /** Returns the URL guests should open. null if no usable IPv4 (Wi-Fi,
      *  tethered hotspot, USB tether, or cellular) is available. */
     fun startServer(): String? {
+        // Idempotent: a second start while already running would re-register
+        // the NSD service (leaking the previous registration) and the
+        // lifecycle callback, and re-bind the port. Return the existing URL.
+        if (running) return startedUrl
         appCtx?.let { com.example.jamboree.settings.AppSettings.diagnosticsEnabled(it) }
         if (sslFactory != null) makeSecure(sslFactory, null)
         start(SOCKET_READ_TIMEOUT, false)
@@ -103,8 +110,13 @@ class HostServer(
         registerNsd()
         val scheme = if (sslFactory != null) "https" else "http"
         dlog("startServer: tls=${sslFactory != null} ip=$hostIp")
-        return hostIp?.let { "$scheme://$it:$port/" }
+        startedUrl = hostIp?.let { "$scheme://$it:$port/" }
+        return startedUrl
     }
+
+    /** URL returned by the active [startServer], so a repeat call is a no-op
+     *  returning the same address. Cleared on [stopServer]. */
+    private var startedUrl: String? = null
 
     /** Advertises this host over Bonjour (`_jamboree._tcp`). The NSD daemon
      *  fills in the address; guests browse for it in [BonjourBrowser]. */
@@ -157,6 +169,11 @@ class HostServer(
         // idempotent, so a late onClose is a harmless no-op.
         kicked.forEach { onLeave?.invoke(it) }
         stop()
+        startedUrl = null
+        // Notify the owner (screen) so a self-initiated stop — e.g. the
+        // background-grace teardown — resets its hosting UI instead of leaving
+        // a live-looking lobby bound to nothing.
+        mainHandler.post { onStopped?.invoke() }
     }
 
     private fun observeAppLifecycle() {

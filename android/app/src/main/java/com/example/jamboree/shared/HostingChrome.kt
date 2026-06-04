@@ -123,12 +123,21 @@ fun HostingChrome(joinUrl: String?, onStart: () -> Unit, onStop: (() -> Unit)? =
 @Composable
 fun QRCode(text: String, size: Int, modifier: Modifier = Modifier) {
     val bitmap = remember(text, size) {
-        val matrix = MultiFormatWriter().encode(text, BarcodeFormat.QR_CODE, size, size)
-        val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-        for (x in 0 until size) for (y in 0 until size) {
-            bmp.setPixel(x, y, if (matrix.get(x, y)) 0xFF000000.toInt() else 0xFFFFFFFF.toInt())
+        // QR encoding can throw (WriterException, or IllegalArgumentException
+        // for a zero size); never let that tear down the host screen during
+        // composition. Fall back to a blank tile, matching the iOS QRCodeView
+        // which renders a placeholder on failure.
+        val dim = size.coerceAtLeast(1)
+        runCatching {
+            val matrix = MultiFormatWriter().encode(text, BarcodeFormat.QR_CODE, dim, dim)
+            Bitmap.createBitmap(dim, dim, Bitmap.Config.ARGB_8888).apply {
+                for (x in 0 until dim) for (y in 0 until dim) {
+                    setPixel(x, y, if (matrix.get(x, y)) 0xFF000000.toInt() else 0xFFFFFFFF.toInt())
+                }
+            }
+        }.getOrElse {
+            Bitmap.createBitmap(dim, dim, Bitmap.Config.ARGB_8888).apply { eraseColor(0xFFFFFFFF.toInt()) }
         }
-        bmp
     }
     Image(
         bitmap.asImageBitmap(),

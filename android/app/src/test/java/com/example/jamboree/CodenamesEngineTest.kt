@@ -106,4 +106,21 @@ class CodenamesEngineTest {
         assertTrue(e.board.isEmpty())
         assertNull(e.winner)
     }
+
+    // A malicious spymaster must not be able to remove the guess cap with a
+    // huge number, nor freeze the turn with a negative one. The clue number is
+    // clamped to 0..board size on both platforms.
+    @Test fun `clue number is clamped to the board size`() {
+        val e = started(11)
+        e.submitClue(spymaster(e), "huge", 999_999)
+        assertEquals(e.board.size, e.currentNumber)
+        assertEquals(e.board.size + 1, e.guessesLeftThisTurn)
+    }
+
+    @Test fun `negative clue number is clamped to zero`() {
+        val e = started(12)
+        e.submitClue(spymaster(e), "neg", -5)
+        assertEquals(0, e.currentNumber)
+        assertEquals(1, e.guessesLeftThisTurn)
+    }
 }

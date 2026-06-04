@@ -168,7 +168,10 @@ final class BureaucratViewModel: ObservableObject {
     @Published var tutorialState = TutorialVoteCard.VoteState(
         isOpen: false, yesCount: 0, noCount: 0, eligibleCount: 0, result: nil, tutorialShown: false)
 
-    init() { server.onStateChange = { [weak self] in self?.refresh() } }
+    init() {
+        server.onStateChange = { [weak self] in self?.refresh() }
+        server.onStopped = { [weak self] in self?.joinUrl = nil }
+    }
 
     func setOptions(_ o: BureaucratOptions) { server.hostSetOptions(o) }
 

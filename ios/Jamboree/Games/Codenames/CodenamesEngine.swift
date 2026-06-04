@@ -121,10 +121,14 @@ final class CodenamesEngine {
               currentClue == nil else { return false }
         let trimmed = clue.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return false }
+        // Clamp the guest-supplied number: a huge value would remove the
+        // guess cap (cheat) and a negative one freezes the turn with no legal
+        // move (DoS). A clue can never exceed the cards on the board.
+        let n = max(0, min(number, board.count))
         currentClue = trimmed
-        currentNumber = number
-        guessesLeftThisTurn = number + 1
-        lastEvent = "\(p.name) (\(currentTeam.name2)) clue: \"\(trimmed)\" \(number)"
+        currentNumber = n
+        guessesLeftThisTurn = n + 1
+        lastEvent = "\(p.name) (\(currentTeam.name2)) clue: \"\(trimmed)\" \(n)"
         return true
     }
 
