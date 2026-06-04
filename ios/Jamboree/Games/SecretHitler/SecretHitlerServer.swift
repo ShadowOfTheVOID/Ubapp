@@ -137,6 +137,19 @@ final class SecretHitlerServer {
         playerToGuest[pid] = nil
         engine.removePlayer(pid)
         engine.tutorialVote.removeVoter(pid)
+        // A mid-election disconnect would otherwise hang the vote forever:
+        // removePlayer is a no-op mid-game, so the departed player still counts
+        // toward the alive quorum but can never cast a ballot. Submit a default
+        // "no" for any alive player who is no longer connected and hasn't voted
+        // so the election can resolve. applyVote resolves + broadcasts once the
+        // quorum is met.
+        if engine.phase == .election {
+            for p in engine.alive where p.id != Self.hostId
+                && playerToGuest[p.id] == nil
+                && engine.electionVotes[p.id] == nil {
+                applyVote(voterId: p.id, ja: false)
+            }
+        }
         broadcastState()
         if engine.tutorialVote.isOpen || engine.tutorialVote.hasResult {
             broadcastTutorialState()

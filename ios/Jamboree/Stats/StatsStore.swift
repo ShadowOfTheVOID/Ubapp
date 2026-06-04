@@ -83,12 +83,20 @@ final class StatsStore: ObservableObject {
 
     private nonisolated static func persistApplied(gameId: String, players: [String], outcome: String) {
         let now = Int64(Date().timeIntervalSince1970 * 1000)
+        // record() is documented as callable from any actor/thread, so the
+        // read-modify-write must be serialized — otherwise two games finishing
+        // near-simultaneously both load the same baseline and the second
+        // persist clobbers the first, losing an increment.
+        writeLock.lock()
         let updated = apply(
             load(), gameId: gameId, players: players, outcome: outcome, timestampMs: now,
         )
         persist(updated)
+        writeLock.unlock()
         Task { @MainActor in shared.data = updated }
     }
+
+    private nonisolated static let writeLock = NSLock()
 
     private nonisolated static func load() -> StatsData {
         guard let raw = UserDefaults.standard.data(forKey: key),
