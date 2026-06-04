@@ -33,7 +33,6 @@ import com.example.jamboree.games.tictactoe.TicTacToeScreen
 import com.example.jamboree.games.werewolf.WerewolfScreen
 import com.example.jamboree.join.JoinFlowScreen
 import com.example.jamboree.settings.SettingsScreen
-import com.example.jamboree.social.SocialScreen
 import com.example.jamboree.stats.StatBoardScreen
 import com.example.jamboree.theme.GameGlyph
 import com.example.jamboree.theme.GameGlyphView
@@ -98,7 +97,6 @@ private val groups = listOf(
     MenuGroup(
         "More", null,
         listOf(
-            MenuItem("social", "Social", "Friends, chat, presence demo.", "—", null, GameGlyph.Letter("S")),
             MenuItem("statboard", "Stat board", "Play counts and recent games.", "—", null, GameGlyph.Letter("≡")),
         ),
     ),
@@ -141,7 +139,6 @@ fun MainMenu() {
         composable("realtime") { RealtimeScreen() }
         composable("tictactoe") { TicTacToeScreen() }
         composable("connect_four") { ConnectFourScreen() }
-        composable("social") { JamboreeTheme { SocialScreen() } }
         composable("statboard") { StatBoardScreen(onBack = { nav.popBackStack() }) }
         composable("join") { JoinFlowScreen() }
         composable("settings") { SettingsScreen(onBack = { nav.popBackStack() }) }

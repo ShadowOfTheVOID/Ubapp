@@ -214,8 +214,6 @@ private let twoPlayerGames: [GameMeta] = [
 ]
 
 private let extras: [GameMeta] = [
-    GameMeta("social", "Social", "Friends, chat, presence demo.",
-             players: "—", glyph: .symbol("person.2.fill")) { SocialView() },
     GameMeta("statboard", "Stat board", "Play counts and recent games.",
              players: "—", glyph: .symbol("chart.bar.fill")) { StatBoardView() },
 ]
