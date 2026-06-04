@@ -18,6 +18,15 @@ protocol ProximitySource: AnyObject {
 /// Sliding-window detector with hysteresis. Holds the last few RSSI readings
 /// per peer; fires `onTouch(peerId)` when the average crosses `enterDbm` and
 /// the peer isn't currently in immunity.
+///
+/// Threshold note: phones brought together don't read like a clear-air
+/// line-of-sight link — pressing two devices close shields the antennas with
+/// each other's body/battery, so RSSI commonly sits around -65…-75 dBm rather
+/// than the -40…-55 a clear link would suggest. An aggressive enter gate
+/// (e.g. -55) therefore never fires when players actually touch phones, which
+/// reads as "tag is broken". `enterDbm` is set to match the UI's "within a
+/// few metres" promise; `exitDbm` trails it so a held-close pair stays
+/// "inside" without re-firing.
 final class ProximityDetector {
     let onTouch: (String) -> Void
     let windowSize: Int
@@ -25,7 +34,7 @@ final class ProximityDetector {
     let exitDbm: Int
     let immunity: TimeInterval
 
-    init(windowSize: Int = 4, enterDbm: Int = -55, exitDbm: Int = -65,
+    init(windowSize: Int = 4, enterDbm: Int = -72, exitDbm: Int = -82,
          immunity: TimeInterval = 2, onTouch: @escaping (String) -> Void) {
         self.windowSize = windowSize; self.enterDbm = enterDbm; self.exitDbm = exitDbm
         self.immunity = immunity; self.onTouch = onTouch
