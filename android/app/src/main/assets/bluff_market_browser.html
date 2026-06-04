@@ -343,6 +343,11 @@
     const imParty = imProposer || imTarget;
     const myGuar = (state.players.find(p => p.id === state.me.id) || {}).guaranteeUsed;
     let body = '';
+    if (!imParty) {
+      // Trades are private: onlookers see who's trading, never the cards.
+      body = `<p style="color:var(--muted)">${esc(nameOf(t.proposerId))} and ${esc(nameOf(t.targetId))} are trading privately…</p>`;
+      return `<div class="trade"><h2>Trade: ${esc(nameOf(t.proposerId))} ↔ ${esc(nameOf(t.targetId))}</h2>${body}</div>`;
+    }
     if (t.revealed) {
       body += `<div class="row" style="align-items:center"><div>${esc(nameOf(t.proposerId))}<br>${cardEl(t.proposerCard, {id:false})}</div><div style="flex:0;padding:0 8px;font-size:24px">⇄</div><div>${esc(nameOf(t.targetId))}<br>${cardEl(t.targetCard, {id:false})}</div></div>`;
       if (imParty) {
@@ -370,9 +375,7 @@
         body += `<div class="row"><button id="counter" ${state.selectedId?'':'disabled'}>Commit selected</button><button id="decline" class="danger">Decline</button></div>`;
       } else if (imProposer) {
         body += `<p>You committed. Waiting for ${esc(nameOf(t.targetId))} to counter…</p>`;
-        body += `<button id="decline" class="danger">Cancel proposal</button>`;
-      } else {
-        body += `<p>${esc(nameOf(t.proposerId))} and ${esc(nameOf(t.targetId))} are negotiating a trade…</p>`;
+        body += `<button id="decline" class="danger">Cancel &amp; skip turn</button>`;
       }
     }
     const guarLine = (t.proposerGuarantee || t.targetGuarantee)
