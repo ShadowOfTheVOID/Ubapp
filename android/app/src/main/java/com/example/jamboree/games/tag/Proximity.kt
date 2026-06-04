@@ -10,11 +10,22 @@ interface ProximitySource {
     fun stop()
 }
 
-/** Sliding-window detector with hysteresis. */
+/**
+ * Sliding-window detector with hysteresis.
+ *
+ * Threshold note: phones brought together don't read like a clear-air
+ * line-of-sight link — pressing two devices close shields the antennas with
+ * each other's body/battery, so RSSI commonly sits around -65…-75 dBm rather
+ * than the -40…-55 a clear link would suggest. An aggressive enter gate
+ * (e.g. -55) therefore never fires when players actually touch phones, which
+ * reads as "tag is broken". [enterDbm] matches the UI's "within a few metres"
+ * promise; [exitDbm] trails it so a held-close pair stays "inside" without
+ * re-firing.
+ */
 class ProximityDetector(
     val windowSize: Int = 4,
-    val enterDbm: Int = -55,
-    val exitDbm: Int = -65,
+    val enterDbm: Int = -72,
+    val exitDbm: Int = -82,
     val immunityMs: Long = 2_000L,
     val onTouch: (String) -> Unit,
 ) {
