@@ -62,6 +62,15 @@ final class HostServer {
         return body(&connections)
     }
 
+    /// Delivers an adapter callback on the main thread. The listener queue
+    /// drives inbound frames, but the game adapters mutate their engine + maps
+    /// (and the view models read them) on the main thread, so callbacks fired
+    /// from the network must hop to main to avoid a data race. Calls already on
+    /// main run synchronously, preserving the loopback/host ordering.
+    private func onMain(_ block: @escaping () -> Void) {
+        if Thread.isMainThread { block() } else { DispatchQueue.main.async(execute: block) }
+    }
+
     var onJoin: ((GuestId) -> Void)?
     var onLeave: ((GuestId) -> Void)?
     var onMessage: ((GuestId, String) -> Void)?
@@ -315,7 +324,7 @@ final class HostServer {
             self.nextId += 1
             self.withConnections { $0[id] = conn }
             self.dlog("upgrade: 101 sent, \(id.value) joined")
-            self.onJoin?(id)
+            self.onMain { self.onJoin?(id) }
             self.readFrames(id: id, conn: conn, pending: Data())
         })
     }
@@ -327,7 +336,7 @@ final class HostServer {
             guard let self else { return }
             if let error {
                 self.dlog("readFrames \(id.value): rx error \(error) → leave")
-                if self.withConnections({ $0.removeValue(forKey: id) }) != nil { self.onLeave?(id) }
+                if self.withConnections({ $0.removeValue(forKey: id) }) != nil { self.onMain { self.onLeave?(id) } }
                 return
             }
             var buf = pending
@@ -340,7 +349,7 @@ final class HostServer {
             // well within this; anything larger is malformed/hostile.
             if buf.count > Self.maxFramePayload + 16 {
                 self.dlog("readFrames \(id.value): buffer over cap (\(buf.count)B) → drop")
-                if self.withConnections({ $0.removeValue(forKey: id) }) != nil { self.onLeave?(id) }
+                if self.withConnections({ $0.removeValue(forKey: id) }) != nil { self.onMain { self.onLeave?(id) } }
                 conn.cancel()
                 return
             }
@@ -353,14 +362,14 @@ final class HostServer {
                 buf = Data(buf.dropFirst(consumed))
                 if let text {
                     self.dlog("readFrames \(id.value): text \(text.count)B → \(text.prefix(80))")
-                    self.onMessage?(id, text)
+                    self.onMain { self.onMessage?(id, text) }
                 } else {
                     self.dlog("readFrames \(id.value): non-text frame consumed \(consumed)B")
                 }
             }
 
             if isComplete {
-                if self.withConnections({ $0.removeValue(forKey: id) }) != nil { self.onLeave?(id) }
+                if self.withConnections({ $0.removeValue(forKey: id) }) != nil { self.onMain { self.onLeave?(id) } }
             } else if self.withConnections({ $0[id] != nil }) {
                 self.readFrames(id: id, conn: conn, pending: buf)
             }

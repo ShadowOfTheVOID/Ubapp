@@ -281,29 +281,35 @@ class HostServer(
                 return
             }
             dlog("${id.value} onOpen → joined")
-            onJoin?.invoke(id)
+            // Hop adapter callbacks to the main thread: NanoWSD drives these on
+            // per-connection worker threads, but the game adapters mutate their
+            // engine + maps (and Compose reads them) on the main thread. Running
+            // the handler on main serializes it with the host-action path and
+            // avoids a data race / off-main Compose state writes.
+            mainHandler.post { onJoin?.invoke(id) }
         }
         override fun onClose(code: WebSocketFrame.CloseCode?, reason: String?, initiatedByRemote: Boolean) {
             synchronized(sockets) { sockets.remove(id) }
             dlog("${id.value} onClose code=$code remote=$initiatedByRemote → leave")
-            onLeave?.invoke(id)
+            mainHandler.post { onLeave?.invoke(id) }
         }
         override fun onMessage(message: WebSocketFrame) {
             val text = message.textPayload
             dlog("${id.value} rx ${text.length}B → ${text.take(80)}")
-            // Guard the game handler: a malformed/incomplete frame can make a
-            // server's JSON field getter (getString/getBoolean/getInt/…) throw
-            // on this NanoWSD worker thread. Swallow it so one bad frame can't
-            // tear down the socket or crash the thread — the iOS servers
-            // already ignore such frames via optional casts.
-            runCatching { onMessage?.invoke(id, text) }
-                .onFailure { dlog("${id.value} onMessage handler threw: $it — frame dropped") }
+            // Run the game handler on the main thread (see onOpen). The
+            // runCatching also guards against a malformed/incomplete frame whose
+            // JSON field getter throws, so one bad frame can't crash — matching
+            // the iOS servers' optional-cast behavior.
+            mainHandler.post {
+                runCatching { onMessage?.invoke(id, text) }
+                    .onFailure { dlog("${id.value} onMessage handler threw: $it — frame dropped") }
+            }
         }
         override fun onPong(pong: WebSocketFrame?) {}
         override fun onException(exception: java.io.IOException?) {
             synchronized(sockets) { sockets.remove(id) }
             dlog("${id.value} onException $exception → leave")
-            onLeave?.invoke(id)
+            mainHandler.post { onLeave?.invoke(id) }
         }
     }
 
