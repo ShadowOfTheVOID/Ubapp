@@ -75,7 +75,7 @@ dependencies {
     // Detector falls back to the keyword detector when the asset is absent.
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.19.2")
 
-    // One-time IAP to remove ads. Wire up BillingClient in AdManager when ready.
+    // One-time IAP to remove ads (see ads/BillingManager.kt).
     implementation("com.android.billingclient:billing-ktx:7.0.0")
 
     // AdMob — banner + interstitial placements.

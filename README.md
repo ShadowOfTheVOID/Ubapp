@@ -24,7 +24,7 @@ ios/                                    # SwiftUI app (Xcode 16, no xcodegen)
     ├── Menu/                           # MainMenuView
     ├── Games/<Name>/                   # one folder per game
     ├── Social/                         # HostServer (Network.framework)
-    └── Tutorials/                      # tutorial copy + opt-in vote (TODO)
+    └── Tutorials/                      # tutorial copy + opt-in vote
 
 android/                                # Gradle/Kotlin DSL, Jetpack Compose
 ├── settings.gradle.kts, build.gradle.kts
@@ -176,21 +176,25 @@ style interface). `KeywordContradictionDetector` is the always-on offline
 default and needs no model — the game is fully playable on the rebuttal-timer
 + keyword path with zero setup.
 
-To upgrade rebuttal judging to a real NLI model, the project targets
-`cross-encoder/nli-MiniLM2-L6-H768` — a MiniLM **distilled from RoBERTa**, so
-it uses RoBERTa byte-level BPE tokenisation and emits three logits in the order
-`[contradiction, entailment, neutral]`.
+The real NLI model is `cross-encoder/nli-MiniLM2-L6-H768` — a MiniLM
+**distilled from RoBERTa**, so it uses RoBERTa byte-level BPE tokenisation and
+emits three logits in the order `[contradiction, entailment, neutral]`.
 
-1. From the model repo's `Files` tab, download two files (no Python needed —
-   the repo ships pre-exported ONNX):
-   - `onnx/model_qint8_arm64.onnx` — int8, ARM64, ~83 MB (right for phones;
-     for x86 simulator/emulator use the arch-neutral `model_O4.onnx` instead)
-   - `tokenizer.json` — the self-contained tokeniser (vocab **and** merges)
-2. Rename to `nli_minilm.onnx` and `nli_tokenizer.json`, then drop **both**
-   into **both** trees (they are intentionally *not* committed — an ~83 MB
-   binary doesn't belong in git):
-   - `android/app/src/main/assets/`
-   - `ios/Jamboree/Resources/`
+The model (`nli_minilm.onnx`, ~83 MB int8) and tokeniser
+(`nli_tokenizer.json`) **are bundled** in both trees so the upgraded judging
+ships out of the box:
+
+- `android/app/src/main/assets/`
+- `ios/Jamboree/Resources/`
+
+To replace or re-export them (no Python needed — the model repo ships
+pre-exported ONNX), download from the repo's `Files` tab and rename:
+
+1. `onnx/model_qint8_arm64.onnx` → `nli_minilm.onnx` — int8, ARM64, ~83 MB
+   (right for phones; for x86 simulator/emulator use the arch-neutral
+   `model_O4.onnx` instead).
+2. `tokenizer.json` → `nli_tokenizer.json` — the self-contained tokeniser
+   (vocab **and** merges). Drop both into **both** trees above.
 3. Android already declares `com.microsoft.onnxruntime:onnxruntime-android`.
    For iOS, add the `onnxruntime-objc` package — the ONNX call sites in
    `OnnxContradictionDetector.swift` are gated behind
