@@ -16,7 +16,7 @@ struct SecretHitlerView: View {
                             Spacer(minLength: 0)
                             VStack(alignment: .center, spacing: 16) {
                                 VStack(spacing: 4) {
-                                    MonoLabel("Hosting · Secret Hitler", color: JamboreeTheme.accent)
+                                    MonoLabel("Hosting · Hidden Agenda", color: JamboreeTheme.accent)
                                     Text("Waiting for players")
                                         .font(.system(size: 24, weight: .heavy)).kerning(-0.6)
                                         .foregroundStyle(.white)
@@ -47,7 +47,7 @@ struct SecretHitlerView: View {
             }
         }
         .jamboreeChrome()
-        .navigationTitle("Secret Hitler")
+        .navigationTitle("Hidden Agenda")
         .onDisappear { model.stop() }
     }
 

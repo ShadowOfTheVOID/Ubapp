@@ -34,7 +34,7 @@ struct CodenamesGuestView: View {
                 showInterstitial = true
             }
         }
-        .navigationTitle("Codenames")
+        .navigationTitle("Code Words")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { model.attach(ctx: ctx) }
         .onDisappear { ctx.client.onMessage = nil }
@@ -43,7 +43,7 @@ struct CodenamesGuestView: View {
 
     @ViewBuilder private var lobby: some View {
         VStack(alignment: .leading, spacing: 6) {
-            MonoLabel("Codenames · lobby", color: JamboreeTheme.accent)
+            MonoLabel("Code Words · lobby", color: JamboreeTheme.accent)
             Text("Pick your team")
                 .font(.system(size: 26, weight: .heavy)).kerning(-0.8).foregroundStyle(.white)
             Text("Playing as \(ctx.yourName)")
@@ -130,7 +130,7 @@ struct CodenamesGuestView: View {
             let team = model.currentTeam ?? ""
             let mine = model.currentTeam == model.myTeam
             VStack(alignment: .leading, spacing: 4) {
-                MonoLabel("Codenames", color: JamboreeTheme.accent)
+                MonoLabel("Code Words", color: JamboreeTheme.accent)
                 Text(mine ? (model.isSpymaster ? "Your clue" : "Your team guesses")
                           : "\(team.capitalized)'s turn")
                     .font(.system(size: 24, weight: .heavy)).kerning(-0.7)

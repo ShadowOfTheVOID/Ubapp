@@ -75,7 +75,7 @@ fun CodenamesScreen() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            LobbyHeader("Codenames")
+            LobbyHeader("Code Words")
             HostingChrome(
                 joinUrl = joinUrl,
                 onStart = { joinUrl = server.start() },

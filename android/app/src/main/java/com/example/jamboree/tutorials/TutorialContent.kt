@@ -66,7 +66,7 @@ object GameTutorials {
     )
 
     val codenames = GameTutorial(
-        title = "How to play Codenames",
+        title = "How to play Code Words",
         sections = listOf(
             TutorialSection("Setup", "Two teams (red and blue). Each team picks one Spymaster who sees which words belong to which team, plus an Assassin word and neutral words."),
             TutorialSection("Clues", "On your turn, the Spymaster gives a one-word clue and a number — e.g. \"Animal 3\". The clue must relate to that many of your team's words on the board."),
@@ -97,18 +97,18 @@ object GameTutorials {
     )
 
     val secretHitler = GameTutorial(
-        title = "How to play Secret Hitler",
+        title = "How to play Hidden Agenda",
         sections = listOf(
-            TutorialSection("Roles", "Liberals are the majority. Fascists are the minority; one of them is Hitler. Fascists know each other and know Hitler. Hitler only learns who the Fascists are in 5–6 player games."),
-            TutorialSection("Elect a government", "Each round the President nominates a Chancellor. Everyone votes Ja or Nein. A tie or majority Nein fails the vote and advances the rotation. Three failed votes in a row triggers chaos: the top policy is enacted automatically."),
-            TutorialSection("Legislative session", "After a successful vote the President draws 3 policy cards, discards 1, and passes 2 to the Chancellor, who enacts one of them. After five Fascist policies the Chancellor may request a veto — both leaders must agree to discard the pair."),
-            TutorialSection("Presidential powers", "Some Fascist policies grant the President a power: peek at the top of the deck, investigate a player's party, call a special election, or execute a player. The board changes with player count."),
-            TutorialSection("Winning", "Liberals win by enacting 5 Liberal policies or by executing Hitler. Fascists win by enacting 6 Fascist policies, or by getting Hitler elected Chancellor after 3 Fascist policies are on the board."),
+            TutorialSection("Roles", "Loyalists are the majority. Conspirators are the minority; one of them is the Mastermind. Conspirators know each other and know the Mastermind. The Mastermind only learns who the Conspirators are in 5–6 player games."),
+            TutorialSection("Elect a government", "Each round the President nominates a Chancellor. Everyone votes Yes or No. A tie or majority No fails the vote and advances the rotation. Three failed votes in a row triggers chaos: the top policy is enacted automatically."),
+            TutorialSection("Legislative session", "After a successful vote the President draws 3 policy cards, discards 1, and passes 2 to the Chancellor, who enacts one of them. After five Scheme policies the Chancellor may request a veto — both leaders must agree to discard the pair."),
+            TutorialSection("Presidential powers", "Some Scheme policies grant the President a power: peek at the top of the deck, investigate a player's loyalty, call a special election, or remove a player. The board changes with player count."),
+            TutorialSection("Winning", "Loyalists win by enacting 5 Reform policies or by removing the Mastermind. Conspirators win by enacting 6 Scheme policies, or by getting the Mastermind elected Chancellor after 3 Scheme policies are on the board."),
         ),
         browserMenuSections = listOf(
-            TutorialSection("Your role", "A coloured card at the top shows your role: Liberal, Fascist, or Hitler. Fascists also see their allies. Keep your phone face-down between turns."),
+            TutorialSection("Your role", "A coloured card at the top shows your role: Loyalist, Conspirator, or Mastermind. Conspirators also see their allies. Keep your phone face-down between turns."),
             TutorialSection("President / Chancellor turns", "When it's your turn to act (nominate, discard, enact, use a power) the buttons appear under the government card. Otherwise the screen tells you who the table is waiting on."),
-            TutorialSection("Voting", "When an election opens, tap Ja or Nein. Your vote locks in and the count updates as everyone else votes."),
+            TutorialSection("Voting", "When an election opens, tap Yes or No. Your vote locks in and the count updates as everyone else votes."),
         ),
     )
 
@@ -193,7 +193,7 @@ object GameTutorials {
     )
 
     val connectFour = GameTutorial(
-        title = "How to play Connect Four",
+        title = "How to play Four in a Row",
         sections = listOf(
             TutorialSection("Goal", "Drop discs into the columns. First to line up the target number of discs in a row, column, or diagonal wins."),
             TutorialSection("Turns", "Tap a column to drop your disc. The AI alternates with you. The center column tends to be the strongest opener."),

@@ -32,7 +32,7 @@ struct ConnectFourView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .jamboreeChrome()
-        .navigationTitle("Connect Four")
+        .navigationTitle("Four in a Row")
         .onChange(of: model.isOver) { _, over in
             if over { recordResult() }
         }

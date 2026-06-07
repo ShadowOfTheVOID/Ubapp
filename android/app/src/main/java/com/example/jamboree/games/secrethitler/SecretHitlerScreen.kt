@@ -60,7 +60,7 @@ fun SecretHitlerScreen() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            LobbyHeader("Secret Hitler")
+            LobbyHeader("Hidden Agenda")
             HostingChrome(
                 joinUrl = joinUrl,
                 onStart = { joinUrl = server.start() },

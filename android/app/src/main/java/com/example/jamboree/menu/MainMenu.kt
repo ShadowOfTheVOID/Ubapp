@@ -72,9 +72,9 @@ private val groups = listOf(
                      "5–14", "20–40 min", GameGlyph.Werewolf),
             MenuItem("imposter", "Imposter", "Everyone shares a word — except one.",
                      "4–10", "5–10 min", GameGlyph.Imposter),
-            MenuItem("codenames", "Codenames", "Word-association duel for two teams.",
+            MenuItem("codenames", "Code Words", "Word-association duel for two teams.",
                      "4+", null, GameGlyph.Letter("C")),
-            MenuItem("secret_hitler", "Secret Hitler", "Politics, lies, and hidden roles.",
+            MenuItem("secret_hitler", "Hidden Agenda", "Politics, lies, and hidden roles.",
                      "5–10", null, GameGlyph.Letter("S")),
             MenuItem("bureaucrat", "The Bureaucrat", "Deny every request — until a citizen finds the loophole.",
                      "3–10", "10–20 min", GameGlyph.Letter("B")),
@@ -91,7 +91,7 @@ private val groups = listOf(
         "Two-player", null,
         listOf(
             MenuItem("tictactoe", "Tic-Tac-Toe", "Three in a row.", "2", null, GameGlyph.Letter("#")),
-            MenuItem("connect_four", "Connect Four", "Four in a row, drop tokens.", "2", null, GameGlyph.Letter("4")),
+            MenuItem("connect_four", "Four in a Row", "Four in a row, drop tokens.", "2", null, GameGlyph.Letter("4")),
         ),
     ),
     MenuGroup(
