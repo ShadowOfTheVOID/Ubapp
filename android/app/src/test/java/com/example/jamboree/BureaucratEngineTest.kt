@@ -183,6 +183,21 @@ class BureaucratEngineTest {
         e.setOptions(BureaucratOptions(rebuttalMode = "yell"))
         assertEquals("type", e.options.rebuttalMode)
     }
+
+    @Test fun `the task never repeats the previous round`() {
+        val e = engine(seed = 7, n = 3)
+        e.setOptions(BureaucratOptions(targetScore = 50))   // keep the game going
+        e.start()
+        var prev = e.task
+        repeat(30) {
+            e.bureaucratSurvives()
+            e.nextRound()
+            assertEquals(BureaucratPhase.ARGUING, e.phase)
+            assertNotNull(e.task)
+            assertTrue(e.task != prev, "task repeated back-to-back: ${e.task}")
+            prev = e.task
+        }
+    }
 }
 
 class KeywordContradictionDetectorTest {

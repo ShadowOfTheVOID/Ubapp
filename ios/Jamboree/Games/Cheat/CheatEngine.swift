@@ -172,7 +172,7 @@ final class CheatEngine {
         p.hand = remaining
         lastPlay = CheatLastPlay(playerId: p.id, claimedRank: claimedRank, actualCards: cards)
         lastReveal = nil
-        lastEvent = "\(p.name) claims \(cards.count) \(rankName(claimedRank))\(cards.count == 1 ? "" : "s")"
+        lastEvent = "\(p.name) claims \(cards.count) \(rankName(claimedRank))"
         if p.hand.isEmpty {
             phase = .pendingWin
             winnerId = p.id

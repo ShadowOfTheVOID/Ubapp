@@ -79,6 +79,8 @@ class BureaucratEngine(private val rng: Random = Random.Default) {
 
     /** Rotation cursor over [order]; the bureaucrat is order[rotation % size]. */
     private var rotation: Int = 0
+    /** Index of the previous round's task, so a task never repeats back-to-back. */
+    private var lastTaskIndex: Int = -1
 
     private companion object {
         const val SURVIVE_REWARD = 2
@@ -124,7 +126,12 @@ class BureaucratEngine(private val rng: Random = Random.Default) {
         val ids = order
         if (ids.isEmpty()) return
         bureaucratId = ids[rotation % ids.size]
-        task = TASKS[rng.nextInt(TASKS.size)]
+        // Pick a task, never repeating the previous round's so play stays varied.
+        val count = TASKS.size
+        val idx = if (lastTaskIndex < 0 || count <= 1) rng.nextInt(count)
+                  else { val r = rng.nextInt(count - 1); if (r >= lastTaskIndex) r + 1 else r }
+        lastTaskIndex = idx
+        task = TASKS[idx]
         policyLog.clear()
         pendingChallenger = null
         tokens.clear()

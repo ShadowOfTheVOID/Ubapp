@@ -65,6 +65,8 @@ final class BureaucratEngine {
     private(set) var lastRound: RoundOutcome?
 
     private var rotation = 0
+    /// Index of the previous round's task, so a task never repeats back-to-back.
+    private var lastTaskIndex = -1
 
     private let surviveReward = 2
     private let loopholeReward = 3
@@ -119,7 +121,17 @@ final class BureaucratEngine {
     private func beginRound() {
         guard !playerOrder.isEmpty else { return }
         bureaucratId = playerOrder[rotation % playerOrder.count]
-        task = BureaucratTasks.all[Int.random(in: 0..<BureaucratTasks.all.count, using: &rng)]
+        // Pick a task, never repeating the previous round's so play stays varied.
+        let count = BureaucratTasks.all.count
+        let idx: Int
+        if lastTaskIndex < 0 || count <= 1 {
+            idx = Int.random(in: 0..<count, using: &rng)
+        } else {
+            let r = Int.random(in: 0..<(count - 1), using: &rng)
+            idx = r >= lastTaskIndex ? r + 1 : r
+        }
+        lastTaskIndex = idx
+        task = BureaucratTasks.all[idx]
         policyLog.removeAll()
         pendingChallenger = nil
         tokens.removeAll()
@@ -200,7 +212,7 @@ final class BureaucratEngine {
     @discardableResult
     func nextRound() -> Bool {
         guard phase == .roundOver else { return false }
-        if let leader = players.values.max(by: { $0.score < $1.score }),
+        if let leader = playerOrder.compactMap({ players[$0] }).max(by: { $0.score < $1.score }),
            leader.score >= options.targetScore {
             winnerId = leader.id
             phase = .gameOver
