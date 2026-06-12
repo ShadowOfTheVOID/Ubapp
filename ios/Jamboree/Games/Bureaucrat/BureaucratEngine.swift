@@ -25,12 +25,23 @@ final class BureaucratPlayer {
     }
 }
 
+/// What a policy-log line is. Drives styling on every client and, crucially,
+/// what the contradiction detector is allowed to judge against.
+/// - `request`  — the round's absurd task, seeded as line 0. Shown to anchor
+///   play, but **never** fed to the detector: denying the request literally
+///   contradicts it, so it can't count against the Bureaucrat.
+/// - `denial`   — a binding ruling the Bureaucrat typed.
+/// - `claim`    — the citizen's loophole argument when they challenge.
+/// - `rebuttal` — the Bureaucrat's forced answer to a claim.
+enum PolicyKind: String { case request, denial, claim, rebuttal }
+
 /// One line in the binding policy log.
 struct PolicyEntry {
     let text: String
-    /// false for the bureaucrat's own denials, true for forced rebuttals.
-    let isRebuttal: Bool
-    let challengerId: String?
+    let kind: PolicyKind
+    /// Who put this on record: the bureaucrat for denials/rebuttals, the
+    /// challenging citizen for claims, nil for the seeded request.
+    let authorId: String?
 }
 
 struct RoundOutcome {
@@ -131,8 +142,12 @@ final class BureaucratEngine {
             idx = r >= lastTaskIndex ? r + 1 : r
         }
         lastTaskIndex = idx
-        task = BureaucratTasks.all[idx]
+        let chosen = BureaucratTasks.all[idx]
+        task = chosen
         policyLog.removeAll()
+        // Seed the request as line 0 so the task anchors the whole round and
+        // every denial/claim reads against it on screen.
+        policyLog.append(PolicyEntry(text: chosen, kind: .request, authorId: nil))
         pendingChallenger = nil
         tokens.removeAll()
         for c in citizens { tokens[c.id] = options.challengeTokens }
@@ -146,14 +161,21 @@ final class BureaucratEngine {
         guard phase == .arguing, playerId == bureaucratId else { return false }
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !t.isEmpty else { return false }
-        policyLog.append(PolicyEntry(text: t, isRebuttal: false, challengerId: nil))
+        policyLog.append(PolicyEntry(text: t, kind: .denial, authorId: bureaucratId))
         return true
     }
 
+    /// A citizen spends a token to challenge, stating the loophole `claim` they
+    /// are exploiting. The claim joins the log and becomes part of what the
+    /// Bureaucrat's rebuttal is judged against, so the contradiction is always
+    /// grounded in something a citizen actually argued.
     @discardableResult
-    func callLoophole(citizenId: String) -> Bool {
+    func callLoophole(citizenId: String, claim: String) -> Bool {
         guard phase == .arguing, citizenId != bureaucratId, players[citizenId] != nil,
               tokensFor(citizenId) > 0 else { return false }
+        let c = claim.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !c.isEmpty else { return false }
+        policyLog.append(PolicyEntry(text: c, kind: .claim, authorId: citizenId))
         pendingChallenger = citizenId
         phase = .rebuttal
         return true
@@ -166,7 +188,7 @@ final class BureaucratEngine {
         guard phase == .rebuttal, let challenger = pendingChallenger else { return false }
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !t.isEmpty else { return false }
-        policyLog.append(PolicyEntry(text: t, isRebuttal: true, challengerId: challenger))
+        policyLog.append(PolicyEntry(text: t, kind: .rebuttal, authorId: bureaucratId))
         if contradicts {
             awardLoophole(challenger, reason: .loopholeContradiction)
             return true

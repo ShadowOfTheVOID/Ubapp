@@ -113,6 +113,8 @@ private fun BureaucratLobby(s: BureaucratGuestState, ctx: GuestContext) {
             fontSize = 13.sp, color = Ub.Muted)
     }
 
+    HowToCard()
+
     MonoLabel("In the room · ${s.players.size}")
 
     for (p in s.players) {
@@ -145,6 +147,7 @@ private fun BureaucratArguing(s: BureaucratGuestState, ctx: GuestContext, iAmBur
     ArgHeader(s.roundNumber)
     HotSeatBanner(s)
     TaskCard(s.task)
+    VerdictBanner(s)
     if (iAmBureaucrat) DenialComposer(ctx)
     else LoopholePanel(s, ctx)
     DenialLedger(s)
@@ -160,6 +163,7 @@ private fun BureaucratArguing(s: BureaucratGuestState, ctx: GuestContext, iAmBur
 private fun BureaucratRebuttal(s: BureaucratGuestState, ctx: GuestContext, iAmBureaucrat: Boolean, secs: Int) {
     ArgHeader(s.roundNumber)
     LiveChallengeBanner(s, secs)
+    ClaimCard(s)
     if (iAmBureaucrat) RebuttalComposer(s, ctx, s.rebuttalMode)
     else SpectateCard(s)
     DenialLedger(s)
@@ -195,6 +199,8 @@ private fun BureaucratRoundOver(s: BureaucratGuestState, ctx: GuestContext) {
             }
         }
     }
+
+    VerdictBanner(s)
 
     StandingsScoreboard(s, ctx.yourId)
 
@@ -269,7 +275,7 @@ private fun HotSeatBanner(s: BureaucratGuestState) {
                 fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Ub.Foreground)
         }
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text("${s.policyLog.count { !it.isRebuttal }}",
+            Text("${s.policyLog.count { it.kind == "denial" }}",
                 fontSize = 18.sp, fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace, color = Ub.Faint)
             MonoLabel("rulings", size = 8, color = Ub.Faint)
@@ -314,14 +320,23 @@ private fun DenialComposer(ctx: GuestContext) {
 @Composable
 private fun LoopholePanel(s: BureaucratGuestState, ctx: GuestContext) {
     val left = s.tokens[ctx.yourId] ?: 0
+    var claim by remember(s.roundNumber) { mutableStateOf("") }
     Column(Modifier.fillMaxWidth().ubCard().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         TokenDots(filled = left, total = s.challengeTokens)
         MonoLabel("Challenge tokens · $left left")
-        Text("Argue out loud. When you've trapped the Bureaucrat in their own logic, call a loophole — they must rebut before the clock runs out.",
+        Text("Caught the Bureaucrat boxed in by their own rules? State the loophole you're exploiting, then call it — they must rebut before the clock runs out, and the AI judge checks their answer against your claim.",
             fontSize = 13.sp, color = Ub.Muted)
-        UbPrimaryButton("Call loophole", enabled = left > 0,
-            onClick = { ctx.client.send(JSONObject().put("type", "call_loophole")) })
+        OutlinedTextField(value = claim, onValueChange = { if (it.length <= 240) claim = it },
+            modifier = Modifier.fillMaxWidth(), minLines = 2, enabled = left > 0,
+            placeholder = { Text("e.g. A goldfish is alive in law, so it qualifies as a co-signer.") })
+        UbPrimaryButton("Call loophole", enabled = left > 0 && claim.isNotBlank(), onClick = {
+            val c = claim.trim()
+            if (c.isNotEmpty()) {
+                ctx.client.send(JSONObject().put("type", "call_loophole").put("claim", c))
+                claim = ""
+            }
+        })
     }
 }
 
@@ -333,16 +348,21 @@ private fun DenialLedger(s: BureaucratGuestState) {
             Spacer(Modifier.weight(1f))
             MonoLabel("Every word is on record", size = 8, color = Ub.Faint)
         }
-        if (s.policyLog.isEmpty()) {
+        // The request is shown in the task card already; the ledger holds the
+        // denial/loophole back-and-forth, numbered for readability.
+        val entries = s.policyLog.withIndex().filter { it.value.kind != "request" }
+        if (entries.isEmpty()) {
             Text("No policy on record yet. The Bureaucrat has said nothing binding… for now.",
                 fontSize = 13.sp, color = Ub.Muted)
         } else {
-            s.policyLog.forEachIndexed { i, e ->
+            val clashIndex = if (s.verdict?.contradicts == true) s.verdict?.lineIndex ?: -1 else -1
+            entries.forEachIndexed { displayIdx, (origIdx, e) ->
                 LedgerRow(
-                    number = i + 1,
+                    number = displayIdx + 1,
                     reason = e.text,
-                    verdict = if (e.isRebuttal) "REBUTTAL" else "DENIED",
-                    isCited = e.isRebuttal
+                    verdict = ledgerVerdict(e.kind),
+                    isCited = e.kind == "rebuttal" || e.kind == "claim",
+                    isClash = origIdx == clashIndex
                 )
             }
         }
@@ -404,13 +424,13 @@ private fun LiveChallengeBanner(s: BureaucratGuestState, secs: Int) {
                     "${s.challengerName.ifEmpty { "A challenger" }} challenges the ruling",
                     fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Ub.Foreground
                 )
-                val latest = s.policyLog.lastOrNull { !it.isRebuttal }
+                val latest = s.policyLog.lastOrNull { it.kind == "denial" }
                 if (latest != null) {
                     Text("“${latest.text}”", fontSize = 12.sp, color = Ub.Muted, maxLines = 2)
                 }
             }
         }
-        val latest = s.policyLog.lastOrNull { !it.isRebuttal }
+        val latest = s.policyLog.lastOrNull { it.kind == "denial" }
         if (latest != null) {
             Column(
                 Modifier.fillMaxWidth().ubCard(radius = Ub.Radius.row, fill = Ub.Surface, stroke = Ub.Line)
@@ -626,6 +646,82 @@ private fun roundOverText(r: BureaucratGuestState.Outcome?): String {
     }
 }
 
+private fun ledgerVerdict(kind: String): String = when (kind) {
+    "request"  -> "REQUEST"
+    "claim"    -> "LOOPHOLE"
+    "rebuttal" -> "REBUTTAL"
+    else       -> "DENIED"
+}
+
+/**
+ * The legible AI ruling — shown after a defense and on the round-over screen so
+ * players can see exactly what the judge decided instead of an opaque verdict.
+ */
+@Composable
+private fun VerdictBanner(s: BureaucratGuestState) {
+    val v = s.verdict ?: return
+    val good = Color(0xFF2EA043)
+    val bad = Color(0xFFF85149)
+    val pct = if (v.confidence > 0) "  ·  ${(v.confidence * 100).toInt()}%" else ""
+    val head = if (v.contradicts) "AI judge · loophole stands — contradiction$pct"
+               else "AI judge · rebuttal holds — ${v.label}$pct"
+    val cited = if (v.lineIndex in s.policyLog.indices) s.policyLog[v.lineIndex].text else null
+    Column(
+        Modifier.fillMaxWidth().ubCard(
+            radius = Ub.Radius.row,
+            fill = (if (v.contradicts) bad else good).copy(alpha = 0.10f),
+            stroke = (if (v.contradicts) bad else good).copy(alpha = 0.5f)
+        ).padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        MonoLabel(head, size = 9, color = if (v.contradicts) Color(0xFFFF6B6B) else Color(0xFF3DDC84))
+        if (cited != null) {
+            Text("${if (v.contradicts) "Clashes with" else "Closest line"}: “$cited”",
+                fontSize = 13.sp, color = Ub.Muted, maxLines = 3)
+        }
+    }
+}
+
+/** The challenger's loophole claim, shown during the rebuttal window. */
+@Composable
+private fun ClaimCard(s: BureaucratGuestState) {
+    if (s.challengerClaim.isEmpty()) return
+    Column(
+        Modifier.fillMaxWidth()
+            .ubCard(radius = Ub.Radius.panel, fill = Ub.AccentSoft, stroke = Ub.AccentLine)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        MonoLabel("${s.challengerName.ifEmpty { "A citizen" }}'s loophole claim", color = Ub.Accent)
+        Text("“${s.challengerClaim}”", fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
+            color = Ub.Foreground)
+    }
+}
+
+private val howToSteps = listOf(
+    "One Bureaucrat must deny an absurd request; everyone else is a Citizen. The role rotates each round.",
+    "The Bureaucrat types denials — each becomes binding policy on every screen.",
+    "A Citizen spends a token to call a loophole, stating the claim they're exploiting.",
+    "The Bureaucrat must rebut before the timer. An AI judge checks the rebuttal against the denials and the claim — a contradiction means the loophole wins.",
+)
+
+@Composable
+private fun HowToCard() {
+    Column(Modifier.fillMaxWidth().ubCard(fill = Ub.Surface, stroke = Ub.Line).padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        MonoLabel("How to play")
+        howToSteps.forEachIndexed { i, step ->
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+                Box(Modifier.size(20.dp).clip(CircleShape).background(Ub.Accent),
+                    contentAlignment = Alignment.Center) {
+                    Text("${i + 1}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                }
+                Text(step, fontSize = 13.sp, color = Ub.Muted, modifier = Modifier.weight(1f))
+            }
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // New shared atoms (private to file)
 // ---------------------------------------------------------------------------
@@ -700,27 +796,32 @@ fun GlyphBureaucrat(size: Dp = 64.dp) {
 private fun LedgerRow(
     number: Int,
     reason: String,
-    verdict: String = “DENIED”,
+    verdict: String = "DENIED",
     isCited: Boolean = false,
+    isClash: Boolean = false,
 ) {
+    val clashColor = Color(0xFFF85149)
     val verdictColor = when (verdict) {
-        “APPROVED” -> Color(0xFF3DDC84)
-        “DENIED”   -> Ub.Accent
+        "APPROVED" -> Color(0xFF3DDC84)
+        "LOOPHOLE" -> Color(0xFF3DDC84)
+        "DENIED"   -> Ub.Accent
         else       -> Ub.Muted
     }
     Row(
         Modifier.fillMaxWidth()
             .ubCard(
                 radius = 12.dp,
-                fill = if (isCited) Ub.AccentSoft else Color.White.copy(alpha = 0.03f),
-                stroke = if (isCited) Ub.AccentLine else Ub.Line
+                fill = if (isClash) clashColor.copy(alpha = 0.12f)
+                       else if (isCited) Ub.AccentSoft else Color.White.copy(alpha = 0.03f),
+                stroke = if (isClash) clashColor.copy(alpha = 0.6f)
+                         else if (isCited) Ub.AccentLine else Ub.Line
             )
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Text(
-            “#$number”,
+            "#$number",
             fontFamily = FontFamily.Monospace,
             fontSize = 9.sp,
             fontWeight = FontWeight.Medium,
@@ -812,7 +913,11 @@ private fun TokenDots(filled: Int, total: Int, gap: Dp = 3.dp) {
 
 class BureaucratGuestState {
     data class Player(val id: String, val name: String, val isHost: Boolean)
-    data class Entry(val text: String, val isRebuttal: Boolean, val challengerId: String?)
+    data class Entry(val text: String, val kind: String, val author: String?) {
+        val isRebuttal: Boolean get() = kind == "rebuttal"
+    }
+    /** The AI judge's last ruling, for the legible verdict card. */
+    data class Verdict(val contradicts: Boolean, val label: String, val confidence: Double, val lineIndex: Int)
     data class Outcome(val reason: String, val challengerName: String, val nextBureaucratName: String)
 
     var players by mutableStateOf<List<Player>>(emptyList())
@@ -831,6 +936,8 @@ class BureaucratGuestState {
     var policyLog by mutableStateOf<List<Entry>>(emptyList())
     var challengerId by mutableStateOf<String?>(null)
     var challengerName by mutableStateOf("")
+    var challengerClaim by mutableStateOf("")
+    var verdict by mutableStateOf<Verdict?>(null)
     var deadlineMs by mutableLongStateOf(0L)
     var last by mutableStateOf<Outcome?>(null)
     var winnerName by mutableStateOf("")
@@ -862,6 +969,8 @@ class BureaucratGuestState {
                 phase = "rebuttal"
                 challengerId = if (m.isNull("challengerId")) null else m.optString("challengerId")
                 challengerName = m.optString("challengerName")
+                challengerClaim = if (m.isNull("claim")) "" else m.optString("claim")
+                verdict = null
                 deadlineMs = m.optLong("deadlineMs", 0L)
                 rebuttalSeconds = m.optInt("seconds", rebuttalSeconds)
                 m.optJSONArray("policyLog")?.let { policyLog = readLog(it) }
@@ -872,6 +981,7 @@ class BureaucratGuestState {
                     if (m.isNull("nextBureaucratId")) "" else nameOf(m.optString("nextBureaucratId")))
                 scores = readScores(m.optJSONObject("scores"))
                 targetScore = m.optInt("targetScore", targetScore)
+                verdict = readVerdict(m.optJSONObject("verdict"))
                 m.optJSONArray("policyLog")?.let { policyLog = readLog(it) }
             }
             "game_over" -> {
@@ -898,16 +1008,23 @@ class BureaucratGuestState {
         targetScore = m.optInt("targetScore", targetScore)
         scores = readScores(m.optJSONObject("scores"))
         tokens = readScores(m.optJSONObject("tokens"))
+        verdict = readVerdict(m.optJSONObject("verdict"))
         policyLog = readLog(m.optJSONArray("policyLog"))
+        if (m.optString("type") == "round") challengerClaim = ""
     }
 
     private fun readLog(arr: JSONArray?): List<Entry> {
         if (arr == null) return emptyList()
         return (0 until arr.length()).map {
             val o = arr.getJSONObject(it)
-            Entry(o.optString("text"), o.optBoolean("isRebuttal"),
-                if (o.isNull("challengerId")) null else o.optString("challengerId"))
+            Entry(o.optString("text"), o.optString("kind", "denial"),
+                if (o.isNull("author")) null else o.optString("author"))
         }
+    }
+    private fun readVerdict(o: JSONObject?): Verdict? {
+        if (o == null) return null
+        return Verdict(o.optBoolean("contradicts"), o.optString("label", "neutral"),
+            o.optDouble("confidence", 0.0), o.optInt("lineIndex", -1))
     }
     private fun readScores(o: JSONObject?): Map<String, Int> {
         if (o == null) return emptyMap()

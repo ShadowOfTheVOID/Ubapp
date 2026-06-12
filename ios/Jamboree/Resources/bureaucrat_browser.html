@@ -110,8 +110,23 @@
   .log li{ background:var(--card2); border:1px solid var(--line); border-radius:12px;
     padding:12px 14px; margin-bottom:8px; font-size:14px; line-height:1.4; }
   .log li.reb{ border-color:var(--accent-line); background:var(--accent-soft); }
+  .log li.claim{ border-color:var(--line-strong); background:rgba(255,255,255,0.05); }
+  .log li.clash{ border-color:var(--danger); box-shadow:inset 0 0 0 1px var(--danger); }
   .log li .meta{ font-family:var(--mono); font-size:9px; letter-spacing:0.12em;
     text-transform:uppercase; color:var(--faint); display:block; margin-bottom:4px; }
+  .verdict{ border-radius:14px; padding:14px 16px; margin-bottom:14px; text-align:left;
+    border:1px solid var(--line); background:var(--card2); }
+  .verdict.bad{ border-color:var(--danger); background:rgba(248,81,73,0.10); }
+  .verdict.good{ border-color:var(--good); background:rgba(46,160,67,0.10); }
+  .verdict .vhead{ font-family:var(--mono); font-size:10px; letter-spacing:0.12em;
+    text-transform:uppercase; margin-bottom:6px; }
+  .verdict.bad .vhead{ color:#ff9d96; }
+  .verdict.good .vhead{ color:#7ee2a0; }
+  .howto{ counter-reset:step; list-style:none; padding:0; margin:8px 0 0; }
+  .howto li{ position:relative; padding:6px 0 6px 30px; font-size:13px; color:var(--muted); line-height:1.45; }
+  .howto li::before{ counter-increment:step; content:counter(step); position:absolute; left:0; top:6px;
+    width:20px; height:20px; border-radius:50%; background:var(--accent); color:var(--accent-ink);
+    font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; }
   .count{ font-size:46px; font-weight:800; letter-spacing:-0.03em; text-align:center; margin:6px 0; }
   .count.warn{ color:var(--danger); }
   .score{ display:flex; justify-content:space-between; padding:8px 12px; border-radius:10px;
@@ -141,10 +156,10 @@
     me:null, phase:'lobby', players:[],
     roundNumber:0, bureaucratId:null, bureaucratName:'', task:'',
     targetScore:10, scores:{}, tokens:{}, policyLog:[],
-    challengerId:null, challengerName:'', deadlineMs:0, rebuttalSeconds:20,
-    last:null, winnerId:null, winnerName:'',
+    challengerId:null, challengerName:'', challengerClaim:'', deadlineMs:0, rebuttalSeconds:20,
+    last:null, winnerId:null, winnerName:'', verdict:null,
     options:{targetScore:10, challengeTokens:2, rebuttalSeconds:20, aiAssist:true},
-    denialDraft:'', rebuttalDraft:'',
+    denialDraft:'', rebuttalDraft:'', claimDraft:'',
     tutorial:{isOpen:false,yesCount:0,noCount:0,eligibleCount:0,result:null,tutorialShown:false},
     tutorialContent:null, myTutorialVote:null, tutorialPage:0,
   };
@@ -167,11 +182,12 @@
       case 'policy':  applyRound(m); break;
       case 'rebuttal_open':
         state.phase='rebuttal'; state.challengerId=m.challengerId; state.challengerName=m.challengerName||'';
+        state.challengerClaim=m.claim||''; state.verdict=null;
         state.deadlineMs=m.deadlineMs||0; state.rebuttalSeconds=m.seconds||20;
         if (m.policyLog) state.policyLog=m.policyLog; state.rebuttalDraft='';
         break;
       case 'round_over':
-        state.phase='roundOver'; state.last=m; state.scores=m.scores||{};
+        state.phase='roundOver'; state.last=m; state.scores=m.scores||{}; state.verdict=m.verdict||null;
         if (m.policyLog) state.policyLog=m.policyLog; break;
       case 'game_over':
         state.phase='gameOver'; state.winnerId=m.winnerId; state.winnerName=m.winnerName||''; state.scores=m.scores||{}; break;
@@ -192,7 +208,8 @@
     state.bureaucratName = m.bureaucratName||''; state.task = m.task||'';
     state.targetScore = m.targetScore||10; state.scores = m.scores||{};
     state.tokens = m.tokens||{}; state.policyLog = m.policyLog||[];
-    if (m.type==='round') { state.denialDraft=''; }
+    state.verdict = m.verdict||null;
+    if (m.type==='round') { state.denialDraft=''; state.claimDraft=''; state.verdict=null; }
   }
 
   // ---- countdown ticker ----
@@ -210,7 +227,7 @@
   }
 
   function renderLobby(){
-    root.innerHTML = `<h1>The Bureaucrat</h1>${viewTutorialBanner()}${viewTutorialVote()}${viewOptions()}<div class="card"><p class="small">Waiting for the host to start.</p><h2>Players (${state.players.length})</h2>${state.players.map(p=>`<div class="player"><span>${esc(p.name)}${p.isHost?' <span class="pill">host</span>':''}</span>${state.me.id===p.id?'<span class="pill you">you</span>':''}</div>`).join('')}</div>`;
+    root.innerHTML = `<h1>The Bureaucrat</h1>${viewTutorialBanner()}${viewTutorialVote()}${viewOptions()}${howToCard()}<div class="card"><p class="small">Waiting for the host to start.</p><h2>Players (${state.players.length})</h2>${state.players.map(p=>`<div class="player"><span>${esc(p.name)}${p.isHost?' <span class="pill">host</span>':''}</span>${state.me.id===p.id?'<span class="pill you">you</span>':''}</div>`).join('')}</div>`;
   }
 
   function viewOptions(){
@@ -228,9 +245,27 @@
     const who = b ? '' : `<span class="small">Bureaucrat: <strong>${esc(state.bureaucratName)}</strong></span>`;
     return `<div class="rolebar">${tag}${who}</div>`;
   }
+  const kindMeta = { denial:'denial', claim:'loophole claim', rebuttal:'rebuttal', request:'request' };
   function policyList(){
-    if (!state.policyLog.length) return `<p class="small">No policy on record yet. The Bureaucrat has said nothing binding… for now.</p>`;
-    return `<ul class="log">${state.policyLog.map((e,i)=>`<li class="${e.isRebuttal?'reb':''}"><span class="meta">${e.isRebuttal?'rebuttal':'policy §'+(i+1)}</span>${esc(e.text)}</li>`).join('')}</ul>`;
+    // The request is shown in the task card already; the log holds the back-and-forth.
+    const items = state.policyLog.map((e,i)=>({e,i})).filter(x => x.e.kind !== 'request');
+    if (!items.length) return `<p class="small">No policy on record yet. The Bureaucrat has said nothing binding… for now.</p>`;
+    const hi = (state.verdict && state.verdict.contradicts) ? state.verdict.lineIndex : -1;
+    return `<ul class="log">${items.map(({e,i}) => {
+      const cls = e.kind==='rebuttal' ? 'reb' : (e.kind==='claim' ? 'claim' : '');
+      const clash = i===hi ? ' clash' : '';
+      return `<li class="${cls}${clash}"><span class="meta">${kindMeta[e.kind]||'policy'}</span>${esc(e.text)}</li>`;
+    }).join('')}</ul>`;
+  }
+  function verdictCard(){
+    const v = state.verdict; if (!v) return '';
+    const pct = Math.round((v.confidence||0)*100);
+    const cited = (v.lineIndex>=0 && state.policyLog[v.lineIndex]) ? esc(state.policyLog[v.lineIndex].text) : '';
+    const head = v.contradicts ? 'Loophole stands — contradiction' : `Rebuttal holds — ${esc(v.label)}`;
+    return `<div class="verdict ${v.contradicts?'bad':'good'}"><div class="vhead">AI judge · ${head}${pct?` · ${pct}%`:''}</div>${cited?`<p class="small" style="margin:0">${v.contradicts?'Clashes with':'Closest line'}: “${cited}”</p>`:''}</div>`;
+  }
+  function howToCard(){
+    return `<div class="card"><h2>How to play</h2><ol class="howto"><li>One <strong>Bureaucrat</strong> must deny an absurd request; everyone else is a Citizen. The role rotates each round.</li><li>The Bureaucrat types <strong>denials</strong> — each becomes binding policy on every screen.</li><li>A Citizen spends a token to <strong>call a loophole</strong>, stating the claim they're exploiting.</li><li>The Bureaucrat must <strong>rebut</strong> before the timer. An AI judge checks the rebuttal against the denials and the claim — a contradiction means the loophole wins.</li></ol></div>`;
   }
 
   function renderArguing(){
@@ -239,9 +274,9 @@
       action = `<div class="card"><h2>Issue a denial</h2><p class="small">Every denial becomes binding policy. Be specific — but specifics can be turned against you.</p><textarea id="den" placeholder="e.g. Form 7B is required for all exemptions." maxlength="240">${esc(state.denialDraft)}</textarea><div style="height:10px"></div><button id="den-go">Add to policy log</button></div>`;
     } else {
       const left = state.tokens[state.me.id] ?? 0;
-      action = `<div class="card"><h2>Find the loophole</h2><p class="small">Argue out loud. When you've trapped the Bureaucrat in their own logic, call a loophole — they must rebut before the clock runs out.</p><button id="loop" ${left<=0?'disabled':''}>Call loophole (${left} left)</button>${left<=0?'<p class="small">You\'re out of challenges this round.</p>':''}</div>`;
+      action = `<div class="card"><h2>Find the loophole</h2><p class="small">Caught the Bureaucrat boxed in by their own rules? State the loophole you're exploiting, then call it — they must rebut before the clock runs out, and the AI judge checks their answer against your claim.</p><textarea id="claim" placeholder="e.g. A goldfish is alive in law, so it qualifies as a co-signer." maxlength="240" ${left<=0?'disabled':''}>${esc(state.claimDraft)}</textarea><div style="height:10px"></div><button id="loop" ${left<=0?'disabled':''}>Call loophole (${left} left)</button>${left<=0?'<p class="small">You\'re out of challenges this round.</p>':''}</div>`;
     }
-    root.innerHTML = `<h1>Round ${state.roundNumber}</h1>${roleBar()}${taskCard()}${action}<div class="card"><h2>Policy log</h2>${policyList()}</div>${scoreboard()}`;
+    root.innerHTML = `<h1>Round ${state.roundNumber}</h1>${roleBar()}${taskCard()}${verdictCard()}${action}<div class="card"><h2>Policy log</h2>${policyList()}</div>${scoreboard()}`;
     bindArguing();
   }
 
@@ -265,7 +300,8 @@
     } else {
       body = `<div class="card center"><h2>Loophole called</h2><p><strong>${esc(state.challengerName)}</strong> is challenging the Bureaucrat.</p><div class="count ${warn}">${secs}s</div><p class="small">If the Bureaucrat can't rebut in time, ${esc(state.challengerName)} takes the round.</p></div>`;
     }
-    root.innerHTML = `<h1>Loophole!</h1>${roleBar()}${taskCard()}${body}<div class="card"><h2>Policy log</h2>${policyList()}</div>`;
+    const claimCard = state.challengerClaim ? `<div class="task-card"><div class="label">${esc(state.challengerName||'A citizen')}'s loophole claim</div><div class="task" style="font-size:16px">“${esc(state.challengerClaim)}”</div></div>` : '';
+    root.innerHTML = `<h1>Loophole!</h1>${roleBar()}${taskCard()}${claimCard}${body}<div class="card"><h2>Policy log</h2>${policyList()}</div>`;
     bindRebuttal();
   }
 
@@ -278,7 +314,7 @@
       exhausted: `The citizens ran out of challenges. The Bureaucrat survives.`,
     }[r.reason] || '';
     const nextB = r.nextBureaucratId ? nameOf(r.nextBureaucratId) : '';
-    root.innerHTML = `<h1>Round over</h1><div class="card center"><p>${reasonText}</p>${nextB?`<p class="small">Next round, <strong>${esc(nextB)}</strong> takes the desk.</p>`:''}</div>${scoreboard()}<div class="card center small">Waiting for the host to start the next round…</div>`;
+    root.innerHTML = `<h1>Round over</h1><div class="card center"><p>${reasonText}</p>${nextB?`<p class="small">Next round, <strong>${esc(nextB)}</strong> takes the desk.</p>`:''}</div>${verdictCard()}${scoreboard()}<div class="card center small">Waiting for the host to start the next round…</div>`;
   }
 
   function renderGameOver(){
@@ -302,8 +338,10 @@
     if (den) den.addEventListener('input', ()=>{ state.denialDraft = den.value; });
     const dg = document.getElementById('den-go');
     if (dg) dg.addEventListener('click', ()=>{ const t=(state.denialDraft||'').trim(); if(t){ send({type:'denial', text:t}); state.denialDraft=''; render(); } });
+    const claim = document.getElementById('claim');
+    if (claim) claim.addEventListener('input', ()=>{ state.claimDraft = claim.value; });
     const lp = document.getElementById('loop');
-    if (lp) lp.addEventListener('click', ()=> send({type:'call_loophole'}));
+    if (lp) lp.addEventListener('click', ()=>{ const c=(state.claimDraft||'').trim(); if(c){ send({type:'call_loophole', claim:c}); state.claimDraft=''; } });
   }
   let _speechRec = null;
   let _speechRecording = false;

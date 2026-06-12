@@ -18,15 +18,40 @@ package com.example.jamboree.games.bureaucrat
  * [BureaucratEngine.submitRebuttal]. Implementations must be synchronous and
  * side-effect free.
  */
+/**
+ * A legible ruling. The detector no longer hides behind a bare boolean: it
+ * reports *which* prior statement was the closest clash, the NLI class label,
+ * and a 0..1 confidence, so every client can show the player exactly why the
+ * loophole stood (or didn't) instead of an opaque verdict.
+ *
+ * @param contradicts true when the rebuttal contradicts a prior statement.
+ * @param priorIndex index into `priorStatements` of the most-contradicted line, or -1.
+ * @param label NLI class for that line: "contradiction", "entailment", or "neutral".
+ * @param confidence confidence in [label], 0..1.
+ */
+data class ContradictionVerdict(
+    val contradicts: Boolean,
+    val priorIndex: Int,
+    val label: String,
+    val confidence: Double,
+) {
+    companion object { val NONE = ContradictionVerdict(false, -1, "neutral", 0.0) }
+}
+
 interface ContradictionDetector {
     /**
-     * @param priorStatements the binding policy log, oldest first.
+     * @param priorStatements the statements the rebuttal may clash with (the
+     *        round's denials plus the challenger's claim — never the request
+     *        itself), oldest first.
      * @param rebuttal the bureaucrat's new statement.
-     * @return true if [rebuttal] contradicts any prior statement (or the prior
-     *         statements contradict each other in a way the rebuttal fails to
-     *         resolve), meaning the loophole stands.
+     * @return a verdict naming the closest clashing line, its NLI label and
+     *         confidence. `contradicts == true` means the loophole stands.
      */
-    fun contradicts(priorStatements: List<String>, rebuttal: String): Boolean
+    fun judge(priorStatements: List<String>, rebuttal: String): ContradictionVerdict
+
+    /** Convenience for callers (and tests) that only need the boolean. */
+    fun contradicts(priorStatements: List<String>, rebuttal: String): Boolean =
+        judge(priorStatements, rebuttal).contradicts
 }
 
 /**
@@ -43,17 +68,20 @@ interface ContradictionDetector {
  */
 class KeywordContradictionDetector : ContradictionDetector {
 
-    override fun contradicts(priorStatements: List<String>, rebuttal: String): Boolean {
+    override fun judge(priorStatements: List<String>, rebuttal: String): ContradictionVerdict {
         val rebuttalNeg = isNegative(rebuttal)
         val rebuttalKeys = contentKeys(rebuttal)
-        if (rebuttalKeys.isEmpty()) return false
-        for (prior in priorStatements) {
+        if (rebuttalKeys.isEmpty()) return ContradictionVerdict.NONE
+        for ((i, prior) in priorStatements.withIndex()) {
             val shared = contentKeys(prior).intersect(rebuttalKeys)
             if (shared.isEmpty()) continue
-            // Opposite polarity on a shared subject is the contradiction signal.
-            if (isNegative(prior) != rebuttalNeg) return true
+            // A hard polarity flip on a shared subject: report it as a confident
+            // contradiction against that exact line.
+            if (isNegative(prior) != rebuttalNeg) {
+                return ContradictionVerdict(true, i, "contradiction", 1.0)
+            }
         }
-        return false
+        return ContradictionVerdict.NONE
     }
 
     private fun isNegative(s: String): Boolean {

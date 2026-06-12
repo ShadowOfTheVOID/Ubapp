@@ -36,15 +36,34 @@ class OnnxContradictionDetector private constructor(
     private val fallback: ContradictionDetector,
 ) : ContradictionDetector {
 
-    override fun contradicts(priorStatements: List<String>, rebuttal: String): Boolean {
-        if (rebuttal.isBlank()) return false
-        for (prior in priorStatements) {
-            if (runPair(premise = prior, hypothesis = rebuttal)) return true
+    override fun judge(priorStatements: List<String>, rebuttal: String): ContradictionVerdict {
+        if (rebuttal.isBlank()) return ContradictionVerdict.NONE
+        // Track the single line the model finds most contradictory so the
+        // verdict can point at it, win or lose.
+        var best = ContradictionVerdict.NONE
+        var bestContraProb = -1.0
+        for ((i, prior) in priorStatements.withIndex()) {
+            val probs = runPair(premise = prior, hypothesis = rebuttal)
+            if (probs == null) {
+                val fb = fallback.judge(listOf(prior), rebuttal)
+                if (fb.contradicts) return ContradictionVerdict(true, i, fb.label, fb.confidence)
+                continue
+            }
+            val contra = probs[CONTRADICTION_INDEX].toDouble()
+            if (contra > bestContraProb) {
+                bestContraProb = contra
+                val idx = argMax(probs)
+                best = ContradictionVerdict(idx == CONTRADICTION_INDEX, i, LABELS[idx], probs[idx].toDouble())
+            }
         }
-        return false
+        return best
     }
 
-    private fun runPair(premise: String, hypothesis: String): Boolean {
+    /**
+     * Runs one premise/hypothesis pair, returning the 3-class softmax
+     * `[contradiction, entailment, neutral]`, or null if inference failed.
+     */
+    private fun runPair(premise: String, hypothesis: String): FloatArray? {
         val enc = tokenizer.encodePair(premise, hypothesis, MAX_LEN)
         val shape = longArrayOf(1, enc.ids.size.toLong())
         val tensors = mutableMapOf<String, OnnxTensor>()
@@ -57,10 +76,10 @@ class OnnxContradictionDetector private constructor(
             session.run(tensors).use { result ->
                 @Suppress("UNCHECKED_CAST")
                 val logits = (result[0].value as Array<FloatArray>)[0]
-                argMax(logits) == CONTRADICTION_INDEX
+                softmax(logits)
             }
         } catch (t: Throwable) {
-            fallback.contradicts(listOf(premise), hypothesis)
+            null
         } finally {
             tensors.values.forEach { it.close() }
         }
@@ -72,11 +91,20 @@ class OnnxContradictionDetector private constructor(
         return best
     }
 
+    private fun softmax(a: FloatArray): FloatArray {
+        val m = a.maxOrNull() ?: return a
+        val exps = DoubleArray(a.size) { kotlin.math.exp((a[it] - m).toDouble()) }
+        val sum = exps.sum()
+        return if (sum > 0.0) FloatArray(a.size) { (exps[it] / sum).toFloat() } else a
+    }
+
     fun close() { runCatching { session.close() } }
 
     companion object {
         private const val MAX_LEN = 256
         private const val CONTRADICTION_INDEX = 0
+        /** Class order emitted by the cross-encoder's logits. */
+        private val LABELS = arrayOf("contradiction", "entailment", "neutral")
         const val MODEL_ASSET = "nli_minilm.onnx"
         const val TOKENIZER_ASSET = "nli_tokenizer.json"
 

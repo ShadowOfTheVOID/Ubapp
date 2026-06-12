@@ -42,6 +42,8 @@ private final class NliDetector: ContradictionDetector {
     private let fallback: ContradictionDetector
     private let maxLen = 256
     private let contradictionIndex = 0
+    /// Class order emitted by the cross-encoder's logits.
+    fileprivate static let labels = ["contradiction", "entailment", "neutral"]
 
     init?(fallback: ContradictionDetector) {
         self.fallback = fallback
@@ -60,13 +62,35 @@ private final class NliDetector: ContradictionDetector {
         self.usesTokenTypeIds = names.contains("token_type_ids")
     }
 
-    func contradicts(priorStatements: [String], rebuttal: String) -> Bool {
-        if rebuttal.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return false }
-        for prior in priorStatements where runPair(premise: prior, hypothesis: rebuttal) { return true }
-        return false
+    func judge(priorStatements: [String], rebuttal: String) -> ContradictionVerdict {
+        if rebuttal.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return .none }
+        // Track the single line the model finds most contradictory so the
+        // verdict can point at it, win or lose.
+        var best = ContradictionVerdict.none
+        var bestContraProb = -1.0
+        for (i, prior) in priorStatements.enumerated() {
+            guard let probs = runPair(premise: prior, hypothesis: rebuttal) else {
+                let fb = fallback.judge(priorStatements: [prior], rebuttal: rebuttal)
+                if fb.contradicts {
+                    return ContradictionVerdict(contradicts: true, priorIndex: i,
+                                                label: fb.label, confidence: fb.confidence)
+                }
+                continue
+            }
+            let contra = probs[contradictionIndex]
+            if contra > bestContraProb {
+                bestContraProb = contra
+                let idx = argMax(probs)
+                best = ContradictionVerdict(contradicts: idx == contradictionIndex, priorIndex: i,
+                                            label: Self.labels[idx], confidence: Double(probs[idx]))
+            }
+        }
+        return best
     }
 
-    private func runPair(premise: String, hypothesis: String) -> Bool {
+    /// Runs one premise/hypothesis pair, returning the 3-class softmax
+    /// `[contradiction, entailment, neutral]`, or nil if inference failed.
+    private func runPair(premise: String, hypothesis: String) -> [Float]? {
         let enc = tokenizer.encodePair(premise: premise, hypothesis: hypothesis, maxLen: maxLen)
         do {
             let shape: [NSNumber] = [1, NSNumber(value: enc.ids.count)]
@@ -78,13 +102,20 @@ private final class NliDetector: ContradictionDetector {
             let outputs = try session.run(withInputs: inputs, outputNames: ["logits"], runOptions: nil)
             guard let logitsValue = outputs["logits"],
                   let data = try? logitsValue.tensorData() as Data else {
-                return fallback.contradicts(priorStatements: [premise], rebuttal: hypothesis)
+                return nil
             }
             let logits = data.withUnsafeBytes { Array($0.bindMemory(to: Float.self)) }
-            return argMax(logits) == contradictionIndex
+            return softmax(logits)
         } catch {
-            return fallback.contradicts(priorStatements: [premise], rebuttal: hypothesis)
+            return nil
         }
+    }
+
+    private func softmax(_ a: [Float]) -> [Float] {
+        guard let m = a.max() else { return a }
+        let exps = a.map { expf($0 - m) }
+        let sum = exps.reduce(0, +)
+        return sum > 0 ? exps.map { $0 / sum } : exps
     }
 
     private func tensor(_ values: [Int64], shape: [NSNumber]) throws -> ORTValue {

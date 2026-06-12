@@ -27,13 +27,25 @@ class BureaucratPlayer(val id: String, val name: String, val isHost: Boolean) {
     var score: Int = 0
 }
 
+/**
+ * What a policy-log line is. Drives styling on every client and, crucially,
+ * what the contradiction detector is allowed to judge against.
+ *  - [REQUEST]  the round's absurd task, seeded as line 0. Shown to anchor
+ *    play, but never fed to the detector: denying the request literally
+ *    contradicts it, so it can't count against the Bureaucrat.
+ *  - [DENIAL]   a binding ruling the Bureaucrat typed.
+ *  - [CLAIM]    the citizen's loophole argument when they challenge.
+ *  - [REBUTTAL] the Bureaucrat's forced answer to a claim.
+ */
+enum class PolicyKind { REQUEST, DENIAL, CLAIM, REBUTTAL }
+
 /** One line in the binding policy log. */
 data class PolicyEntry(
     val text: String,
-    /** false for the bureaucrat's own denials, true for forced rebuttals to a loophole. */
-    val isRebuttal: Boolean,
-    /** Citizen whose loophole prompted this rebuttal (rebuttals only). */
-    val challengerId: String? = null,
+    val kind: PolicyKind,
+    /** Who put this on record: the bureaucrat for denials/rebuttals, the
+     *  challenging citizen for claims, null for the seeded request. */
+    val authorId: String? = null,
 )
 
 data class RoundOutcome(
@@ -131,8 +143,12 @@ class BureaucratEngine(private val rng: Random = Random.Default) {
         val idx = if (lastTaskIndex < 0 || count <= 1) rng.nextInt(count)
                   else { val r = rng.nextInt(count - 1); if (r >= lastTaskIndex) r + 1 else r }
         lastTaskIndex = idx
-        task = TASKS[idx]
+        val chosen = TASKS[idx]
+        task = chosen
         policyLog.clear()
+        // Seed the request as line 0 so the task anchors the whole round and
+        // every denial/claim reads against it on screen.
+        policyLog.add(PolicyEntry(chosen, PolicyKind.REQUEST))
         pendingChallenger = null
         tokens.clear()
         for (c in citizens) tokens[c.id] = options.challengeTokens
@@ -146,16 +162,25 @@ class BureaucratEngine(private val rng: Random = Random.Default) {
         if (playerId != bureaucratId) return false
         val t = text.trim()
         if (t.isEmpty()) return false
-        policyLog.add(PolicyEntry(t, isRebuttal = false))
+        policyLog.add(PolicyEntry(t, PolicyKind.DENIAL, authorId = bureaucratId))
         return true
     }
 
-    /** A citizen spends a token to challenge. Returns false if not allowed. */
-    fun callLoophole(citizenId: String): Boolean {
+    /**
+     * A citizen spends a token to challenge, stating the loophole [claim] they
+     * are exploiting. The claim joins the log and becomes part of what the
+     * Bureaucrat's rebuttal is judged against, so the contradiction is always
+     * grounded in something a citizen actually argued. Returns false if not
+     * allowed (wrong phase, no tokens, or a blank claim).
+     */
+    fun callLoophole(citizenId: String, claim: String): Boolean {
         if (phase != BureaucratPhase.ARGUING) return false
         if (citizenId == bureaucratId) return false
         if (players[citizenId] == null) return false
         if (tokensFor(citizenId) <= 0) return false
+        val c = claim.trim()
+        if (c.isEmpty()) return false
+        policyLog.add(PolicyEntry(c, PolicyKind.CLAIM, authorId = citizenId))
         pendingChallenger = citizenId
         phase = BureaucratPhase.REBUTTAL
         return true
@@ -173,13 +198,13 @@ class BureaucratEngine(private val rng: Random = Random.Default) {
         val t = text.trim()
         if (t.isEmpty()) return false
         if (contradicts) {
-            policyLog.add(PolicyEntry(t, isRebuttal = true, challengerId = challenger))
+            policyLog.add(PolicyEntry(t, PolicyKind.REBUTTAL, authorId = bureaucratId))
             awardLoophole(challenger, RoundEndReason.LOOPHOLE_CONTRADICTION)
             return true
         }
         // Successful defence: the rebuttal becomes binding policy and the
         // challenger burns the token they spent.
-        policyLog.add(PolicyEntry(t, isRebuttal = true, challengerId = challenger))
+        policyLog.add(PolicyEntry(t, PolicyKind.REBUTTAL, authorId = bureaucratId))
         tokens[challenger] = (tokensFor(challenger) - 1).coerceAtLeast(0)
         players[challenger]?.let { it.score = (it.score - FAIL_PENALTY).coerceAtLeast(0) }
         pendingChallenger = null

@@ -160,16 +160,16 @@ object GameTutorials {
     val bureaucrat = GameTutorial(
         title = "How to play The Bureaucrat",
         sections = listOf(
-            TutorialSection("Setup", "One player is the Bureaucrat; everyone else is a Citizen sharing one absurd task (e.g. \"register my goldfish as a mortgage co-signer\"). The Bureaucrat's job is to deny everything."),
-            TutorialSection("Binding policy", "Citizens argue out loud for their request. The Bureaucrat answers by typing denials — and every denial becomes binding policy on everyone's screen. Vague denials are safe; specific ones give citizens something to attack."),
-            TutorialSection("Call a loophole", "When a citizen catches the Bureaucrat contradicting their own policy, they spend a token to Call a loophole. The Bureaucrat must type a rebuttal before the timer runs out — or the citizen wins the round."),
-            TutorialSection("Scoring", "Loophole win: +3 to the citizen. Survive the round: +2 to the Bureaucrat. A failed challenge costs the citizen a token and a point. The role rotates each round; first to the target score wins."),
-            TutorialSection("The judge", "A rebuttal that itself contradicts the policy log is rejected automatically (an on-device AI checks it when available; otherwise the countdown is the only judge). No voting — so no trolling the result."),
+            TutorialSection("Setup", "One player is the Bureaucrat; everyone else is a Citizen. Each round opens with one absurd request (e.g. \"register my goldfish as a mortgage co-signer\") pinned to the top of the record. The Bureaucrat must deny it. The role rotates each round."),
+            TutorialSection("Binding policy", "The Bureaucrat answers by typing denials — and every denial becomes binding policy on everyone's screen. Vague denials are safe; specific ones give citizens something to attack."),
+            TutorialSection("Call a loophole", "When a citizen catches the Bureaucrat boxed in by their own rules, they spend a token to Call a loophole and type the exact claim they're exploiting (e.g. \"a goldfish is alive in law, so it qualifies\"). The claim joins the record."),
+            TutorialSection("Rebuttal & the judge", "The Bureaucrat must type a rebuttal before the timer. An on-device AI judge checks it against the denials and the citizen's claim — if it contradicts any of them, the loophole stands and the citizen wins. The verdict names the exact clashing line, so the ruling is never a mystery. (No model bundled? The countdown is the only judge.)"),
+            TutorialSection("Scoring", "Loophole win: +3 to the citizen. Survive the round: +2 to the Bureaucrat. A failed challenge costs the citizen a token and a point. First to the target score wins."),
         ),
         browserMenuSections = listOf(
-            TutorialSection("Your role", "A tag at the top tells you whether you're the Bureaucrat or a Citizen this round, plus the shared task. Roles rotate every round."),
-            TutorialSection("As the Bureaucrat", "Type denials into the box to build your policy log. When a loophole is called, a countdown appears — type your rebuttal and submit before it hits zero."),
-            TutorialSection("As a Citizen", "Make your case out loud, then tap Call loophole (you get a limited number per round). Watch the policy log — contradictions are your ammunition."),
+            TutorialSection("Your role", "A tag at the top tells you whether you're the Bureaucrat or a Citizen this round, plus the shared request. Roles rotate every round."),
+            TutorialSection("As the Bureaucrat", "Type denials to build your policy log. When a loophole is called, you'll see the citizen's claim and a countdown — type a rebuttal that doesn't contradict your own record before it hits zero."),
+            TutorialSection("As a Citizen", "Watch the policy log for contradictions, then tap Call loophole and type the claim that springs the trap. The AI judge decides — and shows you the exact line it clashed with."),
         ),
     )
 

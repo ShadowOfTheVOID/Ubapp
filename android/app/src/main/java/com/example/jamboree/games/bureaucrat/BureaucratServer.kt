@@ -33,6 +33,10 @@ class BureaucratServer(context: Context, val hostName: String = "Host") {
     private var rebuttalTimer: ScheduledFuture<*>? = null
     /** Epoch-ms deadline broadcast so every client renders the same countdown. */
     private var rebuttalDeadline: Long = 0
+    /** The detector's last ruling, surfaced to every client so the AI verdict
+     *  is legible instead of opaque. Null when no rebuttal has been judged this
+     *  challenge (e.g. timeout) or AI assist is off. */
+    private var lastVerdict: JSONObject? = null
 
     var onStateChange: (() -> Unit)? = null
     private var statRecorded = false
@@ -81,12 +85,15 @@ class BureaucratServer(context: Context, val hostName: String = "Host") {
     fun hostSetOptions(o: BureaucratOptions) { engine.setOptions(o); broadcastOptions(); emit() }
     fun hostStart() {
         if (!engine.canStart) return
+        lastVerdict = null
         engine.start(); broadcastRound(); emit()
     }
     fun hostSurvive() {
+        lastVerdict = null
         if (engine.bureaucratSurvives()) { cancelTimer(); broadcastRoundOver(); emit() }
     }
     fun hostNextRound() {
+        lastVerdict = null
         if (engine.nextRound()) {
             if (engine.phase == BureaucratPhase.GAME_OVER) broadcastGameOver() else broadcastRound()
             emit()
@@ -103,7 +110,7 @@ class BureaucratServer(context: Context, val hostName: String = "Host") {
         when (j.optString("type")) {
             "join" -> handleJoin(guest, j)
             "denial" -> pid?.let { applyDenial(it, j.optString("text").take(280)) }
-            "call_loophole" -> pid?.let { applyLoophole(it) }
+            "call_loophole" -> pid?.let { applyLoophole(it, j.optString("claim").take(280)) }
             "rebuttal" -> pid?.let { applyRebuttal(it, j.optString("text").take(280)) }
             "call_tutorial_vote" -> guestToPlayer[guest]?.let { openTutorialVote() }
             "tutorial_vote" -> pid?.let { submitTutorialVote(it, j.getBoolean("yes")) }
@@ -139,8 +146,9 @@ class BureaucratServer(context: Context, val hostName: String = "Host") {
         if (engine.addDenial(playerId, text)) { broadcastPolicy(); emit() }
     }
 
-    private fun applyLoophole(citizenId: String) {
-        if (engine.callLoophole(citizenId)) {
+    private fun applyLoophole(citizenId: String, claim: String) {
+        lastVerdict = null
+        if (engine.callLoophole(citizenId, claim)) {
             rebuttalDeadline = System.currentTimeMillis() + engine.options.rebuttalSeconds * 1000L
             broadcastRebuttalOpen()
             startTimer()
@@ -153,8 +161,18 @@ class BureaucratServer(context: Context, val hostName: String = "Host") {
         if (playerId != engine.bureaucratId) return
         if (text.isBlank()) return
         cancelTimer()
-        val contradicts = engine.options.aiAssist &&
-            detector.contradicts(engine.policyLog.map { it.text }, text)
+        var contradicts = false
+        if (engine.options.aiAssist) {
+            // Judge the rebuttal only against the denials and the challenger's
+            // claim — never the request, which a denial trivially contradicts.
+            val judged = engine.policyLog.withIndex().filter { it.value.kind != PolicyKind.REQUEST }
+            val v = detector.judge(judged.map { it.value.text }, text)
+            contradicts = v.contradicts
+            val lineIndex = if (v.priorIndex in judged.indices) judged[v.priorIndex].index else -1
+            lastVerdict = JSONObject()
+                .put("contradicts", v.contradicts).put("label", v.label)
+                .put("confidence", v.confidence).put("lineIndex", lineIndex).put("rebuttal", text)
+        }
         if (engine.submitRebuttal(text, contradicts)) {
             if (engine.phase == BureaucratPhase.ROUND_OVER) broadcastRoundOver()
             else broadcastPolicy()   // successful defence: back to arguing
@@ -200,7 +218,11 @@ class BureaucratServer(context: Context, val hostName: String = "Host") {
     }
 
     private fun broadcastRound() = broadcast(roundCore(JSONObject().put("type", "round")))
-    private fun broadcastPolicy() = broadcast(roundCore(JSONObject().put("type", "policy")))
+    private fun broadcastPolicy() {
+        val core = roundCore(JSONObject().put("type", "policy"))
+        lastVerdict?.let { core.put("verdict", it) }
+        broadcast(core)
+    }
 
     private fun broadcastRebuttalOpen() {
         val cid = engine.pendingChallenger
@@ -209,6 +231,7 @@ class BureaucratServer(context: Context, val hostName: String = "Host") {
             .put("challengerName", cid?.let { engine.players[it]?.name } ?: JSONObject.NULL)
             .put("seconds", engine.options.rebuttalSeconds)
             .put("deadlineMs", rebuttalDeadline)
+            .put("claim", engine.policyLog.lastOrNull { it.kind == PolicyKind.CLAIM }?.text ?: JSONObject.NULL)
             .put("policyLog", policyJson()))
     }
 
@@ -223,7 +246,8 @@ class BureaucratServer(context: Context, val hostName: String = "Host") {
             .put("task", r.task)
             .put("nextBureaucratId", engine.nextBureaucratId() ?: JSONObject.NULL)
             .put("scores", scoresJson()).put("targetScore", engine.options.targetScore)
-            .put("policyLog", policyJson()))
+            .put("policyLog", policyJson())
+            .apply { lastVerdict?.let { put("verdict", it) } })
     }
 
     private fun broadcastGameOver() {
@@ -248,8 +272,8 @@ class BureaucratServer(context: Context, val hostName: String = "Host") {
     private fun policyJson(): JSONArray {
         val arr = JSONArray()
         for (e in engine.policyLog) {
-            arr.put(JSONObject().put("text", e.text).put("isRebuttal", e.isRebuttal)
-                .put("challengerId", e.challengerId ?: JSONObject.NULL))
+            arr.put(JSONObject().put("text", e.text).put("kind", e.kind.name.lowercase())
+                .put("author", e.authorId ?: JSONObject.NULL))
         }
         return arr
     }
