@@ -99,6 +99,10 @@ class BureaucratServer(context: Context, val hostName: String = "Host") {
             emit()
         }
     }
+    fun hostCastVote(stands: Boolean) = applyVote(HOST_ID, stands)
+    fun hostForceTally() {
+        if (engine.forceTally()) { afterVoteResolved(); emit() }
+    }
     fun hostCallTutorialVote() = openTutorialVote()
     fun hostTutorialVote(yes: Boolean) = submitTutorialVote(HOST_ID, yes)
     fun hostDismissTutorial() { engine.tutorialVote.markShown(); broadcastTutorialState(); emit() }
@@ -112,6 +116,7 @@ class BureaucratServer(context: Context, val hostName: String = "Host") {
             "denial" -> pid?.let { applyDenial(it, j.optString("text").take(280)) }
             "call_loophole" -> pid?.let { applyLoophole(it, j.optString("claim").take(280)) }
             "rebuttal" -> pid?.let { applyRebuttal(it, j.optString("text").take(280)) }
+            "cast_vote" -> pid?.let { applyVote(it, j.optBoolean("stands")) }
             "call_tutorial_vote" -> guestToPlayer[guest]?.let { openTutorialVote() }
             "tutorial_vote" -> pid?.let { submitTutorialVote(it, j.getBoolean("yes")) }
         }
@@ -161,8 +166,9 @@ class BureaucratServer(context: Context, val hostName: String = "Host") {
         if (playerId != engine.bureaucratId) return
         if (text.isBlank()) return
         cancelTimer()
+        val voteMode = engine.options.judging == "vote"
         var contradicts = false
-        if (engine.options.aiAssist) {
+        if (!voteMode && engine.options.aiAssist) {
             // Judge the rebuttal only against the denials and the challenger's
             // claim — never the request, which a denial trivially contradicts.
             val judged = engine.policyLog.withIndex().filter { it.value.kind != PolicyKind.REQUEST }
@@ -174,9 +180,27 @@ class BureaucratServer(context: Context, val hostName: String = "Host") {
                 .put("confidence", v.confidence).put("lineIndex", lineIndex).put("rebuttal", text)
         }
         if (engine.submitRebuttal(text, contradicts)) {
-            if (engine.phase == BureaucratPhase.ROUND_OVER) broadcastRoundOver()
-            else broadcastPolicy()   // successful defence: back to arguing
+            when (engine.phase) {
+                BureaucratPhase.VOTING -> broadcastVoteState()      // table decides
+                BureaucratPhase.ROUND_OVER -> broadcastRoundOver()
+                else -> broadcastPolicy()                           // successful defence
+            }
             emit()
+        }
+    }
+
+    private fun applyVote(voterId: String, stands: Boolean) {
+        if (engine.phase != BureaucratPhase.VOTING) return
+        if (engine.castVote(voterId, stands)) { afterVoteResolved(); emit() }
+    }
+
+    /** Re-broadcast whatever the vote produced: a running tally, the round-over
+     *  screen (loophole carried) or back to arguing (denial upheld). */
+    private fun afterVoteResolved() {
+        when (engine.phase) {
+            BureaucratPhase.VOTING -> broadcastVoteState()
+            BureaucratPhase.ROUND_OVER -> broadcastRoundOver()
+            else -> broadcastPolicy()
         }
     }
 
@@ -202,7 +226,7 @@ class BureaucratServer(context: Context, val hostName: String = "Host") {
         broadcast(JSONObject().put("type", "options")
             .put("targetScore", o.targetScore).put("challengeTokens", o.challengeTokens)
             .put("rebuttalSeconds", o.rebuttalSeconds).put("aiAssist", o.aiAssist)
-            .put("rebuttalMode", o.rebuttalMode))
+            .put("rebuttalMode", o.rebuttalMode).put("judging", o.judging))
     }
 
     private fun roundCore(j: JSONObject): JSONObject = j.apply {
@@ -232,6 +256,23 @@ class BureaucratServer(context: Context, val hostName: String = "Host") {
             .put("seconds", engine.options.rebuttalSeconds)
             .put("deadlineMs", rebuttalDeadline)
             .put("claim", engine.policyLog.lastOrNull { it.kind == PolicyKind.CLAIM }?.text ?: JSONObject.NULL)
+            .put("policyLog", policyJson()))
+    }
+
+    /** Table-vote state: the open challenge plus the running tally. Sent on
+     *  entering [BureaucratPhase.VOTING] and after every ballot. */
+    private fun broadcastVoteState() {
+        val cid = engine.pendingChallenger
+        val stands = engine.votes.values.count { it }
+        val denial = engine.votes.size - stands
+        broadcast(JSONObject().put("type", "vote_state")
+            .put("challengerId", cid ?: JSONObject.NULL)
+            .put("challengerName", cid?.let { engine.players[it]?.name } ?: JSONObject.NULL)
+            .put("bureaucratId", engine.bureaucratId ?: JSONObject.NULL)
+            .put("claim", engine.policyLog.lastOrNull { it.kind == PolicyKind.CLAIM }?.text ?: JSONObject.NULL)
+            .put("rebuttal", engine.policyLog.lastOrNull { it.kind == PolicyKind.REBUTTAL }?.text ?: JSONObject.NULL)
+            .put("standsCount", stands).put("denialCount", denial)
+            .put("eligibleCount", engine.voters.size)
             .put("policyLog", policyJson()))
     }
 
@@ -305,12 +346,13 @@ class BureaucratServer(context: Context, val hostName: String = "Host") {
 
     private fun phaseJson(p: BureaucratPhase): String = when (p) {
         BureaucratPhase.LOBBY -> "lobby"; BureaucratPhase.ARGUING -> "arguing"
-        BureaucratPhase.REBUTTAL -> "rebuttal"; BureaucratPhase.ROUND_OVER -> "roundOver"
-        BureaucratPhase.GAME_OVER -> "gameOver"
+        BureaucratPhase.REBUTTAL -> "rebuttal"; BureaucratPhase.VOTING -> "voting"
+        BureaucratPhase.ROUND_OVER -> "roundOver"; BureaucratPhase.GAME_OVER -> "gameOver"
     }
     private fun reasonJson(r: RoundEndReason): String = when (r) {
         RoundEndReason.LOOPHOLE_TIMEOUT -> "timeout"
         RoundEndReason.LOOPHOLE_CONTRADICTION -> "contradiction"
+        RoundEndReason.LOOPHOLE_VOTE -> "vote"
         RoundEndReason.BUREAUCRAT_SURVIVED -> "survived"
         RoundEndReason.TOKENS_EXHAUSTED -> "exhausted"
     }

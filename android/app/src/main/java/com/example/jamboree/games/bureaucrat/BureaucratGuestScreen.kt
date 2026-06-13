@@ -78,6 +78,7 @@ fun BureaucratGuestScreen(ctx: GuestContext) {
                     "lobby"     -> BureaucratLobby(s, ctx)
                     "arguing"   -> BureaucratArguing(s, ctx, iAmBureaucrat)
                     "rebuttal"  -> BureaucratRebuttal(s, ctx, iAmBureaucrat, secs)
+                    "voting"    -> BureaucratVoting(s, ctx, iAmBureaucrat)
                     "roundOver" -> BureaucratRoundOver(s, ctx)
                     "gameOver"  -> BureaucratGameOver(s)
                 }
@@ -109,7 +110,7 @@ private fun BureaucratLobby(s: BureaucratGuestState, ctx: GuestContext) {
         MonoLabel("Rules")
         Text(
             "First to ${s.targetScore} wins · ${s.challengeTokens} loopholes each · " +
-            "${s.rebuttalSeconds}s to rebut · ${if (s.aiAssist) "AI rebuttal check on" else "timer only"}",
+            "${s.rebuttalSeconds}s to rebut · ${if (s.judging == "vote") "the table votes" else if (s.aiAssist) "AI judge" else "timer only"}",
             fontSize = 13.sp, color = Ub.Muted)
     }
 
@@ -167,6 +168,98 @@ private fun BureaucratRebuttal(s: BureaucratGuestState, ctx: GuestContext, iAmBu
     if (iAmBureaucrat) RebuttalComposer(s, ctx, s.rebuttalMode)
     else SpectateCard(s)
     DenialLedger(s)
+}
+
+// ---------------------------------------------------------------------------
+// Voting phase (table-vote judging)
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun BureaucratVoting(s: BureaucratGuestState, ctx: GuestContext, iAmBureaucrat: Boolean) {
+    val iAmChallenger = s.challengerId == ctx.yourId
+    ArgHeader(s.roundNumber)
+    TaskCard(s.task)
+    ClaimCard(s)
+    if (s.rebuttalText.isNotEmpty()) {
+        Column(Modifier.fillMaxWidth().ubCard().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            MonoLabel("The Bureaucrat's rebuttal", color = Ub.Faint)
+            Text("“${s.rebuttalText}”", fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
+                color = Ub.Foreground)
+        }
+    }
+    VoteTally(s)
+    if (iAmBureaucrat || iAmChallenger) {
+        Column(Modifier.fillMaxWidth().ubCard().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            MonoLabel("To the vote")
+            Text(
+                if (iAmBureaucrat) "The table is ruling on your rebuttal. You can't vote on your own defence."
+                else "The table is ruling on your loophole. You can't vote on your own challenge.",
+                fontSize = 14.sp, color = Ub.Foreground)
+        }
+    } else {
+        VotePanel(s, ctx)
+    }
+    DenialLedger(s)
+}
+
+@Composable
+private fun VoteTally(s: BureaucratGuestState) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            MonoLabel("The table decides")
+            Spacer(Modifier.weight(1f))
+            MonoLabel("${s.voteStands + s.voteDenial} / ${s.voteEligible} voted", size = 9, color = Ub.Faint)
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TallyChip("Loophole", s.voteStands, lead = true, modifier = Modifier.weight(1f))
+            TallyChip("Denial", s.voteDenial, lead = false, modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun TallyChip(label: String, count: Int, lead: Boolean, modifier: Modifier = Modifier) {
+    Row(
+        modifier
+            .ubCard(radius = Ub.Radius.row,
+                fill = if (lead) Ub.AccentSoft else Ub.Surface,
+                stroke = if (lead) Ub.AccentLine else Ub.Line)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, fontSize = 14.sp, color = Ub.Foreground)
+        Spacer(Modifier.weight(1f))
+        Text("$count", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = Ub.Foreground)
+    }
+}
+
+@Composable
+private fun VotePanel(s: BureaucratGuestState, ctx: GuestContext) {
+    Column(Modifier.fillMaxWidth().ubCard().padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        MonoLabel("Your verdict")
+        Text("Did the loophole beat the Bureaucrat's rebuttal?", fontSize = 13.sp, color = Ub.Muted)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(
+                onClick = { s.myVote = true; ctx.client.send(JSONObject().put("type", "cast_vote").put("stands", true)) },
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Ub.Accent,
+                    contentColor = Color.White),
+                shape = RoundedCornerShape(12.dp)
+            ) { Text("Loophole stands") }
+            OutlinedButton(
+                onClick = { s.myVote = false; ctx.client.send(JSONObject().put("type", "cast_vote").put("stands", false)) },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp)
+            ) { Text("Denial stands") }
+        }
+        if (s.myVote != null) {
+            Text("Vote in — waiting on the rest of the table.", fontSize = 13.sp, color = Ub.Faint)
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -325,7 +418,8 @@ private fun LoopholePanel(s: BureaucratGuestState, ctx: GuestContext) {
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         TokenDots(filled = left, total = s.challengeTokens)
         MonoLabel("Challenge tokens · $left left")
-        Text("Caught the Bureaucrat boxed in by their own rules? State the loophole you're exploiting, then call it — they must rebut before the clock runs out, and the AI judge checks their answer against your claim.",
+        Text("Caught the Bureaucrat boxed in by their own rules? State the loophole you're exploiting, then call it — they must rebut before the clock runs out, and " +
+            (if (s.judging == "vote") "the table votes on whether your loophole wins." else "the AI judge checks their answer against your claim."),
             fontSize = 13.sp, color = Ub.Muted)
         OutlinedTextField(value = claim, onValueChange = { if (it.length <= 240) claim = it },
             modifier = Modifier.fillMaxWidth(), minLines = 2, enabled = left > 0,
@@ -471,18 +565,7 @@ private fun RebuttalComposerType(s: BureaucratGuestState, ctx: GuestContext, fal
         OutlinedTextField(value = draft, onValueChange = { if (it.length <= 240) draft = it },
             modifier = Modifier.fillMaxWidth(), minLines = 2,
             placeholder = { Text("Your rebuttal…") })
-        Row(verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Box(
-                Modifier.size(8.dp).clip(CircleShape)
-                    .background(if (s.aiAssist) Color(0xFF3DDC84) else Ub.Muted)
-            )
-            MonoLabel(
-                if (s.aiAssist) "Detector: Listening…" else "Detector: Timer only",
-                size = 9,
-                color = if (s.aiAssist) Color(0xFF3DDC84) else Ub.Muted
-            )
-        }
+        DetectorRow(s)
         UbPrimaryButton("Submit rebuttal", enabled = draft.isNotBlank(), onClick = {
             val t = draft.trim()
             if (t.isNotEmpty()) ctx.client.send(JSONObject().put("type", "rebuttal").put("text", t))
@@ -522,22 +605,25 @@ private fun RebuttalComposerSpeak(s: BureaucratGuestState, ctx: GuestContext) {
                 Text(transcript, fontSize = 14.sp, color = Ub.Foreground)
             }
         }
-        Row(verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Box(
-                Modifier.size(8.dp).clip(CircleShape)
-                    .background(if (s.aiAssist) Color(0xFF3DDC84) else Ub.Muted)
-            )
-            MonoLabel(
-                if (s.aiAssist) "Detector: Listening…" else "Detector: Timer only",
-                size = 9,
-                color = if (s.aiAssist) Color(0xFF3DDC84) else Ub.Muted
-            )
-        }
+        DetectorRow(s)
         UbPrimaryButton("Submit rebuttal", enabled = transcript.isNotBlank(), onClick = {
             val t = transcript.trim()
             if (t.isNotEmpty()) ctx.client.send(JSONObject().put("type", "rebuttal").put("text", t))
         })
+    }
+}
+
+/** Status line under the rebuttal box: who will rule on this defence. */
+@Composable
+private fun DetectorRow(s: BureaucratGuestState) {
+    val voteMode = s.judging == "vote"
+    val lit = voteMode || s.aiAssist
+    val text = if (voteMode) "The table will vote on your rebuttal"
+               else if (s.aiAssist) "Detector: Listening…" else "Detector: Timer only"
+    Row(verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Box(Modifier.size(8.dp).clip(CircleShape).background(if (lit) Color(0xFF3DDC84) else Ub.Muted))
+        MonoLabel(text, size = 9, color = if (lit) Color(0xFF3DDC84) else Ub.Muted)
     }
 }
 
@@ -640,6 +726,7 @@ private fun roundOverText(r: BureaucratGuestState.Outcome?): String {
     return when (r?.reason) {
         "timeout"      -> "$who found the loophole — the Bureaucrat couldn't rebut in time."
         "contradiction" -> "$who won — the rebuttal contradicted the office's own policy."
+        "vote"         -> "The table sided with $who — the loophole stands."
         "survived"     -> "The Bureaucrat survived the round. No loophole stuck."
         "exhausted"    -> "The citizens ran out of challenges. The Bureaucrat survives."
         else           -> ""
@@ -702,7 +789,7 @@ private val howToSteps = listOf(
     "One Bureaucrat must deny an absurd request; everyone else is a Citizen. The role rotates each round.",
     "The Bureaucrat types denials — each becomes binding policy on every screen.",
     "A Citizen spends a token to call a loophole, stating the claim they're exploiting.",
-    "The Bureaucrat must rebut before the timer. An AI judge checks the rebuttal against the denials and the claim — a contradiction means the loophole wins.",
+    "The Bureaucrat must rebut before the timer. Then the verdict — an AI judge or a table vote, the host's pick — decides: beat the rebuttal and the loophole wins.",
 )
 
 @Composable
@@ -931,12 +1018,18 @@ class BureaucratGuestState {
     var rebuttalSeconds by mutableIntStateOf(20)
     var aiAssist by mutableStateOf(true)
     var rebuttalMode by mutableStateOf("type")
+    var judging by mutableStateOf("nli")
     var scores by mutableStateOf<Map<String, Int>>(emptyMap())
     var tokens by mutableStateOf<Map<String, Int>>(emptyMap())
     var policyLog by mutableStateOf<List<Entry>>(emptyList())
     var challengerId by mutableStateOf<String?>(null)
     var challengerName by mutableStateOf("")
     var challengerClaim by mutableStateOf("")
+    var rebuttalText by mutableStateOf("")
+    var voteStands by mutableIntStateOf(0)
+    var voteDenial by mutableIntStateOf(0)
+    var voteEligible by mutableIntStateOf(0)
+    var myVote by mutableStateOf<Boolean?>(null)
     var verdict by mutableStateOf<Verdict?>(null)
     var deadlineMs by mutableLongStateOf(0L)
     var last by mutableStateOf<Outcome?>(null)
@@ -963,6 +1056,7 @@ class BureaucratGuestState {
                 rebuttalSeconds = m.optInt("rebuttalSeconds", rebuttalSeconds)
                 aiAssist = m.optBoolean("aiAssist", aiAssist)
                 rebuttalMode = m.optString("rebuttalMode", "type").let { if (it == "speak") "speak" else "type" }
+                judging = m.optString("judging", "nli").let { if (it == "vote") "vote" else "nli" }
             }
             "round", "policy" -> applyRound(m)
             "rebuttal_open" -> {
@@ -974,6 +1068,20 @@ class BureaucratGuestState {
                 deadlineMs = m.optLong("deadlineMs", 0L)
                 rebuttalSeconds = m.optInt("seconds", rebuttalSeconds)
                 m.optJSONArray("policyLog")?.let { policyLog = readLog(it) }
+            }
+            "vote_state" -> {
+                val wasVoting = phase == "voting"
+                phase = "voting"
+                challengerId = if (m.isNull("challengerId")) null else m.optString("challengerId")
+                challengerName = m.optString("challengerName")
+                if (!m.isNull("bureaucratId")) bureaucratId = m.optString("bureaucratId")
+                challengerClaim = if (m.isNull("claim")) "" else m.optString("claim")
+                rebuttalText = if (m.isNull("rebuttal")) "" else m.optString("rebuttal")
+                voteStands = m.optInt("standsCount", 0)
+                voteDenial = m.optInt("denialCount", 0)
+                voteEligible = m.optInt("eligibleCount", 0)
+                m.optJSONArray("policyLog")?.let { policyLog = readLog(it) }
+                if (!wasVoting) myVote = null
             }
             "round_over" -> {
                 phase = "roundOver"

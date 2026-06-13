@@ -208,6 +208,94 @@ class BureaucratEngineTest {
         assertEquals("type", e.options.rebuttalMode)
     }
 
+    // --- Table-vote judging mode ---------------------------------------------
+
+    private fun votingEngine(n: Int = 4): Triple<BureaucratEngine, String, String> {
+        val e = engine(n = n)
+        e.setOptions(BureaucratOptions(judging = "vote"))
+        e.start()
+        val b = e.bureaucratId!!
+        val challenger = e.citizens.first().id
+        e.addDenial(b, "Everything is denied.")
+        e.callLoophole(challenger, "Surely an exception applies.")
+        assertEquals(BureaucratPhase.REBUTTAL, e.phase)
+        // In vote mode the detector verdict is ignored — the table rules.
+        assertTrue(e.submitRebuttal("My binding defence.", contradicts = true))
+        assertEquals(BureaucratPhase.VOTING, e.phase)
+        return Triple(e, b, challenger)
+    }
+
+    @Test fun `vote mode sends a submitted rebuttal to the table`() {
+        val (e, _, _) = votingEngine()
+        // The bureaucrat and challenger are excluded; everyone else may vote.
+        assertEquals(2, e.voters.size)
+        assertTrue(e.policyLog.last().isRebuttal)
+    }
+
+    @Test fun `neither bureaucrat nor challenger may vote`() {
+        val (e, b, challenger) = votingEngine()
+        assertFalse(e.castVote(b, true))
+        assertFalse(e.castVote(challenger, true))
+        assertTrue(e.votes.isEmpty())
+    }
+
+    @Test fun `a table majority for the loophole hands the round to the challenger`() {
+        val (e, _, challenger) = votingEngine()
+        val voters = e.voters.map { it.id }
+        e.castVote(voters[0], true)
+        assertEquals(BureaucratPhase.VOTING, e.phase)   // still collecting
+        e.castVote(voters[1], true)                     // last ballot auto-tallies
+        assertEquals(BureaucratPhase.ROUND_OVER, e.phase)
+        assertEquals(RoundEndReason.LOOPHOLE_VOTE, e.lastRound!!.reason)
+        assertEquals(challenger, e.lastRound!!.challengerId)
+        assertEquals(3, e.players[challenger]!!.score)  // LOOPHOLE_REWARD
+    }
+
+    @Test fun `the table upholding the denial burns a token and penalises the challenger`() {
+        val (e, _, challenger) = votingEngine()
+        e.players[challenger]!!.score = 4
+        val voters = e.voters.map { it.id }
+        e.castVote(voters[0], false); e.castVote(voters[1], false)
+        assertEquals(BureaucratPhase.ARGUING, e.phase)
+        assertEquals(1, e.tokensFor(challenger))        // 2 -> 1
+        assertEquals(3, e.players[challenger]!!.score)  // 4 - FAIL_PENALTY
+        assertNull(e.pendingChallenger)
+    }
+
+    @Test fun `a tied table vote favours the bureaucrat`() {
+        val (e, _, _) = votingEngine()
+        val voters = e.voters.map { it.id }
+        e.castVote(voters[0], true); e.castVote(voters[1], false)
+        assertEquals(BureaucratPhase.ARGUING, e.phase)  // 1 of 2 is not a majority
+    }
+
+    @Test fun `a clear majority carries even when not everyone has voted`() {
+        // 5 players → 3 eligible voters; two "stands" already clear the bar.
+        val (e, _, _) = votingEngine(n = 5)
+        assertEquals(3, e.voters.size)
+        val voters = e.voters.map { it.id }
+        e.castVote(voters[0], true); e.castVote(voters[1], true)
+        // forceTally with the third ballot missing still overturns: 2 of 3.
+        assertTrue(e.forceTally())
+        assertEquals(BureaucratPhase.ROUND_OVER, e.phase)
+        assertEquals(RoundEndReason.LOOPHOLE_VOTE, e.lastRound!!.reason)
+    }
+
+    @Test fun `force-tally with no ballots lets the denial stand`() {
+        val (e, _, challenger) = votingEngine()
+        assertTrue(e.forceTally())
+        assertEquals(BureaucratPhase.ARGUING, e.phase)
+        assertEquals(1, e.tokensFor(challenger))        // treated as a failed challenge
+    }
+
+    @Test fun `judging option clamps to nli for unknown values`() {
+        val e = engine(n = 3)
+        e.setOptions(BureaucratOptions(judging = "telepathy"))
+        assertEquals("nli", e.options.judging)
+        e.setOptions(BureaucratOptions(judging = "vote"))
+        assertEquals("vote", e.options.judging)
+    }
+
     @Test fun `the task never repeats the previous round`() {
         val e = engine(seed = 7, n = 3)
         e.setOptions(BureaucratOptions(targetScore = 50))   // keep the game going

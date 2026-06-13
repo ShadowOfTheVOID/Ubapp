@@ -170,13 +170,13 @@ enum GameTutorials {
             TutorialSection(heading: "Setup", body: "One player is the Bureaucrat; everyone else is a Citizen. Each round opens with one absurd request (e.g. \"register my goldfish as a mortgage co-signer\") pinned to the top of the record. The Bureaucrat must deny it. The role rotates each round."),
             TutorialSection(heading: "Binding policy", body: "The Bureaucrat answers by typing denials — and every denial becomes binding policy on everyone's screen. Vague denials are safe; specific ones give citizens something to attack."),
             TutorialSection(heading: "Call a loophole", body: "When a citizen catches the Bureaucrat boxed in by their own rules, they spend a token to Call a loophole and type the exact claim they're exploiting (e.g. \"a goldfish is alive in law, so it qualifies\"). The claim joins the record."),
-            TutorialSection(heading: "Rebuttal & the judge", body: "The Bureaucrat must type a rebuttal before the timer. An on-device AI judge checks it against the denials and the citizen's claim — if it contradicts any of them, the loophole stands and the citizen wins. The verdict names the exact clashing line, so the ruling is never a mystery. (No model bundled? The countdown is the only judge.)"),
+            TutorialSection(heading: "Rebuttal & the verdict", body: "The Bureaucrat must answer with a rebuttal before the timer. Who rules on it is the host's choice. AI judge: an on-device model checks the rebuttal against the denials and the claim and names the exact clashing line. Table vote: everyone but the Bureaucrat and the challenger votes whether the loophole beat the rebuttal — a majority hands the round to the citizen, a tie favours the Bureaucrat."),
             TutorialSection(heading: "Scoring", body: "Loophole win: +3 to the citizen. Survive the round: +2 to the Bureaucrat. A failed challenge costs the citizen a token and a point. First to the target score wins."),
         ],
         browserMenuSections: [
             TutorialSection(heading: "Your role", body: "A tag at the top tells you whether you're the Bureaucrat or a Citizen this round, plus the shared request. Roles rotate every round."),
             TutorialSection(heading: "As the Bureaucrat", body: "Type denials to build your policy log. When a loophole is called, you'll see the citizen's claim and a countdown — type a rebuttal that doesn't contradict your own record before it hits zero."),
-            TutorialSection(heading: "As a Citizen", body: "Watch the policy log for contradictions, then tap Call loophole and type the claim that springs the trap. The AI judge decides — and shows you the exact line it clashed with."),
+            TutorialSection(heading: "As a Citizen", body: "Watch the policy log for contradictions, then tap Call loophole and type the claim that springs the trap. Either the AI judge decides — showing the exact line it clashed with — or the table votes, depending on the host's setting."),
         ]
     )
 

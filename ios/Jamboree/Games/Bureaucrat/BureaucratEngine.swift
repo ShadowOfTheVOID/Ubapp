@@ -1,18 +1,23 @@
 import Foundation
 
-enum BureaucratPhase { case lobby, arguing, rebuttal, roundOver, gameOver }
+enum BureaucratPhase { case lobby, arguing, rebuttal, voting, roundOver, gameOver }
 
 /// Why a round ended — drives the round-over copy on every client.
-enum RoundEndReason { case loopholeTimeout, loopholeContradiction, bureaucratSurvived, tokensExhausted }
+enum RoundEndReason { case loopholeTimeout, loopholeContradiction, loopholeVote, bureaucratSurvived, tokensExhausted }
 
 /// Host-configurable knobs. Defaults reproduce the reference rules.
 struct BureaucratOptions: Equatable {
     var targetScore: Int = 10
     var challengeTokens: Int = 2
     var rebuttalSeconds: Int = 20
+    /// Consult the contradiction detector on each rebuttal. Only used when
+    /// `judging` is "nli".
     var aiAssist: Bool = true
     /// Input method for rebuttal: "type" (default) or "speak" (voice).
     var rebuttalMode: String = "type"
+    /// How a rebuttal is judged: "nli" (AI detector, default) or "vote" (the
+    /// table votes whether the loophole beats the rebuttal).
+    var judging: String = "nli"
 }
 
 final class BureaucratPlayer {
@@ -72,6 +77,8 @@ final class BureaucratEngine {
 
     private(set) var policyLog: [PolicyEntry] = []
     private(set) var pendingChallenger: String?
+    /// Table-vote ballots for the open challenge: voterId -> "loophole stands".
+    private(set) var votes: [String: Bool] = [:]
     private(set) var tokens: [String: Int] = [:]
     private(set) var lastRound: RoundOutcome?
 
@@ -113,12 +120,17 @@ final class BureaucratEngine {
         c.challengeTokens = min(max(o.challengeTokens, 1), 9)
         c.rebuttalSeconds = min(max(o.rebuttalSeconds, 5), 120)
         c.rebuttalMode = (o.rebuttalMode == "speak") ? "speak" : "type"
+        c.judging = (o.judging == "vote") ? "vote" : "nli"
         options = c
     }
 
     var citizens: [BureaucratPlayer] {
         playerOrder.compactMap { players[$0] }.filter { $0.id != bureaucratId }
     }
+
+    /// Citizens eligible to vote on the open challenge — everyone but the
+    /// bureaucrat (already excluded) and the challenger, who are both biased.
+    var voters: [BureaucratPlayer] { citizens.filter { $0.id != pendingChallenger } }
 
     func tokensFor(_ id: String) -> Int { tokens[id] ?? 0 }
 
@@ -149,6 +161,7 @@ final class BureaucratEngine {
         // every denial/claim reads against it on screen.
         policyLog.append(PolicyEntry(text: chosen, kind: .request, authorId: nil))
         pendingChallenger = nil
+        votes.removeAll()
         tokens.removeAll()
         for c in citizens { tokens[c.id] = options.challengeTokens }
         roundNumber += 1
@@ -181,26 +194,73 @@ final class BureaucratEngine {
         return true
     }
 
-    /// `contradicts` is the verdict the server's `ContradictionDetector`
-    /// returned for this rebuttal against the prior log.
+    /// The rebuttal always becomes binding policy. How it is judged depends on
+    /// `options.judging`:
+    ///  - "nli": `contradicts` is the detector's verdict — true hands the round
+    ///    to the challenger.
+    ///  - "vote": the engine moves to `.voting` and the table decides via
+    ///    `castVote`; `contradicts` is ignored.
     @discardableResult
     func submitRebuttal(text: String, contradicts: Bool) -> Bool {
         guard phase == .rebuttal, let challenger = pendingChallenger else { return false }
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !t.isEmpty else { return false }
         policyLog.append(PolicyEntry(text: t, kind: .rebuttal, authorId: bureaucratId))
+        if options.judging == "vote" {
+            votes.removeAll()
+            phase = .voting
+            return true
+        }
         if contradicts {
             awardLoophole(challenger, reason: .loopholeContradiction)
             return true
         }
+        failedChallenge(challenger)
+        return true
+    }
+
+    /// A voter rules on the open challenge: `stands` = "the loophole beats the
+    /// rebuttal". Auto-tallies once every eligible voter has weighed in.
+    @discardableResult
+    func castVote(voterId: String, stands: Bool) -> Bool {
+        guard phase == .voting, let challenger = pendingChallenger else { return false }
+        guard voterId != bureaucratId, voterId != challenger, players[voterId] != nil else { return false }
+        votes[voterId] = stands
+        if votes.count >= voters.count { tallyVotes() }
+        return true
+    }
+
+    /// Host breaks a stalled vote: tally with whoever has voted so far. Missing
+    /// ballots count for the bureaucrat, so overturning needs a real majority.
+    @discardableResult
+    func forceTally() -> Bool {
+        guard phase == .voting else { return false }
+        tallyVotes()
+        return true
+    }
+
+    private func tallyVotes() {
+        guard let challenger = pendingChallenger else { return }
+        let eligible = voters.count
+        let stands = votes.values.filter { $0 }.count
+        if stands * 2 > eligible {
+            awardLoophole(challenger, reason: .loopholeVote)
+        } else {
+            failedChallenge(challenger)
+        }
+    }
+
+    /// Shared tail for a defence the challenger lost (NLI or vote): burn a
+    /// token, dock a point, and survive the bureaucrat once tokens run dry.
+    private func failedChallenge(_ challenger: String) {
         tokens[challenger] = max(tokensFor(challenger) - 1, 0)
         if let p = players[challenger] { p.score = max(p.score - failPenalty, 0) }
         pendingChallenger = nil
+        votes.removeAll()
         phase = .arguing
         if citizens.allSatisfy({ tokensFor($0.id) <= 0 }) {
             bureaucratSurvives(reason: .tokensExhausted)
         }
-        return true
     }
 
     /// Server-owned timer elapsed with no rebuttal: the challenger wins.
@@ -228,6 +288,7 @@ final class BureaucratEngine {
         lastRound = RoundOutcome(bureaucratId: bureaucratId!, challengerId: challenger,
                                  reason: reason, task: task ?? "")
         pendingChallenger = nil
+        votes.removeAll()
         phase = .roundOver
     }
 

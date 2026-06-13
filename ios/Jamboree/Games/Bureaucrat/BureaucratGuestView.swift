@@ -23,6 +23,7 @@ struct BureaucratGuestView: View {
     private let ticker = Timer.publish(every: 0.25, on: .main, in: .common).autoconnect()
 
     private var iAmBureaucrat: Bool { model.bureaucratId == ctx.yourId }
+    private var iAmChallenger: Bool { model.challengerId == ctx.yourId }
     private var secondsLeft: Int {
         max(0, Int(ceil((model.deadlineMs / 1000) - now.timeIntervalSince1970)))
     }
@@ -34,6 +35,7 @@ struct BureaucratGuestView: View {
                 case "lobby":     lobby
                 case "arguing":   arguing
                 case "rebuttal":  rebuttal
+                case "voting":    voting
                 case "roundOver": roundOver
                 case "gameOver":  gameOver
                 default:          EmptyView()
@@ -75,7 +77,7 @@ struct BureaucratGuestView: View {
         // Rules card
         VStack(alignment: .leading, spacing: 6) {
             MonoLabel("Rules")
-            Text("First to \(model.targetScore) wins · \(model.challengeTokens) loopholes each · \(model.rebuttalSeconds)s to rebut · \(model.aiAssist ? "AI rebuttal check on" : "timer only")")
+            Text("First to \(model.targetScore) wins · \(model.challengeTokens) loopholes each · \(model.rebuttalSeconds)s to rebut · \(model.judging == "vote" ? "the table votes" : (model.aiAssist ? "AI judge" : "timer only"))")
                 .font(.system(size: 13))
                 .foregroundStyle(JamboreeTheme.muted)
         }
@@ -124,6 +126,104 @@ struct BureaucratGuestView: View {
         claimCard
         if iAmBureaucrat { rebuttalComposer } else { spectateCard }
         denialLedger
+    }
+
+    // MARK: - Voting phase (table-vote judging)
+
+    @ViewBuilder private var voting: some View {
+        arguingHeader
+        taskCard
+        claimCard
+        rebuttalShownCard
+        voteTally
+        if iAmBureaucrat || iAmChallenger { voteSpectate } else { votePanel }
+        denialLedger
+    }
+
+    @ViewBuilder private var rebuttalShownCard: some View {
+        if !model.rebuttalText.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                MonoLabel("The Bureaucrat's rebuttal", color: JamboreeTheme.faint)
+                Text("“\(model.rebuttalText)”")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(.white)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .ubCard()
+        }
+    }
+
+    private var voteTally: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                MonoLabel("The table decides")
+                Spacer()
+                MonoLabel("\(model.voteStands + model.voteDenial) / \(model.voteEligible) voted",
+                          size: 9, color: JamboreeTheme.faint)
+            }
+            HStack(spacing: 8) {
+                tallyChip(label: "Loophole", count: model.voteStands, lead: true)
+                tallyChip(label: "Denial", count: model.voteDenial, lead: false)
+            }
+        }
+    }
+
+    private func tallyChip(label: String, count: Int, lead: Bool) -> some View {
+        HStack {
+            Text(label).font(.system(size: 14)).foregroundStyle(.white)
+            Spacer()
+            Text("\(count)").font(.system(size: 18, weight: .heavy)).foregroundStyle(.white)
+        }
+        .padding(.vertical, 12).padding(.horizontal, 14)
+        .frame(maxWidth: .infinity)
+        .ubCard(radius: JamboreeRadius.row,
+                fill: lead ? JamboreeTheme.accentSoft : JamboreeTheme.surface,
+                stroke: lead ? JamboreeTheme.accentLine : JamboreeTheme.line)
+    }
+
+    private var votePanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            MonoLabel("Your verdict")
+            Text("Did the loophole beat the Bureaucrat's rebuttal?")
+                .font(.system(size: 13))
+                .foregroundStyle(JamboreeTheme.muted)
+            HStack(spacing: 8) {
+                Button("Loophole stands") { castVote(true) }
+                    .buttonStyle(UbPrimaryButtonStyle())
+                    .opacity(model.myVote == false ? 0.5 : 1)
+                Button("Denial stands") { castVote(false) }
+                    .buttonStyle(UbSecondaryButtonStyle())
+                    .opacity(model.myVote == true ? 0.5 : 1)
+            }
+            if model.myVote != nil {
+                Text("Vote in — waiting on the rest of the table.")
+                    .font(.system(size: 13))
+                    .foregroundStyle(JamboreeTheme.faint)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .ubCard()
+    }
+
+    private var voteSpectate: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            MonoLabel("To the vote")
+            Text(iAmBureaucrat
+                 ? "The table is ruling on your rebuttal. You can't vote on your own defence."
+                 : "The table is ruling on your loophole. You can't vote on your own challenge.")
+                .font(.system(size: 14))
+                .foregroundStyle(.white)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .ubCard()
+    }
+
+    private func castVote(_ stands: Bool) {
+        model.myVote = stands
+        model.send(["type": "cast_vote", "stands": stands])
     }
 
     /// The legible AI ruling — shown after a defense and on the round-over
@@ -261,7 +361,7 @@ struct BureaucratGuestView: View {
         "One Bureaucrat must deny an absurd request; everyone else is a Citizen. The role rotates each round.",
         "The Bureaucrat types denials — each becomes binding policy on every screen.",
         "A Citizen spends a token to call a loophole, stating the claim they're exploiting.",
-        "The Bureaucrat must rebut before the timer. An AI judge checks the rebuttal against the denials and the claim — a contradiction means the loophole wins.",
+        "The Bureaucrat must rebut before the timer. Then the verdict — an AI judge or a table vote, the host's pick — decides: beat the rebuttal and the loophole wins.",
     ]
 
     // MARK: - Arguing sub-views
@@ -337,7 +437,7 @@ struct BureaucratGuestView: View {
         return VStack(alignment: .leading, spacing: 12) {
             TokenDots(filled: left, total: model.challengeTokens)
             MonoLabel("Challenge tokens · \(left) left")
-            Text("Caught the Bureaucrat boxed in by their own rules? State the loophole you're exploiting, then call it — they must rebut before the clock runs out, and the AI judge checks their answer against your claim.")
+            Text("Caught the Bureaucrat boxed in by their own rules? State the loophole you're exploiting, then call it — they must rebut before the clock runs out, and \(model.judging == "vote" ? "the table votes on whether your loophole wins" : "the AI judge checks their answer against your claim").")
                 .font(.system(size: 13))
                 .foregroundStyle(JamboreeTheme.muted)
             TextField("e.g. A goldfish is alive in law, so it qualifies as a co-signer.", text: $claimDraft, axis: .vertical)
@@ -571,15 +671,15 @@ struct BureaucratGuestView: View {
     }
 
     private var detectorRow: some View {
-        HStack(spacing: 8) {
+        let voteMode = model.judging == "vote"
+        let lit = voteMode || model.aiAssist
+        let text = voteMode ? "The table will vote on your rebuttal"
+                            : "Detector: \(model.aiAssist ? "Listening…" : "Timer only")"
+        return HStack(spacing: 8) {
             Circle()
-                .fill(model.aiAssist ? Color(hex: 0x3DDC84) : JamboreeTheme.muted)
+                .fill(lit ? Color(hex: 0x3DDC84) : JamboreeTheme.muted)
                 .frame(width: 8, height: 8)
-            MonoLabel(
-                "Detector: \(model.aiAssist ? "Listening…" : "Timer only")",
-                size: 9,
-                color: model.aiAssist ? Color(hex: 0x3DDC84) : JamboreeTheme.muted
-            )
+            MonoLabel(text, size: 9, color: lit ? Color(hex: 0x3DDC84) : JamboreeTheme.muted)
         }
     }
 
@@ -742,6 +842,7 @@ struct BureaucratGuestView: View {
         switch model.lastReason {
         case "timeout":       return "\(who) found the loophole — the Bureaucrat couldn't rebut in time."
         case "contradiction": return "\(who) won — the rebuttal contradicted the office's own policy."
+        case "vote":          return "The table sided with \(who) — the loophole stands."
         case "survived":      return "The Bureaucrat survived the round. No loophole stuck."
         case "exhausted":     return "The citizens ran out of challenges. The Bureaucrat survives."
         default: return ""
@@ -932,11 +1033,18 @@ final class BureaucratGuestModel: ObservableObject {
     @Published var rebuttalSeconds = 20
     @Published var aiAssist = true
     @Published var rebuttalMode = "type"
+    @Published var judging = "nli"
     @Published var scores: [String: Int] = [:]
     @Published var tokens: [String: Int] = [:]
     @Published var policyLog: [Entry] = []
+    @Published var challengerId: String?
     @Published var challengerName = ""
     @Published var challengerClaim = ""
+    @Published var rebuttalText = ""
+    @Published var voteStands = 0
+    @Published var voteDenial = 0
+    @Published var voteEligible = 0
+    @Published var myVote: Bool?
     @Published var verdict: Verdict?
     @Published var deadlineMs: Double = 0
     @Published var lastReason = ""
@@ -974,16 +1082,31 @@ final class BureaucratGuestModel: ObservableObject {
             rebuttalSeconds = m["rebuttalSeconds"] as? Int ?? rebuttalSeconds
             aiAssist = m["aiAssist"] as? Bool ?? aiAssist
             if let rm = m["rebuttalMode"] as? String { rebuttalMode = (rm == "speak") ? "speak" : "type" }
+            if let jg = m["judging"] as? String { judging = (jg == "vote") ? "vote" : "nli" }
         case "round", "policy":
             applyRound(m)
         case "rebuttal_open":
             phase = "rebuttal"
+            challengerId = m["challengerId"] as? String
             challengerName = m["challengerName"] as? String ?? ""
             challengerClaim = m["claim"] as? String ?? ""
             verdict = nil
             deadlineMs = numeric(m["deadlineMs"])
             rebuttalSeconds = m["seconds"] as? Int ?? rebuttalSeconds
             if let log = m["policyLog"] { policyLog = readLog(log) }
+        case "vote_state":
+            let wasVoting = phase == "voting"
+            phase = "voting"
+            challengerId = m["challengerId"] as? String
+            challengerName = m["challengerName"] as? String ?? ""
+            if let bid = m["bureaucratId"] as? String { bureaucratId = bid }
+            challengerClaim = m["claim"] as? String ?? ""
+            rebuttalText = m["rebuttal"] as? String ?? ""
+            voteStands = m["standsCount"] as? Int ?? 0
+            voteDenial = m["denialCount"] as? Int ?? 0
+            voteEligible = m["eligibleCount"] as? Int ?? 0
+            if let log = m["policyLog"] { policyLog = readLog(log) }
+            if !wasVoting { myVote = nil }
         case "round_over":
             phase = "roundOver"
             lastReason = m["reason"] as? String ?? ""

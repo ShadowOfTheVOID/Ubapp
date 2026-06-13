@@ -46,6 +46,9 @@ struct BureaucratView: View {
                     if model.phase == .arguing {
                         Button("Bureaucrat survives the round") { model.survive() }
                             .buttonStyle(UbPrimaryButtonStyle()).padding(20)
+                    } else if model.phase == .voting {
+                        Button("Call the vote now") { model.forceTally() }
+                            .buttonStyle(UbSecondaryButtonStyle()).padding(20)
                     } else if model.phase == .roundOver {
                         Button("Next round") { model.nextRound() }
                             .buttonStyle(UbPrimaryButtonStyle()).padding(20)
@@ -90,9 +93,24 @@ struct BureaucratView: View {
                     get: { model.options.rebuttalSeconds },
                     set: { var o = model.options; o.rebuttalSeconds = $0; model.setOptions(o) }),
                         in: 5...120, step: 5) { Text("Rebuttal seconds: \(model.options.rebuttalSeconds)") }
-                Toggle("AI rebuttal check (falls back to timer)", isOn: Binding(
-                    get: { model.options.aiAssist },
-                    set: { var o = model.options; o.aiAssist = $0; model.setOptions(o) }))
+                HStack {
+                    Text("Judging")
+                    Spacer()
+                    Picker("Judging", selection: Binding(
+                        get: { model.options.judging },
+                        set: { var o = model.options; o.judging = $0; model.setOptions(o) }
+                    )) {
+                        Text("AI judge").tag("nli")
+                        Text("Table vote").tag("vote")
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: 200)
+                }
+                if model.options.judging == "nli" {
+                    Toggle("AI rebuttal check (falls back to timer)", isOn: Binding(
+                        get: { model.options.aiAssist },
+                        set: { var o = model.options; o.aiAssist = $0; model.setOptions(o) }))
+                }
                 HStack {
                     Text("Rebuttal mode")
                     Spacer()
@@ -191,6 +209,7 @@ final class BureaucratViewModel: ObservableObject {
     }
     func start() { server.hostStart() }
     func survive() { server.hostSurvive() }
+    func forceTally() { server.hostForceTally() }
     func nextRound() { server.hostNextRound() }
     func stop() { server.stop(); joinUrl = nil; loopback = nil; loopbackCtx = nil }
 
