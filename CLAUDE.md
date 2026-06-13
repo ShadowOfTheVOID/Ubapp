@@ -82,10 +82,10 @@ forwards actions. Engines are deterministic state machines so every client
 from the same ordered events. Transports are hot-swappable via small
 interfaces — `ProximitySource` for BLE, `HostServer` for WebSocket fan-out —
 so the same engine and UI work against real Bluetooth or a manual test
-stream. Local-only games (Tic-Tac-Toe, Connect Four, Real-time) skip the
+stream. Local-only games (Tic-Tac-Toe, Four in a Row, Real-time) skip the
 adapter layer entirely: engine + view, no server.
 
-## Per-game wiring (browser-tier: Mafia, Werewolf, Imposter, Codenames, Crazy Eights, Secret Hitler)
+## Per-game wiring (browser-tier: Mafia, Werewolf, Imposter, Code Words, Crazy Eights, Hidden Agenda)
 
 Mafia is the reference (`ios/Jamboree/Games/Mafia/`,
 `android/.../games/mafia/`). Four pieces per game:

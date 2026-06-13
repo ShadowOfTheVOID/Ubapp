@@ -19,7 +19,10 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.jamboree.ads.AdManager
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import com.example.jamboree.ads.BillingManager
 import com.example.jamboree.theme.MonoLabel
 import com.example.jamboree.theme.Ub
 import com.example.jamboree.theme.JamboreeTheme
@@ -30,7 +33,9 @@ fun SettingsScreen(onBack: () -> Unit) {
     val ctx = LocalContext.current
     var hostName by remember { mutableStateOf(AppSettings.hostName(ctx)) }
     var diagnostics by remember { mutableStateOf(AppSettings.diagnosticsEnabled(ctx)) }
-    var adFree by remember { mutableStateOf(AdManager.isAdFree(ctx)) }
+    val activity = remember(ctx) { ctx.findActivity() }
+    val billing = remember { BillingManager(ctx) }
+    DisposableEffect(Unit) { onDispose { billing.release() } }
 
     JamboreeTheme {
         Column(
@@ -93,7 +98,7 @@ fun SettingsScreen(onBack: () -> Unit) {
 
             Group("Upgrade",
                   "One-time purchase. Removes all ad banners and post-game interstitials permanently. No content is locked.") {
-                if (adFree) {
+                if (billing.adFree) {
                     Row(
                         Modifier.fillMaxWidth().ubCard().padding(horizontal = 16.dp, vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -102,21 +107,43 @@ fun SettingsScreen(onBack: () -> Unit) {
                         Text("Purchased ✓", fontSize = 13.sp, color = Ub.Accent)
                     }
                 } else {
-                    Row(
-                        Modifier.fillMaxWidth().ubCard().padding(horizontal = 16.dp, vertical = 14.dp)
-                            .clickable {
-                                // TODO: launch Play Billing flow via BillingClient
-                                // On purchase success, call: AdManager.setAdFree(ctx, true); adFree = true
-                            },
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text("Remove Ads", Modifier.weight(1f), fontSize = 15.sp, color = Ub.Foreground)
-                        Text("\$2.99", fontSize = 13.sp, color = Ub.Accent)
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(
+                            Modifier.fillMaxWidth().ubCard().padding(horizontal = 16.dp, vertical = 14.dp)
+                                .clickable(enabled = !billing.purchasing) {
+                                    activity?.let { billing.purchase(it) }
+                                },
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text("Remove Ads", Modifier.weight(1f), fontSize = 15.sp, color = Ub.Foreground)
+                            if (billing.purchasing) {
+                                CircularProgressIndicator(Modifier.size(18.dp), color = Ub.Accent, strokeWidth = 2.dp)
+                            } else {
+                                Text(billing.price ?: "\$2.99", fontSize = 13.sp, color = Ub.Accent)
+                            }
+                        }
+                        Text(
+                            "Restore purchase",
+                            Modifier.clickable(enabled = !billing.purchasing) { billing.restore() },
+                            fontSize = 13.sp, color = Ub.Muted,
+                        )
+                        billing.error?.let {
+                            Text(it, fontSize = 12.sp, color = Ub.Accent)
+                        }
                     }
                 }
             }
         }
     }
+}
+
+private fun Context.findActivity(): Activity? {
+    var c: Context? = this
+    while (c is ContextWrapper) {
+        if (c is Activity) return c
+        c = c.baseContext
+    }
+    return null
 }
 
 @Composable

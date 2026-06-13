@@ -73,7 +73,7 @@ fun SecretHitlerGuestScreen(ctx: GuestContext) {
         when (s.phase) {
             "lobby" -> {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    MonoLabel("Secret Hitler · lobby", color = Ub.Accent)
+                    MonoLabel("Hidden Agenda · lobby", color = Ub.Accent)
                     Text("Waiting for the deal", fontSize = 26.sp, fontWeight = FontWeight.ExtraBold,
                          letterSpacing = (-0.8).sp, color = Ub.Foreground)
                     Text("Playing as ${ctx.yourName} · 5–10 players", fontSize = 13.sp, color = Ub.Muted)
@@ -90,7 +90,7 @@ fun SecretHitlerGuestScreen(ctx: GuestContext) {
                 val color = if (liberalWin) Sh.Liberal else Sh.Fascist
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     MonoLabel("Game over", color = color)
-                    Text(if (liberalWin) "Liberals win" else "Fascists win", fontSize = 30.sp,
+                    Text(if (liberalWin) "Loyalists win" else "Conspirators win", fontSize = 30.sp,
                          fontWeight = FontWeight.ExtraBold, letterSpacing = (-1).sp, color = color)
                     val reason = when (s.reason) {
                         "fiveLiberalPolicies" -> "Five Liberal policies enacted."
@@ -134,7 +134,7 @@ fun SecretHitlerGuestScreen(ctx: GuestContext) {
                 if (s.role != null && s.allies.isNotEmpty()) {
                     val alive = s.players.firstOrNull { it.id == ctx.yourId }?.alive == true
                     TeamChat(
-                        title = "Fascist chat",
+                        title = "Conspirator chat",
                         subtitle = if (alive) "Private — only fascists you know can read this."
                                    else "You're out — chat is read-only.",
                         messages = s.chat,
@@ -170,9 +170,9 @@ private fun SlatePerson(name: String, role: String) {
 
 @Composable
 private fun Tracks(s: SecretHitlerGuestState) {
-    SHTrackView("Liberal track", s.liberalPolicies, 5, Sh.Liberal, "★")
+    SHTrackView("Reform track", s.liberalPolicies, 5, Sh.Liberal, "★")
     Spacer(Modifier.height(8.dp))
-    SHTrackView("Fascist track", s.fascistPolicies, 6, Sh.Fascist, "✖")
+    SHTrackView("Scheme track", s.fascistPolicies, 6, Sh.Fascist, "✖")
     Spacer(Modifier.height(8.dp))
     Row(Modifier.fillMaxWidth().ubCard(radius = Ub.Radius.row).padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -224,7 +224,7 @@ private fun SHPolicyView(team: String, width: Dp) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center) {
         Text(if (isLib) "★" else "✖", fontSize = (width.value * 0.4f).sp, fontWeight = FontWeight.ExtraBold, color = ink)
-        MonoLabel(if (isLib) "Liberal" else "Fascist", size = 8, color = ink.copy(alpha = 0.7f))
+        MonoLabel(if (isLib) "Reform" else "Scheme", size = 8, color = ink.copy(alpha = 0.7f))
     }
 }
 
@@ -331,7 +331,7 @@ private fun PhaseSection(s: SecretHitlerGuestState, ctx: GuestContext) {
             } else Waiting("${s.playerName(s.presidentId)} is peeking at the deck")
         }
         "investigation" -> {
-            if (amPresident) PickList("Investigate a player's party",
+            if (amPresident) PickList("Investigate a player's loyalty",
                 s.players.filter { it.alive && it.id != s.presidentId && it.id !in s.investigatedIds }) { p ->
                 ctx.client.send(JSONObject().put("type", "investigate").put("targetId", p.id))
             } else Waiting("${s.playerName(s.presidentId)} is investigating")
@@ -342,7 +342,7 @@ private fun PhaseSection(s: SecretHitlerGuestState, ctx: GuestContext) {
                 Column(Modifier.fillMaxWidth().ubCard(radius = Ub.Radius.panel).padding(16.dp),
                        verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     MonoLabel("Investigation", color = Ub.Accent)
-                    Text("${s.playerName(inv.subjectId)} is ${inv.party.replaceFirstChar { it.uppercase() }}",
+                    Text("${s.playerName(inv.subjectId)} is ${if (inv.party == "fascist") "a Conspirator" else "a Loyalist"}",
                          fontSize = 20.sp, fontWeight = FontWeight.ExtraBold,
                          color = if (inv.party == "fascist") Sh.Fascist else Sh.Liberal)
                     Text("Share it or lie about it.", fontSize = 13.sp, color = Ub.Muted)
@@ -428,14 +428,14 @@ private data class ShRoleMeta(val name: String, val team: String, val blurb: Str
                               val glyph: String, val color: Color, val ink: Color)
 
 private fun roleMetaSh(role: String): ShRoleMeta = when (role) {
-    "liberal" -> ShRoleMeta("Liberal", "Liberals",
-        "Enact 5 Liberal policies — or have Hitler executed. You don't know who anyone else is.",
+    "liberal" -> ShRoleMeta("Loyalist", "Loyalists",
+        "Enact 5 Reform policies — or have the Mastermind removed. You don't know who anyone else is.",
         "★", Sh.Liberal, Sh.LiberalInk)
-    "fascist" -> ShRoleMeta("Fascist", "Fascists",
-        "Enact 6 Fascist policies — or sneak Hitler in as Chancellor after 3.",
+    "fascist" -> ShRoleMeta("Conspirator", "Conspirators",
+        "Enact 6 Scheme policies — or sneak the Mastermind in as Chancellor after 3.",
         "✖", Sh.Fascist, Sh.FascistInk)
-    "hitler" -> ShRoleMeta("Hitler", "Fascists",
-        "You are also a Fascist. Stay hidden — if elected Chancellor after 3 fascist policies, you win.",
+    "hitler" -> ShRoleMeta("Mastermind", "Conspirators",
+        "You are also a Conspirator. Stay hidden — if elected Chancellor after 3 Scheme policies, you win.",
         "✠", Sh.Hitler, Color.White)
     else -> ShRoleMeta(role.replaceFirstChar { it.uppercase() }, "—", role, "•", Sh.Liberal, Sh.LiberalInk)
 }

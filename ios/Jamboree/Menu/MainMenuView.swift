@@ -191,9 +191,9 @@ private let partyGames: [GameMeta] = [
              players: "5–14", minutes: "20–40 min", glyph: .werewolf) { WerewolfView() },
     GameMeta("imposter", "Imposter", "Everyone shares a word — except one. Find the fake.",
              players: "4–10", minutes: "5–10 min", glyph: .imposter) { ImposterView() },
-    GameMeta("codenames", "Codenames", "Word-association duel for two teams.",
+    GameMeta("codenames", "Code Words", "Word-association duel for two teams.",
              players: "4+", glyph: .symbol("square.grid.3x3.fill")) { CodenamesView() },
-    GameMeta("secrethitler", "Secret Hitler", "Politics, lies, and hidden roles.",
+    GameMeta("secrethitler", "Hidden Agenda", "Politics, lies, and hidden roles.",
              players: "5–10", glyph: .symbol("person.crop.rectangle.stack.fill")) { SecretHitlerView() },
     GameMeta("bureaucrat", "The Bureaucrat", "Deny every request — until a citizen finds the loophole.",
              players: "3–10", minutes: "10–20 min", glyph: .symbol("doc.text.magnifyingglass")) { BureaucratView() },
@@ -209,7 +209,7 @@ private let proximityGames: [GameMeta] = [
 private let twoPlayerGames: [GameMeta] = [
     GameMeta("tictactoe", "Tic-Tac-Toe", "Three in a row.",
              players: "2", glyph: .symbol("number")) { TicTacToeView() },
-    GameMeta("connectfour", "Connect Four", "Four in a row, drop tokens.",
+    GameMeta("connectfour", "Four in a Row", "Four in a row, drop tokens.",
              players: "2", glyph: .symbol("circle.grid.3x3.fill")) { ConnectFourView() },
 ]
 

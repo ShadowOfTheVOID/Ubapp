@@ -1,18 +1,23 @@
 import Foundation
 
-enum BureaucratPhase { case lobby, arguing, rebuttal, roundOver, gameOver }
+enum BureaucratPhase { case lobby, arguing, rebuttal, voting, roundOver, gameOver }
 
 /// Why a round ended — drives the round-over copy on every client.
-enum RoundEndReason { case loopholeTimeout, loopholeContradiction, bureaucratSurvived, tokensExhausted }
+enum RoundEndReason { case loopholeTimeout, loopholeContradiction, loopholeVote, bureaucratSurvived, tokensExhausted }
 
 /// Host-configurable knobs. Defaults reproduce the reference rules.
 struct BureaucratOptions: Equatable {
     var targetScore: Int = 10
     var challengeTokens: Int = 2
     var rebuttalSeconds: Int = 20
+    /// Consult the contradiction detector on each rebuttal. Only used when
+    /// `judging` is "nli".
     var aiAssist: Bool = true
     /// Input method for rebuttal: "type" (default) or "speak" (voice).
     var rebuttalMode: String = "type"
+    /// How a rebuttal is judged: "nli" (AI detector, default) or "vote" (the
+    /// table votes whether the loophole beats the rebuttal).
+    var judging: String = "nli"
 }
 
 final class BureaucratPlayer {
@@ -25,12 +30,23 @@ final class BureaucratPlayer {
     }
 }
 
+/// What a policy-log line is. Drives styling on every client and, crucially,
+/// what the contradiction detector is allowed to judge against.
+/// - `request`  — the round's absurd task, seeded as line 0. Shown to anchor
+///   play, but **never** fed to the detector: denying the request literally
+///   contradicts it, so it can't count against the Bureaucrat.
+/// - `denial`   — a binding ruling the Bureaucrat typed.
+/// - `claim`    — the citizen's loophole argument when they challenge.
+/// - `rebuttal` — the Bureaucrat's forced answer to a claim.
+enum PolicyKind: String { case request, denial, claim, rebuttal }
+
 /// One line in the binding policy log.
 struct PolicyEntry {
     let text: String
-    /// false for the bureaucrat's own denials, true for forced rebuttals.
-    let isRebuttal: Bool
-    let challengerId: String?
+    let kind: PolicyKind
+    /// Who put this on record: the bureaucrat for denials/rebuttals, the
+    /// challenging citizen for claims, nil for the seeded request.
+    let authorId: String?
 }
 
 struct RoundOutcome {
@@ -61,10 +77,14 @@ final class BureaucratEngine {
 
     private(set) var policyLog: [PolicyEntry] = []
     private(set) var pendingChallenger: String?
+    /// Table-vote ballots for the open challenge: voterId -> "loophole stands".
+    private(set) var votes: [String: Bool] = [:]
     private(set) var tokens: [String: Int] = [:]
     private(set) var lastRound: RoundOutcome?
 
     private var rotation = 0
+    /// Index of the previous round's task, so a task never repeats back-to-back.
+    private var lastTaskIndex = -1
 
     private let surviveReward = 2
     private let loopholeReward = 3
@@ -100,12 +120,17 @@ final class BureaucratEngine {
         c.challengeTokens = min(max(o.challengeTokens, 1), 9)
         c.rebuttalSeconds = min(max(o.rebuttalSeconds, 5), 120)
         c.rebuttalMode = (o.rebuttalMode == "speak") ? "speak" : "type"
+        c.judging = (o.judging == "vote") ? "vote" : "nli"
         options = c
     }
 
     var citizens: [BureaucratPlayer] {
         playerOrder.compactMap { players[$0] }.filter { $0.id != bureaucratId }
     }
+
+    /// Citizens eligible to vote on the open challenge — everyone but the
+    /// bureaucrat (already excluded) and the challenger, who are both biased.
+    var voters: [BureaucratPlayer] { citizens.filter { $0.id != pendingChallenger } }
 
     func tokensFor(_ id: String) -> Int { tokens[id] ?? 0 }
 
@@ -119,9 +144,24 @@ final class BureaucratEngine {
     private func beginRound() {
         guard !playerOrder.isEmpty else { return }
         bureaucratId = playerOrder[rotation % playerOrder.count]
-        task = BureaucratTasks.all[Int.random(in: 0..<BureaucratTasks.all.count, using: &rng)]
+        // Pick a task, never repeating the previous round's so play stays varied.
+        let count = BureaucratTasks.all.count
+        let idx: Int
+        if lastTaskIndex < 0 || count <= 1 {
+            idx = Int.random(in: 0..<count, using: &rng)
+        } else {
+            let r = Int.random(in: 0..<(count - 1), using: &rng)
+            idx = r >= lastTaskIndex ? r + 1 : r
+        }
+        lastTaskIndex = idx
+        let chosen = BureaucratTasks.all[idx]
+        task = chosen
         policyLog.removeAll()
+        // Seed the request as line 0 so the task anchors the whole round and
+        // every denial/claim reads against it on screen.
+        policyLog.append(PolicyEntry(text: chosen, kind: .request, authorId: nil))
         pendingChallenger = nil
+        votes.removeAll()
         tokens.removeAll()
         for c in citizens { tokens[c.id] = options.challengeTokens }
         roundNumber += 1
@@ -134,39 +174,93 @@ final class BureaucratEngine {
         guard phase == .arguing, playerId == bureaucratId else { return false }
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !t.isEmpty else { return false }
-        policyLog.append(PolicyEntry(text: t, isRebuttal: false, challengerId: nil))
+        policyLog.append(PolicyEntry(text: t, kind: .denial, authorId: bureaucratId))
         return true
     }
 
+    /// A citizen spends a token to challenge, stating the loophole `claim` they
+    /// are exploiting. The claim joins the log and becomes part of what the
+    /// Bureaucrat's rebuttal is judged against, so the contradiction is always
+    /// grounded in something a citizen actually argued.
     @discardableResult
-    func callLoophole(citizenId: String) -> Bool {
+    func callLoophole(citizenId: String, claim: String) -> Bool {
         guard phase == .arguing, citizenId != bureaucratId, players[citizenId] != nil,
               tokensFor(citizenId) > 0 else { return false }
+        let c = claim.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !c.isEmpty else { return false }
+        policyLog.append(PolicyEntry(text: c, kind: .claim, authorId: citizenId))
         pendingChallenger = citizenId
         phase = .rebuttal
         return true
     }
 
-    /// `contradicts` is the verdict the server's `ContradictionDetector`
-    /// returned for this rebuttal against the prior log.
+    /// The rebuttal always becomes binding policy. How it is judged depends on
+    /// `options.judging`:
+    ///  - "nli": `contradicts` is the detector's verdict — true hands the round
+    ///    to the challenger.
+    ///  - "vote": the engine moves to `.voting` and the table decides via
+    ///    `castVote`; `contradicts` is ignored.
     @discardableResult
     func submitRebuttal(text: String, contradicts: Bool) -> Bool {
         guard phase == .rebuttal, let challenger = pendingChallenger else { return false }
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !t.isEmpty else { return false }
-        policyLog.append(PolicyEntry(text: t, isRebuttal: true, challengerId: challenger))
+        policyLog.append(PolicyEntry(text: t, kind: .rebuttal, authorId: bureaucratId))
+        if options.judging == "vote" {
+            votes.removeAll()
+            phase = .voting
+            return true
+        }
         if contradicts {
             awardLoophole(challenger, reason: .loopholeContradiction)
             return true
         }
+        failedChallenge(challenger)
+        return true
+    }
+
+    /// A voter rules on the open challenge: `stands` = "the loophole beats the
+    /// rebuttal". Auto-tallies once every eligible voter has weighed in.
+    @discardableResult
+    func castVote(voterId: String, stands: Bool) -> Bool {
+        guard phase == .voting, let challenger = pendingChallenger else { return false }
+        guard voterId != bureaucratId, voterId != challenger, players[voterId] != nil else { return false }
+        votes[voterId] = stands
+        if votes.count >= voters.count { tallyVotes() }
+        return true
+    }
+
+    /// Host breaks a stalled vote: tally with whoever has voted so far. Missing
+    /// ballots count for the bureaucrat, so overturning needs a real majority.
+    @discardableResult
+    func forceTally() -> Bool {
+        guard phase == .voting else { return false }
+        tallyVotes()
+        return true
+    }
+
+    private func tallyVotes() {
+        guard let challenger = pendingChallenger else { return }
+        let eligible = voters.count
+        let stands = votes.values.filter { $0 }.count
+        if stands * 2 > eligible {
+            awardLoophole(challenger, reason: .loopholeVote)
+        } else {
+            failedChallenge(challenger)
+        }
+    }
+
+    /// Shared tail for a defence the challenger lost (NLI or vote): burn a
+    /// token, dock a point, and survive the bureaucrat once tokens run dry.
+    private func failedChallenge(_ challenger: String) {
         tokens[challenger] = max(tokensFor(challenger) - 1, 0)
         if let p = players[challenger] { p.score = max(p.score - failPenalty, 0) }
         pendingChallenger = nil
+        votes.removeAll()
         phase = .arguing
         if citizens.allSatisfy({ tokensFor($0.id) <= 0 }) {
             bureaucratSurvives(reason: .tokensExhausted)
         }
-        return true
     }
 
     /// Server-owned timer elapsed with no rebuttal: the challenger wins.
@@ -194,13 +288,14 @@ final class BureaucratEngine {
         lastRound = RoundOutcome(bureaucratId: bureaucratId!, challengerId: challenger,
                                  reason: reason, task: task ?? "")
         pendingChallenger = nil
+        votes.removeAll()
         phase = .roundOver
     }
 
     @discardableResult
     func nextRound() -> Bool {
         guard phase == .roundOver else { return false }
-        if let leader = players.values.max(by: { $0.score < $1.score }),
+        if let leader = playerOrder.compactMap({ players[$0] }).max(by: { $0.score < $1.score }),
            leader.score >= options.targetScore {
             winnerId = leader.id
             phase = .gameOver

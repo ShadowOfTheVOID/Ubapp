@@ -4,6 +4,7 @@ import com.example.jamboree.games.bureaucrat.BureaucratEngine
 import com.example.jamboree.games.bureaucrat.BureaucratOptions
 import com.example.jamboree.games.bureaucrat.BureaucratPhase
 import com.example.jamboree.games.bureaucrat.KeywordContradictionDetector
+import com.example.jamboree.games.bureaucrat.PolicyKind
 import com.example.jamboree.games.bureaucrat.RoundEndReason
 import kotlin.random.Random
 import kotlin.test.Test
@@ -42,20 +43,43 @@ class BureaucratEngineTest {
         assertEquals(0, e.tokensFor(e.bureaucratId!!))
     }
 
+    @Test fun `the round seeds the request as the first policy line`() {
+        val e = engine(n = 4); e.start()
+        assertEquals(1, e.policyLog.size)
+        assertEquals(PolicyKind.REQUEST, e.policyLog[0].kind)
+        assertEquals(e.task, e.policyLog[0].text)
+    }
+
     @Test fun `only the bureaucrat can append denials`() {
         val e = engine(n = 4); e.start()
         val b = e.bureaucratId!!
         val citizen = e.citizens.first().id
         assertFalse(e.addDenial(citizen, "Citizens cannot legislate."))
         assertTrue(e.addDenial(b, "Form 7B is required for all exemptions."))
-        assertEquals(1, e.policyLog.size)
-        assertFalse(e.policyLog[0].isRebuttal)
+        // policyLog is [request, denial].
+        assertEquals(2, e.policyLog.size)
+        assertEquals(PolicyKind.DENIAL, e.policyLog.last().kind)
+        assertEquals(b, e.policyLog.last().authorId)
     }
 
     @Test fun `blank denials are rejected`() {
         val e = engine(n = 4); e.start()
         assertFalse(e.addDenial(e.bureaucratId!!, "   "))
-        assertEquals(0, e.policyLog.size)
+        assertEquals(1, e.policyLog.size)   // request only
+    }
+
+    @Test fun `calling a loophole records the claim and needs a non-blank claim`() {
+        val e = engine(n = 4); e.start()
+        val b = e.bureaucratId!!
+        val challenger = e.citizens.first().id
+        e.addDenial(b, "Goldfish cannot co-sign.")
+        assertFalse(e.callLoophole(challenger, "   "))      // blank claim rejected
+        assertEquals(BureaucratPhase.ARGUING, e.phase)
+        assertEquals(2, e.tokensFor(challenger))            // no token spent
+        assertTrue(e.callLoophole(challenger, "A goldfish is alive in law."))
+        assertEquals(BureaucratPhase.REBUTTAL, e.phase)
+        assertEquals(PolicyKind.CLAIM, e.policyLog.last().kind)
+        assertEquals(challenger, e.policyLog.last().authorId)
     }
 
     @Test fun `timed-out rebuttal hands the round and reward to the challenger`() {
@@ -63,7 +87,7 @@ class BureaucratEngineTest {
         val b = e.bureaucratId!!
         val challenger = e.citizens.first().id
         e.addDenial(b, "Form 7B is required.")
-        assertTrue(e.callLoophole(challenger))
+        assertTrue(e.callLoophole(challenger, "I already filed Form 7B."))
         assertEquals(BureaucratPhase.REBUTTAL, e.phase)
         assertEquals(challenger, e.pendingChallenger)
         assertTrue(e.rebuttalTimedOut())
@@ -79,7 +103,7 @@ class BureaucratEngineTest {
         val b = e.bureaucratId!!
         val challenger = e.citizens.first().id
         e.addDenial(b, "Form 7B is required.")
-        e.callLoophole(challenger)
+        e.callLoophole(challenger, "I already filed Form 7B.")
         assertTrue(e.submitRebuttal("Form 7B was discontinued.", contradicts = true))
         assertEquals(BureaucratPhase.ROUND_OVER, e.phase)
         assertEquals(RoundEndReason.LOOPHOLE_CONTRADICTION, e.lastRound!!.reason)
@@ -92,7 +116,7 @@ class BureaucratEngineTest {
         val challenger = e.citizens.first().id
         e.players[challenger]!!.score = 4
         e.addDenial(b, "Form 7B is required.")
-        e.callLoophole(challenger)
+        e.callLoophole(challenger, "I already filed Form 7B.")
         assertTrue(e.submitRebuttal("Exemptions use the modern Form 7C instead.", contradicts = false))
         assertEquals(BureaucratPhase.ARGUING, e.phase)
         assertEquals(1, e.tokensFor(challenger))         // 2 -> 1
@@ -106,7 +130,7 @@ class BureaucratEngineTest {
         val b = e.bureaucratId!!
         val challenger = e.citizens.first().id
         e.addDenial(b, "Form 7B is required.")
-        e.callLoophole(challenger)
+        e.callLoophole(challenger, "I already filed Form 7B.")
         e.submitRebuttal("Form 7C supersedes it.", contradicts = false)
         assertEquals(0, e.players[challenger]!!.score)
     }
@@ -119,7 +143,7 @@ class BureaucratEngineTest {
         var guard = 0
         while (e.phase == BureaucratPhase.ARGUING && guard++ < 20) {
             val withToken = e.citizens.firstOrNull { e.tokensFor(it.id) > 0 } ?: break
-            e.callLoophole(withToken.id)
+            e.callLoophole(withToken.id, "Surely there is an exception.")
             e.submitRebuttal("Defended.", contradicts = false)
         }
         assertEquals(BureaucratPhase.ROUND_OVER, e.phase)
@@ -164,10 +188,10 @@ class BureaucratEngineTest {
         val e = engine(n = 3); e.start()
         val challenger = e.citizens.first().id
         e.addDenial(e.bureaucratId!!, "Denied.")
-        e.callLoophole(challenger); e.submitRebuttal("a", contradicts = false)
-        e.callLoophole(challenger); e.submitRebuttal("b", contradicts = false)
+        e.callLoophole(challenger, "Try one"); e.submitRebuttal("a", contradicts = false)
+        e.callLoophole(challenger, "Try two"); e.submitRebuttal("b", contradicts = false)
         assertEquals(0, e.tokensFor(challenger))
-        assertFalse(e.callLoophole(challenger))
+        assertFalse(e.callLoophole(challenger, "Try three"))
     }
 
     @Test fun `options are clamped to sane ranges`() {
@@ -182,6 +206,109 @@ class BureaucratEngineTest {
         val e = engine(n = 3)
         e.setOptions(BureaucratOptions(rebuttalMode = "yell"))
         assertEquals("type", e.options.rebuttalMode)
+    }
+
+    // --- Table-vote judging mode ---------------------------------------------
+
+    private fun votingEngine(n: Int = 4): Triple<BureaucratEngine, String, String> {
+        val e = engine(n = n)
+        e.setOptions(BureaucratOptions(judging = "vote"))
+        e.start()
+        val b = e.bureaucratId!!
+        val challenger = e.citizens.first().id
+        e.addDenial(b, "Everything is denied.")
+        e.callLoophole(challenger, "Surely an exception applies.")
+        assertEquals(BureaucratPhase.REBUTTAL, e.phase)
+        // In vote mode the detector verdict is ignored — the table rules.
+        assertTrue(e.submitRebuttal("My binding defence.", contradicts = true))
+        assertEquals(BureaucratPhase.VOTING, e.phase)
+        return Triple(e, b, challenger)
+    }
+
+    @Test fun `vote mode sends a submitted rebuttal to the table`() {
+        val (e, _, _) = votingEngine()
+        // The bureaucrat and challenger are excluded; everyone else may vote.
+        assertEquals(2, e.voters.size)
+        assertTrue(e.policyLog.last().isRebuttal)
+    }
+
+    @Test fun `neither bureaucrat nor challenger may vote`() {
+        val (e, b, challenger) = votingEngine()
+        assertFalse(e.castVote(b, true))
+        assertFalse(e.castVote(challenger, true))
+        assertTrue(e.votes.isEmpty())
+    }
+
+    @Test fun `a table majority for the loophole hands the round to the challenger`() {
+        val (e, _, challenger) = votingEngine()
+        val voters = e.voters.map { it.id }
+        e.castVote(voters[0], true)
+        assertEquals(BureaucratPhase.VOTING, e.phase)   // still collecting
+        e.castVote(voters[1], true)                     // last ballot auto-tallies
+        assertEquals(BureaucratPhase.ROUND_OVER, e.phase)
+        assertEquals(RoundEndReason.LOOPHOLE_VOTE, e.lastRound!!.reason)
+        assertEquals(challenger, e.lastRound!!.challengerId)
+        assertEquals(3, e.players[challenger]!!.score)  // LOOPHOLE_REWARD
+    }
+
+    @Test fun `the table upholding the denial burns a token and penalises the challenger`() {
+        val (e, _, challenger) = votingEngine()
+        e.players[challenger]!!.score = 4
+        val voters = e.voters.map { it.id }
+        e.castVote(voters[0], false); e.castVote(voters[1], false)
+        assertEquals(BureaucratPhase.ARGUING, e.phase)
+        assertEquals(1, e.tokensFor(challenger))        // 2 -> 1
+        assertEquals(3, e.players[challenger]!!.score)  // 4 - FAIL_PENALTY
+        assertNull(e.pendingChallenger)
+    }
+
+    @Test fun `a tied table vote favours the bureaucrat`() {
+        val (e, _, _) = votingEngine()
+        val voters = e.voters.map { it.id }
+        e.castVote(voters[0], true); e.castVote(voters[1], false)
+        assertEquals(BureaucratPhase.ARGUING, e.phase)  // 1 of 2 is not a majority
+    }
+
+    @Test fun `a clear majority carries even when not everyone has voted`() {
+        // 5 players → 3 eligible voters; two "stands" already clear the bar.
+        val (e, _, _) = votingEngine(n = 5)
+        assertEquals(3, e.voters.size)
+        val voters = e.voters.map { it.id }
+        e.castVote(voters[0], true); e.castVote(voters[1], true)
+        // forceTally with the third ballot missing still overturns: 2 of 3.
+        assertTrue(e.forceTally())
+        assertEquals(BureaucratPhase.ROUND_OVER, e.phase)
+        assertEquals(RoundEndReason.LOOPHOLE_VOTE, e.lastRound!!.reason)
+    }
+
+    @Test fun `force-tally with no ballots lets the denial stand`() {
+        val (e, _, challenger) = votingEngine()
+        assertTrue(e.forceTally())
+        assertEquals(BureaucratPhase.ARGUING, e.phase)
+        assertEquals(1, e.tokensFor(challenger))        // treated as a failed challenge
+    }
+
+    @Test fun `judging option clamps to nli for unknown values`() {
+        val e = engine(n = 3)
+        e.setOptions(BureaucratOptions(judging = "telepathy"))
+        assertEquals("nli", e.options.judging)
+        e.setOptions(BureaucratOptions(judging = "vote"))
+        assertEquals("vote", e.options.judging)
+    }
+
+    @Test fun `the task never repeats the previous round`() {
+        val e = engine(seed = 7, n = 3)
+        e.setOptions(BureaucratOptions(targetScore = 50))   // keep the game going
+        e.start()
+        var prev = e.task
+        repeat(30) {
+            e.bureaucratSurvives()
+            e.nextRound()
+            assertEquals(BureaucratPhase.ARGUING, e.phase)
+            assertNotNull(e.task)
+            assertTrue(e.task != prev, "task repeated back-to-back: ${e.task}")
+            prev = e.task
+        }
     }
 }
 
@@ -210,5 +337,22 @@ class KeywordContradictionDetectorTest {
     @Test fun `polarity flip on a shared noun is caught`() {
         val prior = listOf("Permits are mandatory for indoor whistling.")
         assertTrue(d.contradicts(prior, "Permits are prohibited and cannot be issued."))
+    }
+
+    @Test fun `judge points at the exact clashing line`() {
+        val prior = listOf(
+            "Indoor whistling needs a permit.",
+            "Form 7B is required for all exemptions.",
+        )
+        val v = d.judge(prior, "Form 7B was discontinued and is no longer available.")
+        assertTrue(v.contradicts)
+        assertEquals(1, v.priorIndex)            // the Form 7B line, not the whistling one
+        assertEquals("contradiction", v.label)
+    }
+
+    @Test fun `judge reports no contradiction for a consistent rebuttal`() {
+        val prior = listOf("Form 7B is required for all exemptions.")
+        val v = d.judge(prior, "Form 7B must be notarised as well.")
+        assertFalse(v.contradicts)
     }
 }

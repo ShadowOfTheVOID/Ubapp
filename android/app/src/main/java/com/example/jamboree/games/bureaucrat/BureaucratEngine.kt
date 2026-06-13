@@ -2,10 +2,10 @@ package com.example.jamboree.games.bureaucrat
 
 import kotlin.random.Random
 
-enum class BureaucratPhase { LOBBY, ARGUING, REBUTTAL, ROUND_OVER, GAME_OVER }
+enum class BureaucratPhase { LOBBY, ARGUING, REBUTTAL, VOTING, ROUND_OVER, GAME_OVER }
 
 /** Why a round ended — drives the round-over copy on every client. */
-enum class RoundEndReason { LOOPHOLE_TIMEOUT, LOOPHOLE_CONTRADICTION, BUREAUCRAT_SURVIVED, TOKENS_EXHAUSTED }
+enum class RoundEndReason { LOOPHOLE_TIMEOUT, LOOPHOLE_CONTRADICTION, LOOPHOLE_VOTE, BUREAUCRAT_SURVIVED, TOKENS_EXHAUSTED }
 
 /** Host-configurable knobs. Defaults reproduce the reference rules. */
 data class BureaucratOptions(
@@ -17,23 +17,40 @@ data class BureaucratOptions(
      *  can render the same countdown; the *server* owns the actual timer. */
     val rebuttalSeconds: Int = 20,
     /** When true the server consults a [ContradictionDetector] on each rebuttal;
-     *  purely a UI/broadcast hint here — the engine stays transport-agnostic. */
+     *  purely a UI/broadcast hint here — the engine stays transport-agnostic.
+     *  Only consulted when [judging] is "nli". */
     val aiAssist: Boolean = true,
     /** Input method for rebuttal: "type" (default) or "speak" (voice). */
     val rebuttalMode: String = "type",
+    /** How a rebuttal is judged:
+     *  - "nli"  — the AI contradiction detector rules (default).
+     *  - "vote" — the table votes whether the loophole beats the rebuttal. */
+    val judging: String = "nli",
 )
 
 class BureaucratPlayer(val id: String, val name: String, val isHost: Boolean) {
     var score: Int = 0
 }
 
+/**
+ * What a policy-log line is. Drives styling on every client and, crucially,
+ * what the contradiction detector is allowed to judge against.
+ *  - [REQUEST]  the round's absurd task, seeded as line 0. Shown to anchor
+ *    play, but never fed to the detector: denying the request literally
+ *    contradicts it, so it can't count against the Bureaucrat.
+ *  - [DENIAL]   a binding ruling the Bureaucrat typed.
+ *  - [CLAIM]    the citizen's loophole argument when they challenge.
+ *  - [REBUTTAL] the Bureaucrat's forced answer to a claim.
+ */
+enum class PolicyKind { REQUEST, DENIAL, CLAIM, REBUTTAL }
+
 /** One line in the binding policy log. */
 data class PolicyEntry(
     val text: String,
-    /** false for the bureaucrat's own denials, true for forced rebuttals to a loophole. */
-    val isRebuttal: Boolean,
-    /** Citizen whose loophole prompted this rebuttal (rebuttals only). */
-    val challengerId: String? = null,
+    val kind: PolicyKind,
+    /** Who put this on record: the bureaucrat for denials/rebuttals, the
+     *  challenging citizen for claims, null for the seeded request. */
+    val authorId: String? = null,
 )
 
 data class RoundOutcome(
@@ -73,12 +90,16 @@ class BureaucratEngine(private val rng: Random = Random.Default) {
     val policyLog: MutableList<PolicyEntry> = mutableListOf()
     var pendingChallenger: String? = null
         private set
+    /** Table-vote ballots for the open challenge: voterId -> "loophole stands". */
+    val votes: MutableMap<String, Boolean> = linkedMapOf()
     val tokens: MutableMap<String, Int> = mutableMapOf()
     var lastRound: RoundOutcome? = null
         private set
 
     /** Rotation cursor over [order]; the bureaucrat is order[rotation % size]. */
     private var rotation: Int = 0
+    /** Index of the previous round's task, so a task never repeats back-to-back. */
+    private var lastTaskIndex: Int = -1
 
     private companion object {
         const val SURVIVE_REWARD = 2
@@ -105,11 +126,17 @@ class BureaucratEngine(private val rng: Random = Random.Default) {
             challengeTokens = o.challengeTokens.coerceIn(1, 9),
             rebuttalSeconds = o.rebuttalSeconds.coerceIn(5, 120),
             rebuttalMode = if (o.rebuttalMode == "speak") "speak" else "type",
+            judging = if (o.judging == "vote") "vote" else "nli",
         )
     }
 
     val citizens: List<BureaucratPlayer>
         get() = players.values.filter { it.id != bureaucratId }
+
+    /** Citizens eligible to vote on the open challenge — everyone but the
+     *  bureaucrat (already excluded) and the challenger, who are both biased. */
+    val voters: List<BureaucratPlayer>
+        get() = citizens.filter { it.id != pendingChallenger }
 
     fun tokensFor(id: String): Int = tokens[id] ?: 0
 
@@ -124,9 +151,19 @@ class BureaucratEngine(private val rng: Random = Random.Default) {
         val ids = order
         if (ids.isEmpty()) return
         bureaucratId = ids[rotation % ids.size]
-        task = TASKS[rng.nextInt(TASKS.size)]
+        // Pick a task, never repeating the previous round's so play stays varied.
+        val count = TASKS.size
+        val idx = if (lastTaskIndex < 0 || count <= 1) rng.nextInt(count)
+                  else { val r = rng.nextInt(count - 1); if (r >= lastTaskIndex) r + 1 else r }
+        lastTaskIndex = idx
+        val chosen = TASKS[idx]
+        task = chosen
         policyLog.clear()
+        // Seed the request as line 0 so the task anchors the whole round and
+        // every denial/claim reads against it on screen.
+        policyLog.add(PolicyEntry(chosen, PolicyKind.REQUEST))
         pendingChallenger = null
+        votes.clear()
         tokens.clear()
         for (c in citizens) tokens[c.id] = options.challengeTokens
         roundNumber += 1
@@ -139,48 +176,103 @@ class BureaucratEngine(private val rng: Random = Random.Default) {
         if (playerId != bureaucratId) return false
         val t = text.trim()
         if (t.isEmpty()) return false
-        policyLog.add(PolicyEntry(t, isRebuttal = false))
+        policyLog.add(PolicyEntry(t, PolicyKind.DENIAL, authorId = bureaucratId))
         return true
     }
 
-    /** A citizen spends a token to challenge. Returns false if not allowed. */
-    fun callLoophole(citizenId: String): Boolean {
+    /**
+     * A citizen spends a token to challenge, stating the loophole [claim] they
+     * are exploiting. The claim joins the log and becomes part of what the
+     * Bureaucrat's rebuttal is judged against, so the contradiction is always
+     * grounded in something a citizen actually argued. Returns false if not
+     * allowed (wrong phase, no tokens, or a blank claim).
+     */
+    fun callLoophole(citizenId: String, claim: String): Boolean {
         if (phase != BureaucratPhase.ARGUING) return false
         if (citizenId == bureaucratId) return false
         if (players[citizenId] == null) return false
         if (tokensFor(citizenId) <= 0) return false
+        val c = claim.trim()
+        if (c.isEmpty()) return false
+        policyLog.add(PolicyEntry(c, PolicyKind.CLAIM, authorId = citizenId))
         pendingChallenger = citizenId
         phase = BureaucratPhase.REBUTTAL
         return true
     }
 
     /**
-     * Bureaucrat answers the open loophole. [contradicts] is the verdict the
-     * server's [ContradictionDetector] returned for this rebuttal against the
-     * prior log — true means the rebuttal (or the log it leans on) is
-     * self-contradictory, so the loophole stands and the challenger wins.
+     * Bureaucrat answers the open loophole. The rebuttal always becomes binding
+     * policy. How it is judged depends on [BureaucratOptions.judging]:
+     *  - "nli": [contradicts] is the verdict the server's [ContradictionDetector]
+     *    returned — true means the rebuttal (or the log it leans on) is
+     *    self-contradictory, so the loophole stands and the challenger wins.
+     *  - "vote": the engine moves to [BureaucratPhase.VOTING] and the table
+     *    decides via [castVote]; [contradicts] is ignored.
      */
     fun submitRebuttal(text: String, contradicts: Boolean): Boolean {
         if (phase != BureaucratPhase.REBUTTAL) return false
         val challenger = pendingChallenger ?: return false
         val t = text.trim()
         if (t.isEmpty()) return false
+        policyLog.add(PolicyEntry(t, PolicyKind.REBUTTAL, authorId = bureaucratId))
+        if (options.judging == "vote") {
+            // Hand the verdict to the room. The challenger and bureaucrat are
+            // excluded as voters; resolution happens in [castVote]/[tallyVotes].
+            votes.clear()
+            phase = BureaucratPhase.VOTING
+            return true
+        }
         if (contradicts) {
-            policyLog.add(PolicyEntry(t, isRebuttal = true, challengerId = challenger))
             awardLoophole(challenger, RoundEndReason.LOOPHOLE_CONTRADICTION)
             return true
         }
-        // Successful defence: the rebuttal becomes binding policy and the
-        // challenger burns the token they spent.
-        policyLog.add(PolicyEntry(t, isRebuttal = true, challengerId = challenger))
+        // Successful defence: the challenger burns the token they spent.
+        failedChallenge(challenger)
+        return true
+    }
+
+    /** A voter rules on the open challenge: [stands] = "the loophole beats the
+     *  rebuttal". Auto-tallies once every eligible voter has weighed in. */
+    fun castVote(voterId: String, stands: Boolean): Boolean {
+        if (phase != BureaucratPhase.VOTING) return false
+        val challenger = pendingChallenger ?: return false
+        if (voterId == bureaucratId || voterId == challenger) return false
+        if (players[voterId] == null) return false
+        votes[voterId] = stands
+        if (votes.size >= voters.size) tallyVotes()
+        return true
+    }
+
+    /** Host breaks a stalled vote: tally with whoever has voted so far. Missing
+     *  ballots count for the bureaucrat, so overturning needs a real majority. */
+    fun forceTally(): Boolean {
+        if (phase != BureaucratPhase.VOTING) return false
+        tallyVotes()
+        return true
+    }
+
+    private fun tallyVotes() {
+        val challenger = pendingChallenger ?: return
+        val eligible = voters.size
+        val stands = votes.values.count { it }
+        if (stands * 2 > eligible) {
+            awardLoophole(challenger, RoundEndReason.LOOPHOLE_VOTE)
+        } else {
+            failedChallenge(challenger)
+        }
+    }
+
+    /** Shared tail for a defence the challenger lost (NLI or vote): burn a
+     *  token, dock a point, and survive the bureaucrat once tokens run dry. */
+    private fun failedChallenge(challenger: String) {
         tokens[challenger] = (tokensFor(challenger) - 1).coerceAtLeast(0)
         players[challenger]?.let { it.score = (it.score - FAIL_PENALTY).coerceAtLeast(0) }
         pendingChallenger = null
+        votes.clear()
         phase = BureaucratPhase.ARGUING
         if (citizens.all { tokensFor(it.id) <= 0 }) {
             bureaucratSurvives(RoundEndReason.TOKENS_EXHAUSTED)
         }
-        return true
     }
 
     /** Server-owned timer elapsed with no rebuttal: the challenger wins. */
@@ -208,6 +300,7 @@ class BureaucratEngine(private val rng: Random = Random.Default) {
     private fun endRound(challenger: String?, reason: RoundEndReason) {
         lastRound = RoundOutcome(bureaucratId!!, challenger, reason, task ?: "")
         pendingChallenger = null
+        votes.clear()
         phase = BureaucratPhase.ROUND_OVER
     }
 

@@ -110,6 +110,11 @@ fun BureaucratScreen() {
                         UbPrimaryButton("Bureaucrat survives the round",
                             modifier = Modifier.fillMaxWidth().padding(20.dp),
                             onClick = { server.hostSurvive() })
+                    BureaucratPhase.VOTING ->
+                        OutlinedButton(
+                            onClick = { server.hostForceTally() },
+                            modifier = Modifier.fillMaxWidth().padding(20.dp)
+                        ) { Text("Call the vote now") }
                     BureaucratPhase.ROUND_OVER ->
                         UbPrimaryButton("Next round",
                             modifier = Modifier.fillMaxWidth().padding(20.dp),
@@ -136,9 +141,29 @@ private fun OptionsCard(engine: BureaucratEngine, server: BureaucratServer) {
             Stepper("Rebuttal seconds", o.rebuttalSeconds, 5, 120, step = 5) {
                 server.hostSetOptions(o.copy(rebuttalSeconds = it))
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Switch(checked = o.aiAssist, onCheckedChange = { server.hostSetOptions(o.copy(aiAssist = it)) })
-                Text("  AI rebuttal check (falls back to timer)")
+            Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Judging:", Modifier.weight(1f))
+                SingleChoiceSegmentedButtonRow {
+                    SegmentedButton(
+                        selected = o.judging == "nli",
+                        onClick = { server.hostSetOptions(o.copy(judging = "nli")) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                        label = { Text("AI judge") }
+                    )
+                    SegmentedButton(
+                        selected = o.judging == "vote",
+                        onClick = { server.hostSetOptions(o.copy(judging = "vote")) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                        label = { Text("Table vote") }
+                    )
+                }
+            }
+            if (o.judging == "nli") {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Switch(checked = o.aiAssist, onCheckedChange = { server.hostSetOptions(o.copy(aiAssist = it)) })
+                    Text("  AI rebuttal check (falls back to timer)")
+                }
             }
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {

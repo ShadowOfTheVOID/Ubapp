@@ -3,11 +3,9 @@ package com.example.jamboree.ads
 import android.content.Context
 
 /**
- * Manages ad-free state.
- *
- * IAP wiring: integrate Google Play Billing Library and call [setAdFree] from
- * the purchase callback when the SKU "com.jamboree.adfree" is acknowledged.
- * The Play Billing dependency is in build.gradle.kts.
+ * Persists ad-free state. [BillingManager] drives this from the Google Play
+ * purchase/restore callbacks once the SKU [SKU] is acknowledged; the ad call
+ * sites ([AdBanner], [AdInterstitial]) read [isAdFree] to suppress placements.
  */
 object AdManager {
     private const val PREFS = "jamboree.ads"

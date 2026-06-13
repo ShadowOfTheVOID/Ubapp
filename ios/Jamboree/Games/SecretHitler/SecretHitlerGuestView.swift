@@ -41,7 +41,7 @@ struct SecretHitlerGuestView: View {
                 showInterstitial = true
             }
         }
-        .navigationTitle("Secret Hitler")
+        .navigationTitle("Hidden Agenda")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { model.attach(ctx: ctx) }
         .onDisappear { ctx.client.onMessage = nil }
@@ -50,7 +50,7 @@ struct SecretHitlerGuestView: View {
 
     @ViewBuilder private var lobby: some View {
         VStack(alignment: .leading, spacing: 6) {
-            MonoLabel("Secret Hitler · lobby", color: JamboreeTheme.accent)
+            MonoLabel("Hidden Agenda · lobby", color: JamboreeTheme.accent)
             Text("Waiting for the deal")
                 .font(.system(size: 26, weight: .heavy)).kerning(-0.8).foregroundStyle(.white)
             Text("Playing as \(ctx.yourName) · 5–10 players")
@@ -118,9 +118,9 @@ struct SecretHitlerGuestView: View {
 
     private var tracks: some View {
         VStack(spacing: 8) {
-            SHTrackView(title: "Liberal track", filled: model.liberalPolicies, max: 5,
+            SHTrackView(title: "Reform track", filled: model.liberalPolicies, max: 5,
                         color: SH.liberal, glyph: "★")
-            SHTrackView(title: "Fascist track", filled: model.fascistPolicies, max: 6,
+            SHTrackView(title: "Scheme track", filled: model.fascistPolicies, max: 6,
                         color: SH.fascist, glyph: "✖")
             HStack(spacing: 10) {
                 MonoLabel("Election tracker")
@@ -230,14 +230,14 @@ struct SecretHitlerGuestView: View {
             } else { waiting("\(playerName(model.presidentId)) is peeking at the deck") }
         case "investigation":
             if amPresident {
-                pickList("Investigate a player's party",
+                pickList("Investigate a player's loyalty",
                          model.players.filter {
                              $0.alive && $0.id != model.presidentId && !model.investigatedIds.contains($0.id)
                          }) { p in model.send(["type": "investigate", "targetId": p.id]) }
             } else { waiting("\(playerName(model.presidentId)) is investigating") }
         case "investigationReveal":
             if amPresident, let inv = model.investigationResult {
-                let party = inv.party.capitalized
+                let party = inv.party == "fascist" ? "a Conspirator" : "a Loyalist"
                 VStack(alignment: .leading, spacing: 10) {
                     MonoLabel("Investigation", color: JamboreeTheme.accent)
                     Text("\(playerName(inv.subjectId)) is \(party)")
@@ -330,7 +330,7 @@ struct SecretHitlerGuestView: View {
             model.phase != "lobby" && model.phase != "gameOver" {
             let alive = model.players.first { $0.id == ctx.yourId }?.alive ?? true
             TeamChatView(
-                title: "Fascist chat",
+                title: "Conspirator chat",
                 subtitle: alive ? "Private — only fascists you know can read this."
                                 : "You're out — chat is read-only.",
                 messages: model.chat,
@@ -354,7 +354,7 @@ struct SecretHitlerGuestView: View {
         }()
         VStack(alignment: .leading, spacing: 6) {
             MonoLabel("Game over", color: color)
-            Text(liberalWin ? "Liberals win" : "Fascists win")
+            Text(liberalWin ? "Loyalists win" : "Conspirators win")
                 .font(.system(size: 30, weight: .heavy)).kerning(-1).foregroundStyle(color)
             if !reason.isEmpty {
                 Text(reason).font(.system(size: 13)).foregroundStyle(JamboreeTheme.muted)
@@ -408,9 +408,9 @@ private enum SH {
 private func roleMeta(_ role: String) -> (name: String, team: String, blurb: String,
                                           glyph: String, color: Color, ink: Color) {
     switch role {
-    case "liberal": return ("Liberal", "Liberals", "Enact 5 Liberal policies — or have Hitler executed. You don't know who anyone else is.", "★", SH.liberal, SH.liberalInk)
-    case "fascist": return ("Fascist", "Fascists", "Enact 6 Fascist policies — or sneak Hitler in as Chancellor after 3.", "✖", SH.fascist, SH.fascistInk)
-    case "hitler":  return ("Hitler", "Fascists", "You are also a Fascist. Stay hidden — if elected Chancellor after 3 fascist policies, you win.", "✠", SH.hitler, .white)
+    case "liberal": return ("Loyalist", "Loyalists", "Enact 5 Reform policies — or have the Mastermind removed. You don't know who anyone else is.", "★", SH.liberal, SH.liberalInk)
+    case "fascist": return ("Conspirator", "Conspirators", "Enact 6 Scheme policies — or sneak the Mastermind in as Chancellor after 3.", "✖", SH.fascist, SH.fascistInk)
+    case "hitler":  return ("Mastermind", "Conspirators", "You are also a Conspirator. Stay hidden — if elected Chancellor after 3 Scheme policies, you win.", "✠", SH.hitler, .white)
     default:        return (role.capitalized, "—", role, "•", SH.liberal, SH.liberalInk)
     }
 }
@@ -452,7 +452,7 @@ private struct SHPolicyView: View {
         let ink = isLib ? SH.liberalInk : SH.fascistInk
         VStack(spacing: 4) {
             Text(isLib ? "★" : "✖").font(.system(size: width * 0.4, weight: .heavy)).foregroundStyle(ink)
-            MonoLabel(isLib ? "Liberal" : "Fascist", size: Swift.max(8, width * 0.13), color: ink.opacity(0.7))
+            MonoLabel(isLib ? "Reform" : "Scheme", size: Swift.max(8, width * 0.13), color: ink.opacity(0.7))
         }
         .frame(width: width, height: width * 1.4)
         .background(color)

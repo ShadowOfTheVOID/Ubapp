@@ -19,6 +19,10 @@ final class BureaucratServer {
 
     private var rebuttalWork: DispatchWorkItem?
     private var rebuttalDeadlineMs: Int64 = 0
+    /// The detector's last ruling, surfaced to every client so the AI verdict
+    /// is legible instead of opaque. Nil when no rebuttal has been judged this
+    /// challenge (e.g. timeout) or AI assist is off.
+    private var lastVerdict: [String: Any]?
 
     var onStateChange: (() -> Void)?
     private var statRecorded = false
@@ -62,16 +66,23 @@ final class BureaucratServer {
     func hostSetOptions(_ o: BureaucratOptions) { engine.setOptions(o); broadcastOptions(); emit() }
     func hostStart() {
         guard engine.canStart else { return }
+        lastVerdict = nil
         engine.start(); broadcastRound(); emit()
     }
     func hostSurvive() {
+        lastVerdict = nil
         if engine.bureaucratSurvives() { cancelTimer(); broadcastRoundOver(); emit() }
     }
     func hostNextRound() {
+        lastVerdict = nil
         if engine.nextRound() {
             if engine.phase == .gameOver { broadcastGameOver() } else { broadcastRound() }
             emit()
         }
+    }
+    func hostCastVote(_ stands: Bool) { applyVote(voterId: Self.hostId, stands: stands) }
+    func hostForceTally() {
+        if engine.forceTally() { afterVoteResolved(); emit() }
     }
     func hostCallTutorialVote() { openTutorialVote() }
     func hostTutorialVote(_ yes: Bool) { submitTutorialVote(voterId: Self.hostId, yes: yes) }
@@ -88,9 +99,11 @@ final class BureaucratServer {
         case "denial":
             if let pid, let t = j["text"] as? String { applyDenial(playerId: pid, text: String(t.prefix(280))) }
         case "call_loophole":
-            if let pid { applyLoophole(citizenId: pid) }
+            if let pid, let c = j["claim"] as? String { applyLoophole(citizenId: pid, claim: String(c.prefix(280))) }
         case "rebuttal":
             if let pid, let t = j["text"] as? String { applyRebuttal(playerId: pid, text: String(t.prefix(280))) }
+        case "cast_vote":
+            if let pid, let stands = j["stands"] as? Bool { applyVote(voterId: pid, stands: stands) }
         case "call_tutorial_vote": if pid != nil { openTutorialVote() }
         case "tutorial_vote":
             if let pid, let yes = j["yes"] as? Bool { submitTutorialVote(voterId: pid, yes: yes) }
@@ -126,8 +139,9 @@ final class BureaucratServer {
         if engine.addDenial(playerId: playerId, text: text) { broadcastPolicy(); emit() }
     }
 
-    private func applyLoophole(citizenId: String) {
-        if engine.callLoophole(citizenId: citizenId) {
+    private func applyLoophole(citizenId: String, claim: String) {
+        lastVerdict = nil
+        if engine.callLoophole(citizenId: citizenId, claim: claim) {
             rebuttalDeadlineMs = Int64(Date().timeIntervalSince1970 * 1000) + Int64(engine.options.rebuttalSeconds) * 1000
             broadcastRebuttalOpen()
             startTimer()
@@ -139,11 +153,42 @@ final class BureaucratServer {
         guard engine.phase == .rebuttal, playerId == engine.bureaucratId,
               !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         cancelTimer()
-        let contradicts = engine.options.aiAssist
-            && detector.contradicts(priorStatements: engine.policyLog.map { $0.text }, rebuttal: text)
+        let voteMode = engine.options.judging == "vote"
+        var contradicts = false
+        if !voteMode && engine.options.aiAssist {
+            // Judge the rebuttal only against the denials and the challenger's
+            // claim — never the request, which a denial trivially contradicts.
+            let judged = engine.policyLog.enumerated().filter { $0.element.kind != .request }
+            let v = detector.judge(priorStatements: judged.map { $0.element.text }, rebuttal: text)
+            contradicts = v.contradicts
+            let lineIndex = (v.priorIndex >= 0 && v.priorIndex < judged.count) ? judged[v.priorIndex].offset : -1
+            lastVerdict = [
+                "contradicts": v.contradicts, "label": v.label,
+                "confidence": v.confidence, "lineIndex": lineIndex, "rebuttal": text,
+            ]
+        }
         if engine.submitRebuttal(text: text, contradicts: contradicts) {
-            if engine.phase == .roundOver { broadcastRoundOver() } else { broadcastPolicy() }
+            switch engine.phase {
+            case .voting: broadcastVoteState()      // table decides
+            case .roundOver: broadcastRoundOver()
+            default: broadcastPolicy()              // successful defence
+            }
             emit()
+        }
+    }
+
+    private func applyVote(voterId: String, stands: Bool) {
+        guard engine.phase == .voting else { return }
+        if engine.castVote(voterId: voterId, stands: stands) { afterVoteResolved(); emit() }
+    }
+
+    /// Re-broadcast whatever the vote produced: a running tally, the round-over
+    /// screen (loophole carried) or back to arguing (denial upheld).
+    private func afterVoteResolved() {
+        switch engine.phase {
+        case .voting: broadcastVoteState()
+        case .roundOver: broadcastRoundOver()
+        default: broadcastPolicy()
         }
     }
 
@@ -171,7 +216,7 @@ final class BureaucratServer {
         let o = engine.options
         broadcast(["type": "options", "targetScore": o.targetScore, "challengeTokens": o.challengeTokens,
                    "rebuttalSeconds": o.rebuttalSeconds, "aiAssist": o.aiAssist,
-                   "rebuttalMode": o.rebuttalMode])
+                   "rebuttalMode": o.rebuttalMode, "judging": o.judging])
     }
 
     private func roundCore(_ type: String) -> [String: Any] {
@@ -189,7 +234,11 @@ final class BureaucratServer {
         ]
     }
     private func broadcastRound() { broadcast(roundCore("round")) }
-    private func broadcastPolicy() { broadcast(roundCore("policy")) }
+    private func broadcastPolicy() {
+        var core = roundCore("policy")
+        if let v = lastVerdict { core["verdict"] = v }
+        broadcast(core)
+    }
 
     private func broadcastRebuttalOpen() {
         let cid = engine.pendingChallenger
@@ -199,13 +248,33 @@ final class BureaucratServer {
             "challengerName": cid.flatMap { engine.players[$0]?.name } as Any,
             "seconds": engine.options.rebuttalSeconds,
             "deadlineMs": rebuttalDeadlineMs,
+            "claim": engine.policyLog.last(where: { $0.kind == .claim })?.text as Any,
+            "policyLog": policyJson(),
+        ])
+    }
+
+    /// Table-vote state: the open challenge plus the running tally. Sent on
+    /// entering `.voting` and after every ballot.
+    private func broadcastVoteState() {
+        let cid = engine.pendingChallenger
+        let stands = engine.votes.values.filter { $0 }.count
+        broadcast([
+            "type": "vote_state",
+            "challengerId": cid as Any,
+            "challengerName": cid.flatMap { engine.players[$0]?.name } as Any,
+            "bureaucratId": engine.bureaucratId as Any,
+            "claim": engine.policyLog.last(where: { $0.kind == .claim })?.text as Any,
+            "rebuttal": engine.policyLog.last(where: { $0.kind == .rebuttal })?.text as Any,
+            "standsCount": stands,
+            "denialCount": engine.votes.count - stands,
+            "eligibleCount": engine.voters.count,
             "policyLog": policyJson(),
         ])
     }
 
     private func broadcastRoundOver() {
         let r = engine.lastRound!
-        broadcast([
+        var payload: [String: Any] = [
             "type": "round_over",
             "bureaucratId": r.bureaucratId,
             "bureaucratName": engine.players[r.bureaucratId]?.name ?? r.bureaucratId,
@@ -217,7 +286,9 @@ final class BureaucratServer {
             "scores": scoresJson(),
             "targetScore": engine.options.targetScore,
             "policyLog": policyJson(),
-        ])
+        ]
+        if let v = lastVerdict { payload["verdict"] = v }
+        broadcast(payload)
     }
 
     private func broadcastGameOver() {
@@ -242,7 +313,7 @@ final class BureaucratServer {
         var o: [String: Int] = [:]; for c in engine.citizens { o[c.id] = engine.tokensFor(c.id) }; return o
     }
     private func policyJson() -> [[String: Any]] {
-        engine.policyLog.map { ["text": $0.text, "isRebuttal": $0.isRebuttal, "challengerId": $0.challengerId as Any] }
+        engine.policyLog.map { ["text": $0.text, "kind": $0.kind.rawValue, "author": $0.authorId as Any] }
     }
 
     private func openTutorialVote() {
@@ -275,12 +346,13 @@ final class BureaucratServer {
     private func phaseJson(_ p: BureaucratPhase) -> String {
         switch p {
         case .lobby: "lobby"; case .arguing: "arguing"; case .rebuttal: "rebuttal"
-        case .roundOver: "roundOver"; case .gameOver: "gameOver"
+        case .voting: "voting"; case .roundOver: "roundOver"; case .gameOver: "gameOver"
         }
     }
     private func reasonJson(_ r: RoundEndReason) -> String {
         switch r {
         case .loopholeTimeout: "timeout"; case .loopholeContradiction: "contradiction"
+        case .loopholeVote: "vote"
         case .bureaucratSurvived: "survived"; case .tokensExhausted: "exhausted"
         }
     }

@@ -18,7 +18,7 @@ struct CodenamesView: View {
                             Spacer(minLength: 0)
                             VStack(alignment: .center, spacing: 16) {
                                 VStack(spacing: 4) {
-                                    MonoLabel("Hosting · Codenames", color: JamboreeTheme.accent)
+                                    MonoLabel("Hosting · Code Words", color: JamboreeTheme.accent)
                                     Text("Waiting for players")
                                         .font(.system(size: 24, weight: .heavy)).kerning(-0.6)
                                         .foregroundStyle(.white)
@@ -52,7 +52,7 @@ struct CodenamesView: View {
             }
         }
         .jamboreeChrome()
-        .navigationTitle("Codenames")
+        .navigationTitle("Code Words")
         .onDisappear { model.stop() }
     }
 

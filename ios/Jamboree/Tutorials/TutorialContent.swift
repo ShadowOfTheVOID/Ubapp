@@ -73,7 +73,7 @@ enum GameTutorials {
     )
 
     static let codenames = GameTutorial(
-        title: "How to play Codenames",
+        title: "How to play Code Words",
         sections: [
             TutorialSection(heading: "Setup", body: "Two teams (red and blue). Each team picks one Spymaster who sees which words belong to which team, plus an Assassin word and neutral words."),
             TutorialSection(heading: "Clues", body: "On your turn, the Spymaster gives a one-word clue and a number — e.g. \"Animal 3\". The clue must relate to that many of your team's words on the board."),
@@ -104,18 +104,18 @@ enum GameTutorials {
     )
 
     static let secretHitler = GameTutorial(
-        title: "How to play Secret Hitler",
+        title: "How to play Hidden Agenda",
         sections: [
-            TutorialSection(heading: "Roles", body: "Liberals are the majority. Fascists are the minority; one of them is Hitler. Fascists know each other and know Hitler. Hitler only learns who the Fascists are in 5–6 player games."),
-            TutorialSection(heading: "Elect a government", body: "Each round the President nominates a Chancellor. Everyone votes Ja or Nein. A tie or majority Nein fails the vote and advances the rotation. Three failed votes in a row triggers chaos: the top policy is enacted automatically."),
-            TutorialSection(heading: "Legislative session", body: "After a successful vote the President draws 3 policy cards, discards 1, and passes 2 to the Chancellor, who enacts one of them. After five Fascist policies the Chancellor may request a veto — both leaders must agree to discard the pair."),
-            TutorialSection(heading: "Presidential powers", body: "Some Fascist policies grant the President a power: peek at the top of the deck, investigate a player's party, call a special election, or execute a player. The board changes with player count."),
-            TutorialSection(heading: "Winning", body: "Liberals win by enacting 5 Liberal policies or by executing Hitler. Fascists win by enacting 6 Fascist policies, or by getting Hitler elected Chancellor after 3 Fascist policies are on the board."),
+            TutorialSection(heading: "Roles", body: "Loyalists are the majority. Conspirators are the minority; one of them is the Mastermind. Conspirators know each other and know the Mastermind. The Mastermind only learns who the Conspirators are in 5–6 player games."),
+            TutorialSection(heading: "Elect a government", body: "Each round the President nominates a Chancellor. Everyone votes Yes or No. A tie or majority No fails the vote and advances the rotation. Three failed votes in a row triggers chaos: the top policy is enacted automatically."),
+            TutorialSection(heading: "Legislative session", body: "After a successful vote the President draws 3 policy cards, discards 1, and passes 2 to the Chancellor, who enacts one of them. After five Scheme policies the Chancellor may request a veto — both leaders must agree to discard the pair."),
+            TutorialSection(heading: "Presidential powers", body: "Some Scheme policies grant the President a power: peek at the top of the deck, investigate a player's loyalty, call a special election, or remove a player. The board changes with player count."),
+            TutorialSection(heading: "Winning", body: "Loyalists win by enacting 5 Reform policies or by removing the Mastermind. Conspirators win by enacting 6 Scheme policies, or by getting the Mastermind elected Chancellor after 3 Scheme policies are on the board."),
         ],
         browserMenuSections: [
-            TutorialSection(heading: "Your role", body: "A coloured card at the top shows your role: Liberal, Fascist, or Hitler. Fascists also see their allies. Keep your phone face-down between turns."),
+            TutorialSection(heading: "Your role", body: "A coloured card at the top shows your role: Loyalist, Conspirator, or Mastermind. Conspirators also see their allies. Keep your phone face-down between turns."),
             TutorialSection(heading: "President / Chancellor turns", body: "When it's your turn to act (nominate, discard, enact, use a power) the buttons appear under the government card. Otherwise the screen tells you who the table is waiting on."),
-            TutorialSection(heading: "Voting", body: "When an election opens, tap Ja or Nein. Your vote locks in and the count updates as everyone else votes."),
+            TutorialSection(heading: "Voting", body: "When an election opens, tap Yes or No. Your vote locks in and the count updates as everyone else votes."),
         ]
     )
 
@@ -167,16 +167,16 @@ enum GameTutorials {
     static let bureaucrat = GameTutorial(
         title: "How to play The Bureaucrat",
         sections: [
-            TutorialSection(heading: "Setup", body: "One player is the Bureaucrat; everyone else is a Citizen sharing one absurd task (e.g. \"register my goldfish as a mortgage co-signer\"). The Bureaucrat's job is to deny everything."),
-            TutorialSection(heading: "Binding policy", body: "Citizens argue out loud for their request. The Bureaucrat answers by typing denials — and every denial becomes binding policy on everyone's screen. Vague denials are safe; specific ones give citizens something to attack."),
-            TutorialSection(heading: "Call a loophole", body: "When a citizen catches the Bureaucrat contradicting their own policy, they spend a token to Call a loophole. The Bureaucrat must type a rebuttal before the timer runs out — or the citizen wins the round."),
-            TutorialSection(heading: "Scoring", body: "Loophole win: +3 to the citizen. Survive the round: +2 to the Bureaucrat. A failed challenge costs the citizen a token and a point. The role rotates each round; first to the target score wins."),
-            TutorialSection(heading: "The judge", body: "A rebuttal that itself contradicts the policy log is rejected automatically (an on-device AI checks it when available; otherwise the countdown is the only judge). No voting — so no trolling the result."),
+            TutorialSection(heading: "Setup", body: "One player is the Bureaucrat; everyone else is a Citizen. Each round opens with one absurd request (e.g. \"register my goldfish as a mortgage co-signer\") pinned to the top of the record. The Bureaucrat must deny it. The role rotates each round."),
+            TutorialSection(heading: "Binding policy", body: "The Bureaucrat answers by typing denials — and every denial becomes binding policy on everyone's screen. Vague denials are safe; specific ones give citizens something to attack."),
+            TutorialSection(heading: "Call a loophole", body: "When a citizen catches the Bureaucrat boxed in by their own rules, they spend a token to Call a loophole and type the exact claim they're exploiting (e.g. \"a goldfish is alive in law, so it qualifies\"). The claim joins the record."),
+            TutorialSection(heading: "Rebuttal & the verdict", body: "The Bureaucrat must answer with a rebuttal before the timer. Who rules on it is the host's choice. AI judge: an on-device model checks the rebuttal against the denials and the claim and names the exact clashing line. Table vote: everyone but the Bureaucrat and the challenger votes whether the loophole beat the rebuttal — a majority hands the round to the citizen, a tie favours the Bureaucrat."),
+            TutorialSection(heading: "Scoring", body: "Loophole win: +3 to the citizen. Survive the round: +2 to the Bureaucrat. A failed challenge costs the citizen a token and a point. First to the target score wins."),
         ],
         browserMenuSections: [
-            TutorialSection(heading: "Your role", body: "A tag at the top tells you whether you're the Bureaucrat or a Citizen this round, plus the shared task. Roles rotate every round."),
-            TutorialSection(heading: "As the Bureaucrat", body: "Type denials into the box to build your policy log. When a loophole is called, a countdown appears — type your rebuttal and submit before it hits zero."),
-            TutorialSection(heading: "As a Citizen", body: "Make your case out loud, then tap Call loophole (you get a limited number per round). Watch the policy log — contradictions are your ammunition."),
+            TutorialSection(heading: "Your role", body: "A tag at the top tells you whether you're the Bureaucrat or a Citizen this round, plus the shared request. Roles rotate every round."),
+            TutorialSection(heading: "As the Bureaucrat", body: "Type denials to build your policy log. When a loophole is called, you'll see the citizen's claim and a countdown — type a rebuttal that doesn't contradict your own record before it hits zero."),
+            TutorialSection(heading: "As a Citizen", body: "Watch the policy log for contradictions, then tap Call loophole and type the claim that springs the trap. Either the AI judge decides — showing the exact line it clashed with — or the table votes, depending on the host's setting."),
         ]
     )
 
@@ -200,7 +200,7 @@ enum GameTutorials {
     )
 
     static let connectFour = GameTutorial(
-        title: "How to play Connect Four",
+        title: "How to play Four in a Row",
         sections: [
             TutorialSection(heading: "Goal", body: "Drop discs into the columns. First to line up the target number of discs in a row, column, or diagonal wins."),
             TutorialSection(heading: "Turns", body: "Tap a column to drop your disc. The AI alternates with you. The center column tends to be the strongest opener."),

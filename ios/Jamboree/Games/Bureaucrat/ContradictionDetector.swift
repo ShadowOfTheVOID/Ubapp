@@ -11,13 +11,40 @@ import Foundation
 ///
 /// The server is the only caller. Implementations must be synchronous and
 /// side-effect free. Mirrors `ContradictionDetector.kt`.
+/// A legible ruling. The detector no longer hides behind a bare `Bool`: it
+/// reports *which* prior statement was the closest clash, the NLI class label,
+/// and a 0…1 confidence, so every client can show the player exactly why the
+/// loophole stood (or didn't) instead of an opaque verdict.
+struct ContradictionVerdict {
+    /// True when the rebuttal contradicts a prior statement — the loophole stands.
+    let contradicts: Bool
+    /// Index into `priorStatements` of the most-contradicted line, or -1 if none.
+    let priorIndex: Int
+    /// NLI class for that line: "contradiction", "entailment", or "neutral".
+    let label: String
+    /// Confidence in `label`, 0…1.
+    let confidence: Double
+
+    static let none = ContradictionVerdict(contradicts: false, priorIndex: -1,
+                                           label: "neutral", confidence: 0)
+}
+
 protocol ContradictionDetector {
     /// - Parameters:
-    ///   - priorStatements: the binding policy log, oldest first.
+    ///   - priorStatements: the statements the rebuttal may clash with
+    ///     (the round's denials plus the challenger's claim — never the
+    ///     request itself), oldest first.
     ///   - rebuttal: the bureaucrat's new statement.
-    /// - Returns: true if `rebuttal` contradicts any prior statement, meaning
-    ///   the loophole stands.
-    func contradicts(priorStatements: [String], rebuttal: String) -> Bool
+    /// - Returns: a verdict naming the closest clashing line, its NLI label and
+    ///   confidence. `contradicts == true` means the loophole stands.
+    func judge(priorStatements: [String], rebuttal: String) -> ContradictionVerdict
+}
+
+extension ContradictionDetector {
+    /// Convenience for callers (and tests) that only need the boolean.
+    func contradicts(priorStatements: [String], rebuttal: String) -> Bool {
+        judge(priorStatements: priorStatements, rebuttal: rebuttal).contradicts
+    }
 }
 
 /// Offline, dependency-free contradiction check. Looks for the same content
@@ -25,16 +52,21 @@ protocol ContradictionDetector {
 /// across two statements. Mirrors the Kotlin `KeywordContradictionDetector`.
 struct KeywordContradictionDetector: ContradictionDetector {
 
-    func contradicts(priorStatements: [String], rebuttal: String) -> Bool {
+    func judge(priorStatements: [String], rebuttal: String) -> ContradictionVerdict {
         let rebuttalNeg = isNegative(rebuttal)
         let rebuttalKeys = contentKeys(rebuttal)
-        if rebuttalKeys.isEmpty { return false }
-        for prior in priorStatements {
+        if rebuttalKeys.isEmpty { return .none }
+        for (i, prior) in priorStatements.enumerated() {
             let shared = contentKeys(prior).intersection(rebuttalKeys)
             if shared.isEmpty { continue }
-            if isNegative(prior) != rebuttalNeg { return true }
+            if isNegative(prior) != rebuttalNeg {
+                // A hard polarity flip on a shared subject: report it as a
+                // confident contradiction against that exact line.
+                return ContradictionVerdict(contradicts: true, priorIndex: i,
+                                            label: "contradiction", confidence: 1)
+            }
         }
-        return false
+        return .none
     }
 
     private func isNegative(_ s: String) -> Bool {

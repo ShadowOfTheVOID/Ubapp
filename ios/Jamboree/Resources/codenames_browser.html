@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Codenames</title>
+<title>Code Words</title>
 <style>
   :root { color-scheme: dark; --bg:#0d1117; --card:#161b22; --card2:#21262d;
     --line:#30363d; --text:#e6edf3; --muted:#9da7b3;
@@ -203,7 +203,7 @@
 
   function render(){
     if (!state.me) {
-      root.innerHTML = `<h1>Codenames</h1><div class="panel"><h2>Pick a name</h2><input id="n" type="text" placeholder="Your name" maxlength="20" autofocus><div style="height:10px"></div><button id="b">Join</button></div>`;
+      root.innerHTML = `<h1>Code Words</h1><div class="panel"><h2>Pick a name</h2><input id="n" type="text" placeholder="Your name" maxlength="20" autofocus><div style="height:10px"></div><button id="b">Join</button></div>`;
       bindJoin(); return;
     }
     if (state.phase==='lobby') return renderLobby();
@@ -242,7 +242,7 @@
 
     const o = state.options;
     const optsCard = `<div class="panel"><h2>Game options</h2><p class="small">Board: <strong>${o.boardSize}</strong> · Assassins: <strong>${o.assassinCount}</strong></p></div>`;
-    root.innerHTML = `<h1>Codenames</h1>
+    root.innerHTML = `<h1>Code Words</h1>
       ${seriesBanner()}
       ${viewTutorialBanner()}
       ${viewTutorialVote()}

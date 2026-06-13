@@ -79,7 +79,7 @@ fun CodenamesGuestScreen(ctx: GuestContext) {
         SeriesBannerCard(s.series)
         if (s.phase == "lobby") {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                MonoLabel("Codenames · lobby", color = Ub.Accent)
+                MonoLabel("Code Words · lobby", color = Ub.Accent)
                 Text("Pick your team", fontSize = 26.sp, fontWeight = FontWeight.ExtraBold,
                      letterSpacing = (-0.8).sp, color = Ub.Foreground)
                 Text("Playing as ${ctx.yourName}", fontSize = 13.sp, color = Ub.Muted)
@@ -133,7 +133,7 @@ fun CodenamesGuestScreen(ctx: GuestContext) {
             val team = s.currentTeam ?: ""
             val mine = s.currentTeam == s.myTeam
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                MonoLabel("Codenames", color = Ub.Accent)
+                MonoLabel("Code Words", color = Ub.Accent)
                 Text(if (mine) (if (s.isSpymaster) "Your clue" else "Your team guesses")
                      else "${team.replaceFirstChar { it.uppercase() }}'s turn",
                      fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.7).sp,

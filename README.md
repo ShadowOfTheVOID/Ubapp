@@ -24,7 +24,7 @@ ios/                                    # SwiftUI app (Xcode 16, no xcodegen)
     ├── Menu/                           # MainMenuView
     ├── Games/<Name>/                   # one folder per game
     ├── Social/                         # HostServer (Network.framework)
-    └── Tutorials/                      # tutorial copy + opt-in vote (TODO)
+    └── Tutorials/                      # tutorial copy + opt-in vote
 
 android/                                # Gradle/Kotlin DSL, Jetpack Compose
 ├── settings.gradle.kts, build.gradle.kts
@@ -88,16 +88,16 @@ progress; the table below tracks what's done per game.
 | Mafia          | done   | done   | done           | done            | done                |
 | Werewolf       | done   | done   | done           | done            | done                |
 | Imposter       | done   | done   | done           | done            | done                |
-| Codenames      | done   | done   | done           | done            | done                |
+| Code Words     | done   | done   | done           | done            | done                |
 | Crazy Eights   | done   | done   | done           | done            | done                |
 | Cheat (Bluff)     | done   | done   | done           | done            | done                |
 | President      | done   | done   | done           | done            | done                |
 | Bluff Market   | done   | done   | done           | done            | done                |
-| Secret Hitler  | done   | done   | done           | done            | done                |
+| Hidden Agenda  | done   | done   | done           | done            | done                |
 | The Bureaucrat | done   | done   | done           | done            | done                |
 | Tag (BLE)      | done   | n/a    | n/a            | done            | done                |
 | Tic-Tac-Toe    | done   | n/a    | n/a            | done            | done                |
-| Connect Four   | done   | n/a    | n/a            | done            | done                |
+| Four in a Row  | done   | n/a    | n/a            | done            | done                |
 | Real-time      | done   | n/a    | n/a            | done            | done                |
 
 The browser bundles are loaded from `Resources/<name>_browser.html` (iOS)
@@ -134,12 +134,12 @@ tutorial opt-in) helper so adding a new game is mostly engine + adapter.
 | Mafia         | 4   | —   |
 | Werewolf      | 5   | —   |
 | Imposter      | 3   | —   |
-| Codenames     | 4   | —   |
+| Code Words    | 4   | —   |
 | Crazy Eights  | 2   | 8   |
 | Cheat (Bluff)    | 3   | 8   |
 | President     | 4   | 7   |
 | Bluff Market  | 3   | 6   |
-| Secret Hitler | 5   | 10  |
+| Hidden Agenda | 5   | 10  |
 | The Bureaucrat| 3   | 10  |
 
 Enforced by `*Engine.canStart`.
@@ -176,21 +176,32 @@ style interface). `KeywordContradictionDetector` is the always-on offline
 default and needs no model — the game is fully playable on the rebuttal-timer
 + keyword path with zero setup.
 
-To upgrade rebuttal judging to a real NLI model, the project targets
-`cross-encoder/nli-MiniLM2-L6-H768` — a MiniLM **distilled from RoBERTa**, so
-it uses RoBERTa byte-level BPE tokenisation and emits three logits in the order
-`[contradiction, entailment, neutral]`.
+The real NLI model is `cross-encoder/nli-MiniLM2-L6-H768` — a MiniLM
+**distilled from RoBERTa**, so it uses RoBERTa byte-level BPE tokenisation and
+emits three logits in the order `[contradiction, entailment, neutral]`.
 
-1. From the model repo's `Files` tab, download two files (no Python needed —
-   the repo ships pre-exported ONNX):
-   - `onnx/model_qint8_arm64.onnx` — int8, ARM64, ~83 MB (right for phones;
-     for x86 simulator/emulator use the arch-neutral `model_O4.onnx` instead)
-   - `tokenizer.json` — the self-contained tokeniser (vocab **and** merges)
-2. Rename to `nli_minilm.onnx` and `nli_tokenizer.json`, then drop **both**
-   into **both** trees (they are intentionally *not* committed — an ~83 MB
-   binary doesn't belong in git):
-   - `android/app/src/main/assets/`
-   - `ios/Jamboree/Resources/`
+The model (`nli_minilm.onnx`, ~83 MB int8) and tokeniser
+(`nli_tokenizer.json`) **are bundled** in both trees so the upgraded judging
+ships out of the box:
+
+- `android/app/src/main/assets/`
+- `ios/Jamboree/Resources/`
+
+> **License / attribution.** `cross-encoder/nli-MiniLM2-L6-H768` is
+> distributed under the **Apache License 2.0** — free to redistribute,
+> including commercially, with attribution. The bundled `nli_minilm.onnx` /
+> `nli_tokenizer.json` are unmodified redistributions; credit is given here per
+> the licence. All other game content (word banks, role themes, copy) is
+> original to this project.
+
+To replace or re-export them (no Python needed — the model repo ships
+pre-exported ONNX), download from the repo's `Files` tab and rename:
+
+1. `onnx/model_qint8_arm64.onnx` → `nli_minilm.onnx` — int8, ARM64, ~83 MB
+   (right for phones; for x86 simulator/emulator use the arch-neutral
+   `model_O4.onnx` instead).
+2. `tokenizer.json` → `nli_tokenizer.json` — the self-contained tokeniser
+   (vocab **and** merges). Drop both into **both** trees above.
 3. Android already declares `com.microsoft.onnxruntime:onnxruntime-android`.
    For iOS, add the `onnxruntime-objc` package — the ONNX call sites in
    `OnnxContradictionDetector.swift` are gated behind
